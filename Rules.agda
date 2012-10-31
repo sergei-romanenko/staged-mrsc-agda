@@ -20,6 +20,7 @@ open import Data.List
 open import Data.Product
 open import Data.Empty
 open import Data.Maybe
+open import Data.Star using( Star; ε; _◅_ )
 
 open import Relation.Nullary
 open import Relation.Unary using (_∈_)
@@ -207,3 +208,27 @@ MRSC→NDSC (mrsc-rebuild β c c' ¬f rs) =
 
 SC→NDSC : ∀ {g g'} → g ⊢SC g' → g ⊢NDSC g'
 SC→NDSC = MRSC→NDSC ∘ SC→MRSC
+
+-- Transitive closures
+
+_⊢*SC_ : Graph → Graph → Set
+_⊢*SC_ = Star _⊢SC_
+
+_⊢*NDSC_ : Graph → Graph → Set
+_⊢*NDSC_ = Star _⊢NDSC_
+
+_⊢*MRSC_ : Graph → Graph → Set
+_⊢*MRSC_ = Star _⊢MRSC_
+
+-- Theorems
+
+*SC→*MRSC : ∀ {g g'} → g ⊢*SC g' → g ⊢*MRSC g'
+*SC→*MRSC ε = ε
+*SC→*MRSC (x ◅ xs) = SC→MRSC x ◅ *SC→*MRSC xs
+
+*MRSC→*NDSC : ∀ {g g'} → g ⊢*MRSC g' → g ⊢*NDSC g'
+*MRSC→*NDSC ε = ε
+*MRSC→*NDSC (x ◅ xs) = MRSC→NDSC x ◅ *MRSC→*NDSC xs
+
+*SC→*NDSC : ∀ {g g'} → g ⊢*SC g' → g ⊢*NDSC g'
+*SC→*NDSC = *MRSC→*NDSC ∘ *SC→*MRSC
