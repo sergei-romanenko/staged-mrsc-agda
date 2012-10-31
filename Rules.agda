@@ -25,6 +25,8 @@ open import Relation.Nullary
 open import Relation.Unary using (_∈_)
 open import Relation.Binary.PropositionalEquality
 
+open import Function using (_∘_)
+
 {-
 ### Notation: ###
 
@@ -86,18 +88,18 @@ g → rebuild(g, β, c′)
 
 data _⊢SC_ (g : Graph) : Graph → Set where
   sc-fold : ∀ β α →
-    foldable? g β ≡ just α →
-    g ⊢SC fold g β α
+    (f : foldable? g β ≡ just α) →
+      g ⊢SC fold g β α
   sc-drive : ∀ β cs →
-    foldable? g β ≡ nothing →
-    T(not (dangerous g β)) →
-    driveStep (conf β) ≡ cs →
-    g ⊢SC addChildren g β cs
+    (¬f : foldable? g β ≡ nothing) →
+    (¬w : T(not (dangerous g β))) →
+    (d  : driveStep (conf β) ≡ cs) →
+      g ⊢SC addChildren g β cs
   sc-rebuild : ∀ β c c' →
-    foldable? g β ≡ nothing →
-    T (dangerous g β) →
-    rebuilding c ≡ c' →
-    g ⊢SC rebuild g β c'
+    (¬f : foldable? g β ≡ nothing) →
+    (w  : T (dangerous g β)) →
+    (r  : rebuilding c ≡ c') →
+      g ⊢SC rebuild g β c'
 
 {-
 
@@ -127,16 +129,16 @@ g → rebuild(g, β, c′)
 
 data _⊢NDSC_ (g : Graph) : Graph → Set where
   ndsc-fold : ∀ β α →
-    foldable? g β ≡ just α →
-    g ⊢NDSC fold g β α
+    (f : foldable? g β ≡ just α) →
+      g ⊢NDSC fold g β α
   ndsc-drive : ∀ β cs →
-    foldable? g β ≡ nothing →
-    driveStep (conf β) ≡ cs →
-    g ⊢NDSC addChildren g β cs
+    (¬f : foldable? g β ≡ nothing) →
+    (d  : driveStep (conf β) ≡ cs) →
+      g ⊢NDSC addChildren g β cs
   ndsc-rebuild : ∀ β c c' →
-    foldable? g β ≡ nothing →
-    c' ∈ rebuildings c →
-    g ⊢NDSC rebuild g β c'
+    (¬f : foldable? g β ≡ nothing) →
+    (rs : c' ∈ rebuildings c) →
+      g ⊢NDSC rebuild g β c'
 
 {-
 
@@ -167,14 +169,41 @@ g → rebuild(g, β, c′)
 
 data _⊢MRSC_ (g : Graph) : Graph → Set where
   mrsc-fold : ∀ β α →
-    foldable? g β ≡ just α →
-    g ⊢MRSC fold g β α
+    (f : foldable? g β ≡ just α) →
+      g ⊢MRSC fold g β α
   mrsc-drive : ∀ β cs →
-    foldable? g β ≡ nothing →
-    T (not (dangerous g β)) →
-    driveStep (conf β) ≡ cs →
-    g ⊢MRSC addChildren g β cs
+    (¬f : foldable? g β ≡ nothing) →
+    (¬w : T (not (dangerous g β))) →
+    (d  : driveStep (conf β) ≡ cs) →
+      g ⊢MRSC addChildren g β cs
   mrsc-rebuild : ∀ β c c' →
-    foldable? g β ≡ nothing →
-    c' ∈ rebuildings c →
-    g ⊢MRSC rebuild g β c'
+    (¬f : foldable? g β ≡ nothing) →
+    (rs : c' ∈ rebuildings c) →
+      g ⊢MRSC rebuild g β c'
+
+-- Now let us prove some "natural" theorems.
+-- A formal verification is still useful
+-- to ensure that "the ends meet".
+
+-- This model of supercompilation is extremely abstract.
+-- So there is not much to prove.
+
+
+SC→MRSC : ∀ {g g'} → g ⊢SC g' → g ⊢MRSC g'
+SC→MRSC (sc-fold β α f) =
+  mrsc-fold β α f
+SC→MRSC (sc-drive β cs ¬f ¬w d) =
+  mrsc-drive β cs ¬f ¬w d
+SC→MRSC (sc-rebuild β c c' ¬f w r) =
+  mrsc-rebuild β c c' ¬f (rebuilding-correct c c' r)
+
+MRSC→NDSC : ∀ {g g'} → g ⊢MRSC g' → g ⊢NDSC g'
+MRSC→NDSC (mrsc-fold β α f) =
+  ndsc-fold β α f
+MRSC→NDSC (mrsc-drive β cs ¬f ¬w d) =
+  ndsc-drive β cs ¬f d
+MRSC→NDSC (mrsc-rebuild β c c' ¬f rs) =
+  ndsc-rebuild β c c' ¬f rs
+
+SC→NDSC : ∀ {g g'} → g ⊢SC g' → g ⊢NDSC g'
+SC→NDSC = MRSC→NDSC ∘ SC→MRSC
