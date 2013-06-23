@@ -15,12 +15,12 @@ University of Pereslavl, 2012, 260 p. ISBN 978-5-901795-28-6, pages
 142-164. 
 -}
 
-open import Data.Bool
+open import Data.Bool using (Bool; true; false)
 open import Data.List
 open import Data.Product
 open import Data.Empty
 open import Data.Maybe
-open import Data.Star using( Star; ε; _◅_ )
+open import Data.Star using(Star; ε; _◅_)
 
 open import Relation.Nullary
 open import Relation.Unary using (_∈_)
@@ -99,12 +99,12 @@ module AbstractSC (s : AbstractScStruct) where
         g ⊢SC fold g β α
     sc-drive : ∀ β cs →
       (¬f : foldable? g β ≡ nothing) →
-      (¬w : T(not (dangerous g β))) →
+      (¬w : dangerous g β ≡ false) →
       (d  : driveStep (conf β) ≡ cs) →
         g ⊢SC addChildren g β cs
     sc-rebuild : ∀ β c c' →
       (¬f : foldable? g β ≡ nothing) →
-      (w  : T (dangerous g β)) →
+      (w  : dangerous g β ≡ true) →
       (r  : rebuilding c ≡ c') →
         g ⊢SC rebuild g β c'
 
@@ -188,7 +188,7 @@ module AbstractMRSC (s : AbstractScStruct) where
         g ⊢MRSC fold g β α
     mrsc-drive : ∀ β cs →
       (¬f : foldable? g β ≡ nothing) →
-      (¬w : T (not (dangerous g β))) →
+      (¬w : dangerous g β ≡ false) →
       (d  : driveStep (conf β) ≡ cs) →
         g ⊢MRSC addChildren g β cs
     mrsc-rebuild : ∀ β c c' →
@@ -197,8 +197,8 @@ module AbstractMRSC (s : AbstractScStruct) where
         g ⊢MRSC rebuild g β c'
 
 -- Now let us prove some "natural" theorems.
--- A formal verification is still useful
--- to ensure that "the ends meet".
+-- A formal verification is useful
+-- just to ensure that "the ends meet".
 
 -- This model of supercompilation is extremely abstract.
 -- So there is not much to prove.
@@ -231,24 +231,24 @@ module SC→MRSC→NDSC (s : AbstractScStruct) where
 
   -- Transitive closures
 
-  _⊢*SC_ : Graph → Graph → Set
-  _⊢*SC_ = Star _⊢SC_
+  _⊢SC*_ : Graph → Graph → Set
+  _⊢SC*_ = Star _⊢SC_
 
-  _⊢*NDSC_ : Graph → Graph → Set
-  _⊢*NDSC_ = Star _⊢NDSC_
+  _⊢NDSC*_ : Graph → Graph → Set
+  _⊢NDSC*_ = Star _⊢NDSC_
 
-  _⊢*MRSC_ : Graph → Graph → Set
-  _⊢*MRSC_ = Star _⊢MRSC_
+  _⊢MRSC*_ : Graph → Graph → Set
+  _⊢MRSC*_ = Star _⊢MRSC_
 
   -- Theorems
 
-  *SC→*MRSC : ∀ {g g'} → g ⊢*SC g' → g ⊢*MRSC g'
-  *SC→*MRSC ε = ε
-  *SC→*MRSC (x ◅ xs) = SC→MRSC x ◅ *SC→*MRSC xs
+  SC*→MRSC* : ∀ {g g'} → g ⊢SC* g' → g ⊢MRSC* g'
+  SC*→MRSC* ε = ε
+  SC*→MRSC* (x ◅ xs) = SC→MRSC x ◅ SC*→MRSC* xs
 
-  *MRSC→*NDSC : ∀ {g g'} → g ⊢*MRSC g' → g ⊢*NDSC g'
-  *MRSC→*NDSC ε = ε
-  *MRSC→*NDSC (x ◅ xs) = MRSC→NDSC x ◅ *MRSC→*NDSC xs
+  MRSC*→NDSC* : ∀ {g g'} → g ⊢MRSC* g' → g ⊢NDSC* g'
+  MRSC*→NDSC* ε = ε
+  MRSC*→NDSC* (x ◅ xs) = MRSC→NDSC x ◅ MRSC*→NDSC* xs
 
-  *SC→*NDSC : ∀ {g g'} → g ⊢*SC g' → g ⊢*NDSC g'
-  *SC→*NDSC = *MRSC→*NDSC ∘ *SC→*MRSC
+  SC*→NDSC* : ∀ {g g'} → g ⊢SC* g' → g ⊢NDSC* g'
+  SC*→NDSC* = MRSC*→NDSC* ∘ SC*→MRSC*
