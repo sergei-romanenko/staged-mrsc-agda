@@ -56,8 +56,8 @@ postulate
   rebuildings : (c c' : Configuration) → Set
   rebuild : (g : Graph)(β : Node)(c' : Configuration) → Graph
 
-  foldable?-correct : ∀ g β α → foldable? g β ≡ just α → foldable g β α
-  rebuilding-correct : ∀ c c' → rebuilding c ≡ c' → c' ∈ rebuildings c
+  foldable?-correct : ∀ {g β α} → foldable? g β ≡ just α → foldable g β α
+  rebuilding-correct : ∀ {c c'} → rebuilding c ≡ c' → c' ∈ rebuildings c
 
   dangerous : (g : Graph)(β : Node) → Bool
 
@@ -88,15 +88,15 @@ g → rebuild(g, β, c′)
 -}
 
 data _⊢SC_ (g : Graph) : Graph → Set where
-  sc-fold : ∀ β α →
+  sc-fold : ∀ {β α} →
     (f : foldable? g β ≡ just α) →
       g ⊢SC fold g β α
-  sc-drive : ∀ β cs →
+  sc-drive : ∀ {β cs} →
     (¬f : foldable? g β ≡ nothing) →
     (¬w : dangerous g β ≡ false) →
     (d  : driveStep (conf β) ≡ cs) →
       g ⊢SC addChildren g β cs
-  sc-rebuild : ∀ β c c' →
+  sc-rebuild : ∀ {β c c'} →
     (¬f : foldable? g β ≡ nothing) →
     (w  : dangerous g β ≡ true) →
     (r  : rebuilding c ≡ c') →
@@ -129,14 +129,14 @@ g → rebuild(g, β, c′)
 -}
 
 data _⊢NDSC_ (g : Graph) : Graph → Set where
-  ndsc-fold : ∀ β α →
+  ndsc-fold : ∀ {β α} →
     (f : foldable? g β ≡ just α) →
       g ⊢NDSC fold g β α
-  ndsc-drive : ∀ β cs →
+  ndsc-drive : ∀ {β cs} →
     (¬f : foldable? g β ≡ nothing) →
     (d  : driveStep (conf β) ≡ cs) →
       g ⊢NDSC addChildren g β cs
-  ndsc-rebuild : ∀ β c c' →
+  ndsc-rebuild : ∀ {β c c'} →
     (¬f : foldable? g β ≡ nothing) →
     (rs : c' ∈ rebuildings c) →
       g ⊢NDSC rebuild g β c'
@@ -169,15 +169,15 @@ g → rebuild(g, β, c′)
 -}
 
 data _⊢MRSC_ (g : Graph) : Graph → Set where
-  mrsc-fold : ∀ β α →
+  mrsc-fold : ∀ {β α} →
     (f : foldable? g β ≡ just α) →
       g ⊢MRSC fold g β α
-  mrsc-drive : ∀ β cs →
+  mrsc-drive : ∀ {β cs} →
     (¬f : foldable? g β ≡ nothing) →
     (¬w : dangerous g β ≡ false) →
     (d  : driveStep (conf β) ≡ cs) →
       g ⊢MRSC addChildren g β cs
-  mrsc-rebuild : ∀ β c c' →
+  mrsc-rebuild : ∀ {β c c'} →
     (¬f : foldable? g β ≡ nothing) →
     (rs : c' ∈ rebuildings c) →
       g ⊢MRSC rebuild g β c'
@@ -191,20 +191,20 @@ data _⊢MRSC_ (g : Graph) : Graph → Set where
 
 
 SC→MRSC : ∀ {g g'} → g ⊢SC g' → g ⊢MRSC g'
-SC→MRSC (sc-fold β α f) =
-  mrsc-fold β α f
-SC→MRSC (sc-drive β cs ¬f ¬w d) =
-  mrsc-drive β cs ¬f ¬w d
-SC→MRSC (sc-rebuild β c c' ¬f w r) =
-  mrsc-rebuild β c c' ¬f (rebuilding-correct c c' r)
+SC→MRSC (sc-fold f) =
+  mrsc-fold f
+SC→MRSC (sc-drive ¬f ¬w d) =
+  mrsc-drive ¬f ¬w d
+SC→MRSC (sc-rebuild ¬f w r) =
+  mrsc-rebuild ¬f (rebuilding-correct r)
 
 MRSC→NDSC : ∀ {g g'} → g ⊢MRSC g' → g ⊢NDSC g'
-MRSC→NDSC (mrsc-fold β α f) =
-  ndsc-fold β α f
-MRSC→NDSC (mrsc-drive β cs ¬f ¬w d) =
-  ndsc-drive β cs ¬f d
-MRSC→NDSC (mrsc-rebuild β c c' ¬f rs) =
-  ndsc-rebuild β c c' ¬f rs
+MRSC→NDSC (mrsc-fold f) =
+  ndsc-fold f
+MRSC→NDSC (mrsc-drive ¬f ¬w d) =
+  ndsc-drive ¬f d
+MRSC→NDSC (mrsc-rebuild ¬f rs) =
+  ndsc-rebuild ¬f rs
 
 SC→NDSC : ∀ {g g'} → g ⊢SC g' → g ⊢NDSC g'
 SC→NDSC = MRSC→NDSC ∘ SC→MRSC
