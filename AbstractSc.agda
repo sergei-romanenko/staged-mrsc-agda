@@ -94,15 +94,15 @@ module AbstractSC (s : AbstractScStruct) where
   open AbstractScStruct s
 
   data _⊢SC_ (g : Graph) : Graph → Set where
-    sc-fold : ∀ β α →
+    sc-fold : ∀ {β α} →
       (f : foldable? g β ≡ just α) →
         g ⊢SC fold g β α
-    sc-drive : ∀ β cs →
+    sc-drive : ∀ {β cs} →
       (¬f : foldable? g β ≡ nothing) →
       (¬w : dangerous g β ≡ false) →
       (d  : driveStep (conf β) ≡ cs) →
         g ⊢SC addChildren g β cs
-    sc-rebuild : ∀ β c c' →
+    sc-rebuild : ∀ {β c c'} →
       (¬f : foldable? g β ≡ nothing) →
       (w  : dangerous g β ≡ true) →
       (r  : rebuilding c ≡ c') →
@@ -211,11 +211,11 @@ module SC→MRSC→NDSC (s : AbstractScStruct) where
   open AbstractNDSC s
 
   SC→MRSC : ∀ {g g'} → g ⊢SC g' → g ⊢MRSC g'
-  SC→MRSC (sc-fold β α f) =
+  SC→MRSC (sc-fold f) =
     mrsc-fold f
-  SC→MRSC (sc-drive β cs ¬f ¬w d) =
+  SC→MRSC (sc-drive ¬f ¬w d) =
     mrsc-drive ¬f ¬w d
-  SC→MRSC (sc-rebuild β c c' ¬f w r) =
+  SC→MRSC (sc-rebuild ¬f w r) =
     mrsc-rebuild ¬f (rebuilding-correct r)
 
   MRSC→NDSC : ∀ {g g'} → g ⊢MRSC g' → g ⊢NDSC g'
