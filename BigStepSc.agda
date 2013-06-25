@@ -19,19 +19,12 @@ open import Data.Nat
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.Vec as Vec
-  using (Vec; []; _∷_)
+  using (Vec; []; _∷_; lookup)
 open import Relation.Binary.Vec.Pointwise
   using (Pointwise′; []; _∷_)
-open import Data.List
-open import Data.List.All
-  using (All; _∷_; [])
-open import Data.List.Any as Any
-  using (Any)
 open import Data.Product
   using (_×_; _,_; proj₁; proj₂; Σ; ∃)
 open import Data.Empty
---open import Data.Maybe
---  using (Maybe)
 
 open import Function
 
@@ -59,21 +52,29 @@ record ScWorld : Set₁ where
   conf-decSetoid : DecSetoid _ _
   conf-decSetoid = P.decSetoid _≟Conf_
 
-  module conf-Membership = Any.Membership conf-setoid
-  open conf-Membership
+  History : ℕ → Set
+  History n = Vec Conf n
 
-  History : Set
-  History = List Conf
+  Foldable : ∀ {n} (h : History n) (c : Conf) → Set
+  --Foldable h c = Any (_⊑_ c) h
+  Foldable {n} h c = ∃ λ i → c ⊑ lookup i h
 
-  Foldable : (h : History) (c : Conf) → Set
-  Foldable h c = Any (_⊑_ c) h
+  foldable? : ∀ {n} (h : History n) (c : Conf) → Dec (Foldable h c)
+  --foldable? h c = Any.any (_⊑?_ c) h
+  foldable? [] c = no helper
+    where helper : Foldable [] c → ⊥
+          helper (() , _)
+  foldable? (c′ ∷ h) c with c ⊑? c′
+  ... | yes c⊑c′ = yes (zero , c⊑c′)
+  ... | no  c⋢c′ with foldable? h c
+  ... | yes (i , c⊑c′) = yes (suc i , c⊑c′)
+  ... | no  ¬fhc = no helper
+    where helper : Foldable (c′ ∷ h) c → ⊥
+          helper (zero , c⊑c′) = c⋢c′ c⊑c′
+          helper (suc i , c⊑c′′) = ¬fhc (i , c⊑c′′)
 
-  foldable? : (h : History) (c : Conf) → Dec (Foldable h c)
-  foldable? h c = Any.any (_⊑?_ c) h
-
-  mkIndex : ∀ {h c} (f : Foldable h c) → Fin (length h)
-  mkIndex (Any.here c⊑c′) = zero
-  mkIndex (Any.there fhc) = suc (mkIndex fhc)
+  getIndex : ∀ {n h c} (f : Foldable {n} h c) → Fin n
+  getIndex (i , c⊑c′) = i
 
   data Graph : (n : ℕ) → Set where
     case : ∀ {n k} (c : Conf) (gs : Vec (Graph (suc n)) k) → Graph n
@@ -85,12 +86,12 @@ record BigStepNDSC (scWorld : ScWorld) : Set₁ where
 
   infix 4 _⊢NDSC_↪_
 
-  data _⊢NDSC_↪_ :
-    (h : History) (c : Conf) (g : Graph (length h)) → Set where
-    ndsc-fold  : ∀ {h c} (f : Foldable h c) →
-      h ⊢NDSC c ↪ back c (mkIndex f)
-    ndsc-drive : ∀ {h c n}
-      {cs : Vec Conf n} {gs : Vec (Graph (suc (length h))) n}
+  data _⊢NDSC_↪_ : {n : ℕ}
+    (h : History n) (c : Conf) (g : Graph n) → Set where
+    ndsc-fold  : ∀ {n} {h : History n} {c} (f : Foldable h c) →
+      h ⊢NDSC c ↪ back c (getIndex f)
+    ndsc-drive : ∀ {n h c k}
+      {cs : Vec Conf k} {gs : Vec (Graph (suc n)) k}
       (ds : c ⇉ cs) →
       --(∀ i → c ∷ h ⊢NDSC (lookup i cs) ↪ (lookup i gs)) →
       Pointwise′ (_⊢NDSC_↪_ (c ∷ h)) cs gs →
@@ -146,8 +147,8 @@ module NDSC-test3 where
   w3graph1 =
     ndsc-drive c0⇉c1c2
       ((ndsc-drive c1⇉c0
-        ((ndsc-fold (Any.there (Any.here P.refl))) ∷ [])) ∷
+        ((ndsc-fold (suc zero , P.refl)) ∷ [])) ∷
       (ndsc-drive c2⇉c1
         (ndsc-drive c1⇉c0
-          ((ndsc-fold (Any.there (Any.there (Any.here P.refl)))) ∷ [])
+          ((ndsc-fold (suc (suc zero) , P.refl)) ∷ [])
         ∷ [])) ∷ [])
