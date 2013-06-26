@@ -15,7 +15,10 @@ University of Pereslavl, 2012, 260 p. ISBN 978-5-901795-28-6, pages
 142-164. 
 -}
 
+open import Level
+  using (Level; _⊔_)
 open import Data.Nat
+  hiding(_⊔_)
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.Vec as Vec
@@ -24,16 +27,42 @@ open import Relation.Binary.Vec.Pointwise
   using (Pointwise′; []; _∷_)
 open import Data.Product
   using (_×_; _,_; proj₁; proj₂; Σ; ∃)
+open import Data.Sum
+  using (_⊎_; inj₁; inj₂)
 open import Data.Empty
 
 open import Function
 
 open import Relation.Nullary
+open import Relation.Unary
+  using (Decidable)
 open import Relation.Binary
   using (Setoid; DecSetoid)
 open import Relation.Binary.PropositionalEquality as P
   using (_≡_)
 
+-- AnyV
+
+AnyV : ∀ {n a ℓ} {A : Set a} (P : A → Set ℓ) (xs : Vec A n) → Set ℓ
+AnyV P xs = ∃ λ i → P (lookup i xs) 
+
+-- anyV
+
+anyV : ∀ {n a p} {A : Set a} {P : A → Set p} →
+  Decidable P → Decidable (AnyV {n} P)
+
+anyV {P = P} dp [] = no helper
+  where helper : AnyV P [] → ⊥
+        helper (() , _)
+
+anyV {P = P} dp (x ∷ xs) with dp x
+... | yes px = yes (zero , px)
+... | no ¬px with anyV dp xs
+... | yes (i , py) = yes (suc i , py)
+... | no ¬ipy = no helper
+  where helper : AnyV P (x ∷ xs) → ⊥
+        helper (zero , px) = ¬px px
+        helper (suc i , py) = ¬ipy (i , py)
 
 record ScWorld : Set₁ where
 
@@ -56,25 +85,10 @@ record ScWorld : Set₁ where
   History n = Vec Conf n
 
   Foldable : ∀ {n} (h : History n) (c : Conf) → Set
-  --Foldable h c = Any (_⊑_ c) h
-  Foldable {n} h c = ∃ λ i → c ⊑ lookup i h
+  Foldable {n} h c = AnyV (_⊑_ c) h
 
   foldable? : ∀ {n} (h : History n) (c : Conf) → Dec (Foldable h c)
-  --foldable? h c = Any.any (_⊑?_ c) h
-  foldable? [] c = no helper
-    where helper : Foldable [] c → ⊥
-          helper (() , _)
-  foldable? (c′ ∷ h) c with c ⊑? c′
-  ... | yes c⊑c′ = yes (zero , c⊑c′)
-  ... | no  c⋢c′ with foldable? h c
-  ... | yes (i , c⊑c′) = yes (suc i , c⊑c′)
-  ... | no  ¬fhc = no helper
-    where helper : Foldable (c′ ∷ h) c → ⊥
-          helper (zero , c⊑c′) = c⋢c′ c⊑c′
-          helper (suc i , c⊑c′′) = ¬fhc (i , c⊑c′′)
-
-  getIndex : ∀ {n h c} (f : Foldable {n} h c) → Fin n
-  getIndex (i , c⊑c′) = i
+  foldable? h c = anyV (_⊑?_ c) h
 
   data Graph : (n : ℕ) → Set where
     case : ∀ {n k} (c : Conf) (gs : Vec (Graph (suc n)) k) → Graph n
@@ -89,7 +103,7 @@ record BigStepNDSC (scWorld : ScWorld) : Set₁ where
   data _⊢NDSC_↪_ : {n : ℕ}
     (h : History n) (c : Conf) (g : Graph n) → Set where
     ndsc-fold  : ∀ {n} {h : History n} {c} (f : Foldable h c) →
-      h ⊢NDSC c ↪ back c (getIndex f)
+      h ⊢NDSC c ↪ back c (proj₁ f)
     ndsc-drive : ∀ {n h c k}
       {cs : Vec Conf k} {gs : Vec (Graph (suc n)) k}
       (ds : c ⇉ cs) →
