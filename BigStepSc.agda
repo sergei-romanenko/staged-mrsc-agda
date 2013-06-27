@@ -35,7 +35,7 @@ open import Function
 
 open import Relation.Nullary
 open import Relation.Unary
-  using (Decidable; _∈_)
+  using (Decidable)
 open import Relation.Binary
   using (Setoid; DecSetoid)
 open import Relation.Binary.PropositionalEquality as P
@@ -92,6 +92,7 @@ record ScWorld : Set₁ where
     -- We suppose that the number of possible rebuildings is finite!
     _↴ : (c : Conf) → ∃ λ k → Vec Conf k
 
+
   conf-setoid : Setoid _ _
   conf-setoid = P.setoid Conf
 
@@ -111,6 +112,29 @@ record ScWorld : Set₁ where
     case    : ∀ {n k} (c : Conf) (gs : Vec (Graph (suc n)) k) → Graph n
     back    : ∀ {n} (c : Conf) (b : Fin n) → Graph n
     rebuild : ∀ {n} (c : Conf) (g : Graph (suc n)) → Graph n
+
+-- Bar
+
+data Bar {A : Set} (D : ∀ {m} → Vec A m → Set) :
+         {n : ℕ} (h : Vec A n) → Set where
+  here  : ∀ {n} {h : Vec A n} (bz : D h) → Bar D h
+  there : ∀ {n} {h : Vec A n} (bs : ∀ a → Bar D (a ∷ h)) → Bar D h
+
+
+-- WhistleWorld
+
+record WhistleWorld (scWorld : ScWorld) : Set₁ where
+  open ScWorld scWorld
+
+  field
+
+    -- Dangerous histories
+    Dangerous : ∀ {n} (h : History n) → Set
+    dangerous? : ∀ {n} (h : History n) → Dec (Dangerous h)
+
+    -- Bar-induction
+    bar[] : Bar Dangerous []
+
 
 -- BigStepNDSC
 
@@ -148,16 +172,16 @@ module ScWorld3 where
   data Conf3 : Set where
     c0 c1 c2 : Conf3
 
-  _≟Conf_ : (c c′ : Conf3) → Dec (c ≡ c′)
-  c0 ≟Conf c0 = yes refl
-  c0 ≟Conf c1 = no (λ ())
-  c0 ≟Conf c2 = no (λ ())
-  c1 ≟Conf c0 = no (λ ())
-  c1 ≟Conf c1 = yes refl
-  c1 ≟Conf c2 = no (λ ())
-  c2 ≟Conf c0 = no (λ ())
-  c2 ≟Conf c1 = no (λ ())
-  c2 ≟Conf c2 = yes refl
+  _≟Conf3_ : (c c′ : Conf3) → Dec (c ≡ c′)
+  c0 ≟Conf3 c0 = yes refl
+  c0 ≟Conf3 c1 = no (λ ())
+  c0 ≟Conf3 c2 = no (λ ())
+  c1 ≟Conf3 c0 = no (λ ())
+  c1 ≟Conf3 c1 = yes refl
+  c1 ≟Conf3 c2 = no (λ ())
+  c2 ≟Conf3 c0 = no (λ ())
+  c2 ≟Conf3 c1 = no (λ ())
+  c2 ≟Conf3 c2 = yes refl
 
   _⇉′ : (c : Conf3) → (∃ λ k → Vec Conf3 k)
 
@@ -172,12 +196,41 @@ module ScWorld3 where
   scWorld3 : ScWorld
   scWorld3 = record
     { Conf = Conf3
-    ; _≟Conf_ = _≟Conf_
+    ; _≟Conf_ = _≟Conf3_
     ; _⊑_ = _≡_
-    ; _⊑?_ = _≟Conf_
+    ; _⊑?_ = _≟Conf3_
     ; _⇉ = _⇉′
     ; _↴ = _↴′
     }
+
+
+-- Whistle3
+
+module Whistle3 where
+
+  open ScWorld3
+  open ScWorld scWorld3
+
+  Dangerous3 : ∀ {n} (h : History n) → Set
+  Dangerous3 {n} h = 4 ≤ n
+
+  dangerous3? : ∀ {n} (h : History n) → Dec (Dangerous3 h)
+  dangerous3? {n} h = 4 ≤? n
+
+  bar[]3 : ∀ {n} (h : History n) → Bar Dangerous3 h
+  bar[]3 h =
+    there (λ a →
+      there (λ a₁ →
+        there (λ a₂ →
+          there (λ a₃ →
+            here (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+
+  whistleWorld3 : WhistleWorld scWorld3
+  whistleWorld3 = record
+    { Dangerous = Dangerous3
+    ; dangerous? = dangerous3?;
+    bar[] = bar[]3 [] }
+  
 
 -- NDSC-test3
 
@@ -206,6 +259,7 @@ module NDSC-test3 where
   w3graph2 =
     ndsc-rebuild refl zero
       (ndsc-drive refl ((ndsc-fold (suc zero , refl)) ∷ []))
+
 
 --
 -- Extracting the residual graph from a proof
