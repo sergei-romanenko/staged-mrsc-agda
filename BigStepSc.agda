@@ -19,6 +19,8 @@ open import Level
   using (Level; _⊔_)
 open import Data.Nat
   hiding(_⊔_)
+open import Data.Nat.Properties
+  using (≤′⇒≤; ≤⇒≤′; ≰⇒>)
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.Vec as Vec
@@ -39,7 +41,8 @@ open import Relation.Unary
 open import Relation.Binary
   using (Setoid; DecSetoid)
 open import Relation.Binary.PropositionalEquality as P
-  using (_≡_; refl)
+
+open import Util
 
 -- AnyV
 
@@ -117,8 +120,8 @@ record ScWorld : Set₁ where
 
 data Bar {A : Set} (D : ∀ {m} → Vec A m → Set) :
          {n : ℕ} (h : Vec A n) → Set where
-  here  : ∀ {n} {h : Vec A n} (bz : D h) → Bar D h
-  there : ∀ {n} {h : Vec A n} (bs : ∀ a → Bar D (a ∷ h)) → Bar D h
+  now   : ∀ {n} {h : Vec A n} (bz : D h) → Bar D h
+  later : ∀ {n} {h : Vec A n} (bs : ∀ a → Bar D (a ∷ h)) → Bar D h
 
 
 -- WhistleWorld
@@ -203,6 +206,37 @@ module ScWorld3 where
     ; _↴ = _↴′
     }
 
+-- HistoryLengthWhistle
+
+module HistoryLengthWhistle (scWorld : ScWorld) (l : ℕ) where
+
+  open ScWorld scWorld
+
+  HLDangerous : ∀ {n} (h : History n) → Set
+  HLDangerous {n} h = l ≤ n
+
+  hlDangerous? : ∀ {n} (h : History n) → Dec (HLDangerous h)
+  hlDangerous? {n} h = l ≤? n
+
+  hlBar : ∀ m n (h : History n) (d : m + n ≡ l) → Bar HLDangerous h
+  hlBar zero .l h refl =
+    now (≤′⇒≤ ≤′-refl)
+  hlBar (suc m) n h d =
+    later (λ c → hlBar m (suc n) (c ∷ h) m+1+n≡l)
+    where
+    open ≡-Reasoning
+    m+1+n≡l = begin m + suc n ≡⟨ m+1+n≡1+m+n m n ⟩ suc (m + n) ≡⟨ d ⟩ l ∎
+
+  hlBar[] : Bar HLDangerous []
+  hlBar[] = hlBar l zero [] (l + zero ≡ l ∋ proj₂ *+.+-identity l)
+
+  hlWhistleWorld : WhistleWorld scWorld
+  hlWhistleWorld = record
+    { Dangerous = HLDangerous
+    ; dangerous? = hlDangerous?
+    ; bar[] = hlBar[]
+    }
+
 
 -- Whistle3
 
@@ -211,26 +245,8 @@ module Whistle3 where
   open ScWorld3
   open ScWorld scWorld3
 
-  Dangerous3 : ∀ {n} (h : History n) → Set
-  Dangerous3 {n} h = 4 ≤ n
+  open HistoryLengthWhistle scWorld3 4
 
-  dangerous3? : ∀ {n} (h : History n) → Dec (Dangerous3 h)
-  dangerous3? {n} h = 4 ≤? n
-
-  bar[]3 : ∀ {n} (h : History n) → Bar Dangerous3 h
-  bar[]3 h =
-    there (λ a →
-      there (λ a₁ →
-        there (λ a₂ →
-          there (λ a₃ →
-            here (s≤s (s≤s (s≤s (s≤s z≤n))))))))
-
-  whistleWorld3 : WhistleWorld scWorld3
-  whistleWorld3 = record
-    { Dangerous = Dangerous3
-    ; dangerous? = dangerous3?;
-    bar[] = bar[]3 [] }
-  
 
 -- NDSC-test3
 
