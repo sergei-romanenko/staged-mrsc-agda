@@ -7,6 +7,7 @@ open import Data.Nat.Properties
 open import Data.Product
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃)
 
+
 open import Relation.Binary.PropositionalEquality as P
 
 open import Algebra
@@ -14,9 +15,13 @@ open import Algebra
 
 module *+ = CommutativeSemiring Data.Nat.Properties.commutativeSemiring
 
+-- m+1+n≡1+m+n
+
 m+1+n≡1+m+n : ∀ m n → m + suc n ≡ suc (m + n)
 m+1+n≡1+m+n zero n = refl
 m+1+n≡1+m+n (suc m) n = cong suc (m+1+n≡1+m+n m n)
+
+-- m∸n+n≡m
 
 m∸n+n≡m : (m n : ℕ) → n ≤ m → m ∸ n + n ≡ m
 m∸n+n≡m m .0 z≤n = begin

@@ -154,16 +154,68 @@ module BigStepNDSC (scWorld : ScWorld) where
       h ⊢NDSC c ↪ back c (proj₁ f)
     ndsc-drive : ∀ {n h c k}
       {cs : Vec Conf k} {gs : Vec (Graph (suc n)) k}
+      (¬f : ¬ Foldable h c)
       (ds : c ⇉ ≡ k , cs) →
       --(∀ i → c ∷ h ⊢NDSC (lookup i cs) ↪ (lookup i gs)) →
       Pointwise′ (_⊢NDSC_↪_ (c ∷ h)) cs gs →
       h ⊢NDSC c ↪ (case c gs)
     ndsc-rebuild : ∀ {n h c k}
       {cs : Vec Conf k} {g : Graph (suc n)}
+      (¬f : ¬ Foldable h c)
       (r : c ↴ ≡ k , cs)
       (i : Fin k) →
       c ∷ h ⊢NDSC (lookup i cs) ↪ g →
       h ⊢NDSC c ↪ rebuild c g
+
+-- BigStepMRSC
+
+module BigStepMRSC (scWorld : ScWorld) (wWorld : WhistleWorld scWorld) where
+
+  open ScWorld scWorld
+  open WhistleWorld wWorld
+
+  infix 4 _⊢MRSC_↪_
+
+  data _⊢MRSC_↪_ : {n : ℕ}
+    (h : History n) (c : Conf) (g : Graph n) → Set where
+    mrsc-fold  : ∀ {n} {h : History n} {c}
+      (f : Foldable h c) →
+      h ⊢MRSC c ↪ back c (proj₁ f)
+    mrsc-drive : ∀ {n h c k}
+      {cs : Vec Conf k} {gs : Vec (Graph (suc n)) k}
+      (¬f : ¬ Foldable h c)
+      (¬w : ¬ Dangerous h) →
+      (ds : c ⇉ ≡ k , cs) →
+      --(∀ i → c ∷ h ⊢MRSC (lookup i cs) ↪ (lookup i gs)) →
+      Pointwise′ (_⊢MRSC_↪_ (c ∷ h)) cs gs →
+      h ⊢MRSC c ↪ (case c gs)
+    mrsc-rebuild : ∀ {n h c k}
+      {cs : Vec Conf k} {g : Graph (suc n)}
+      (¬f : ¬ Foldable h c)
+      (r : c ↴ ≡ k , cs)
+      (i : Fin k) →
+      c ∷ h ⊢MRSC (lookup i cs) ↪ g →
+      h ⊢MRSC c ↪ rebuild c g
+
+module MRSC→NDSC (scWorld : ScWorld) (wWorld : WhistleWorld scWorld) where
+
+  open ScWorld scWorld
+  open WhistleWorld wWorld
+  open BigStepNDSC scWorld
+  open BigStepMRSC scWorld wWorld
+
+  MRSC→NDSC : ∀ {n h c g} → _⊢MRSC_↪_ {n} h c g → h ⊢NDSC c ↪ g
+  MRSC→NDSC (mrsc-fold f) = ndsc-fold f
+  MRSC→NDSC (mrsc-drive {n} {h} {c} {k} {cs} {gs} ¬f ¬w ds ∀i⊢ci↪g) =
+    ndsc-drive ¬f ds (pw-map ∀i⊢ci↪g)
+    where
+    pw-map : ∀ {k} {cs : Vec Conf k} {gs : Vec (Graph (suc n)) k}
+                    (qs : Pointwise′ (_⊢MRSC_↪_ (c ∷ h)) cs gs) →
+              Pointwise′ (_⊢NDSC_↪_ (c ∷ h)) cs gs
+    pw-map [] = []
+    pw-map (q ∷ qs) = MRSC→NDSC q ∷ (pw-map qs)
+  MRSC→NDSC (mrsc-rebuild ¬f r i ⊢ci↪g) =
+    ndsc-rebuild ¬f r i (MRSC→NDSC ⊢ci↪g)
 
 -- ScWorld3
 
@@ -262,19 +314,38 @@ module NDSC-test3 where
         case c2
           (case c1 (back c0 (suc (suc zero)) ∷ []) ∷ []) ∷ [])
   w3graph1 =
-    ndsc-drive refl
-      ((ndsc-drive refl
+    ndsc-drive ¬f1 refl
+      ((ndsc-drive ¬f2 refl
         ((ndsc-fold (suc zero , refl)) ∷ [])) ∷
-      (ndsc-drive refl
-        ((ndsc-drive refl
+      (ndsc-drive ¬f3 refl
+        ((ndsc-drive ¬f4 refl
           ((ndsc-fold (suc (suc zero) , refl)) ∷ []))
         ∷ [])) ∷ [])
+    where
+    ¬f1 : ¬ Σ (Fin zero) (λ z → c0 ≡ lookup z [])
+    ¬f1 (() , _)
+    ¬f2 : ¬ Σ (Fin (suc zero)) (λ z → c1 ≡ lookup z (c0 ∷ []))
+    ¬f2 (zero , ())
+    ¬f2 (suc () , _)
+    ¬f3 : ¬ Σ (Fin (suc zero)) (λ z → c2 ≡ lookup z (c0 ∷ []))
+    ¬f3 (zero , ())
+    ¬f3 (suc () , _)
+    ¬f4 : ¬ Σ (Fin (suc (suc zero))) (λ z → c1 ≡ lookup z (c2 ∷ c0 ∷ []))
+    ¬f4 (zero , ())
+    ¬f4 (suc zero , ())
+    ¬f4 (suc (suc ()) , _)
 
   w3graph2 : [] ⊢NDSC c0 ↪
     rebuild c0 (case c1 (back c0 (suc zero) ∷ []))
   w3graph2 =
-    ndsc-rebuild refl zero
-      (ndsc-drive refl ((ndsc-fold (suc zero , refl)) ∷ []))
+    ndsc-rebuild ¬f1 refl zero
+      (ndsc-drive ¬f2 refl ((ndsc-fold (suc zero , refl)) ∷ []))
+    where
+    ¬f1 : Σ (Fin zero) (λ z → c0 ≡ lookup z []) → ⊥
+    ¬f1 (() , _)
+    ¬f2 : Σ (Fin (suc zero)) (λ z → c1 ≡ lookup z (c0 ∷ [])) → ⊥
+    ¬f2 (zero , ())
+    ¬f2 (suc () , _)
 
 
 --
@@ -291,8 +362,8 @@ module GraphExtraction (scWorld : ScWorld) where
     (p : h ⊢NDSC c ↪ g) → Graph n
 
   getGraph (ndsc-fold {c = c} (i , c⊑c′)) = back c i
-  getGraph (ndsc-drive {c = c} {gs = gs} ds ps) = case c gs
-  getGraph (ndsc-rebuild {c = c} {g = g} r i p) = rebuild c g
+  getGraph (ndsc-drive {c = c} {gs = gs} ¬f ds ps) = case c gs
+  getGraph (ndsc-rebuild {c = c} {g = g} ¬f r i p) = rebuild c g
 
   -- getGraph-sound
 
@@ -300,5 +371,5 @@ module GraphExtraction (scWorld : ScWorld) where
     (p : h ⊢NDSC c ↪ g) → getGraph p ≡ g
 
   getGraph-sound (ndsc-fold f) = refl
-  getGraph-sound (ndsc-drive ds x) = refl
-  getGraph-sound (ndsc-rebuild r i p) = refl
+  getGraph-sound (ndsc-drive ¬f ds x) = refl
+  getGraph-sound (ndsc-rebuild ¬f r i p) = refl
