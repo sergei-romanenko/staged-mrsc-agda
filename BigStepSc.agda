@@ -44,28 +44,19 @@ open import Relation.Binary.PropositionalEquality as P
 
 open import Util
 
--- AnyV
 
-AnyV : ∀ {n a ℓ} {A : Set a} (P : A → Set ℓ) (xs : Vec A n) → Set ℓ
-AnyV P xs = ∃ λ i → P (lookup i xs) 
+-- Bar
 
--- anyV
+-- The set of finite paths such that either
+-- (1) D h is valid right now; or
+-- (2) for all possible a ∷ h either
+--     (1) D (a₁ ∷ h) is valid right now; or
+--     (2) for all possible a₂ ∷ a₁ ∷ h either ...
 
-anyV : ∀ {n a p} {A : Set a} {P : A → Set p} →
-  Decidable P → Decidable (AnyV {n} P)
-
-anyV {P = P} dp [] = no helper
-  where helper : AnyV P [] → ⊥
-        helper (() , _)
-
-anyV {P = P} dp (x ∷ xs) with dp x
-... | yes px = yes (zero , px)
-... | no ¬px with anyV dp xs
-... | yes (i , py) = yes (suc i , py)
-... | no ¬ipy = no helper
-  where helper : AnyV P (x ∷ xs) → ⊥
-        helper (zero , px) = ¬px px
-        helper (suc i , py) = ¬ipy (i , py)
+data Bar {A : Set} (D : ∀ {m} → Vec A m → Set) :
+         {n : ℕ} (h : Vec A n) → Set where
+  now   : ∀ {n} {h : Vec A n} (bz : D h) → Bar D h
+  later : ∀ {n} {h : Vec A n} (bs : ∀ a → Bar D (a ∷ h)) → Bar D h
 
 -- ScWorld
 
@@ -111,19 +102,23 @@ record ScWorld : Set₁ where
   foldable? : ∀ {n} (h : History n) (c : Conf) → Dec (Foldable h c)
   foldable? h c = anyV (_⊑?_ c) h
 
+  field
+    -- Whistles deal with histories
+
+    -- Dangerous histories
+    Dangerous : ∀ {n} (h : History n) → Set
+    dangerous? : ∀ {n} (h : History n) → Dec (Dangerous h)
+
+    -- Bar-induction
+    bar[] : Bar Dangerous []
+
   data Graph : (n : ℕ) → Set where
     case    : ∀ {n k} (c : Conf) (gs : Vec (Graph (suc n)) k) → Graph n
     back    : ∀ {n} (c : Conf) (b : Fin n) → Graph n
     rebuild : ∀ {n} (c : Conf) (g : Graph (suc n)) → Graph n
 
--- Bar
 
-data Bar {A : Set} (D : ∀ {m} → Vec A m → Set) :
-         {n : ℕ} (h : Vec A n) → Set where
-  now   : ∀ {n} {h : Vec A n} (bz : D h) → Bar D h
-  later : ∀ {n} {h : Vec A n} (bs : ∀ a → Bar D (a ∷ h)) → Bar D h
-
-
+{-
 -- WhistleWorld
 
 record WhistleWorld (scWorld : ScWorld) : Set₁ where
@@ -137,7 +132,7 @@ record WhistleWorld (scWorld : ScWorld) : Set₁ where
 
     -- Bar-induction
     bar[] : Bar Dangerous []
-
+-}
 
 -- BigStepNDSC
 
@@ -169,10 +164,9 @@ module BigStepNDSC (scWorld : ScWorld) where
 
 -- BigStepMRSC
 
-module BigStepMRSC (scWorld : ScWorld) (wWorld : WhistleWorld scWorld) where
+module BigStepMRSC (scWorld : ScWorld) where
 
   open ScWorld scWorld
-  open WhistleWorld wWorld
 
   infix 4 _⊢MRSC_↪_
 
@@ -197,12 +191,11 @@ module BigStepMRSC (scWorld : ScWorld) (wWorld : WhistleWorld scWorld) where
       c ∷ h ⊢MRSC (lookup i cs) ↪ g →
       h ⊢MRSC c ↪ rebuild c g
 
-module MRSC→NDSC (scWorld : ScWorld) (wWorld : WhistleWorld scWorld) where
+module MRSC→NDSC (scWorld : ScWorld) where
 
   open ScWorld scWorld
-  open WhistleWorld wWorld
   open BigStepNDSC scWorld
-  open BigStepMRSC scWorld wWorld
+  open BigStepMRSC scWorld
 
   MRSC→NDSC : ∀ {n h c g} → _⊢MRSC_↪_ {n} h c g → h ⊢NDSC c ↪ g
   MRSC→NDSC (mrsc-fold f) = ndsc-fold f
@@ -216,6 +209,31 @@ module MRSC→NDSC (scWorld : ScWorld) (wWorld : WhistleWorld scWorld) where
     pw-map (q ∷ qs) = MRSC→NDSC q ∷ (pw-map qs)
   MRSC→NDSC (mrsc-rebuild ¬f r i ⊢ci↪g) =
     ndsc-rebuild ¬f r i (MRSC→NDSC ⊢ci↪g)
+
+
+-- HistoryLengthWhistle
+
+module HistoryLengthWhistle (A : Set) (l : ℕ) where
+
+  --open ScWorld scWorld
+
+  HLDangerous : ∀ {n} (h : Vec A n) → Set
+  HLDangerous {n} h = l ≤ n
+
+  hlDangerous? : ∀ {n} (h : Vec A n) → Dec (HLDangerous h)
+  hlDangerous? {n} h = l ≤? n
+
+  hlBar : ∀ m n (h : Vec A n) (d : m + n ≡ l) → Bar HLDangerous h
+  hlBar zero .l h refl =
+    now (≤′⇒≤ ≤′-refl)
+  hlBar (suc m) n h d =
+    later (λ c → hlBar m (suc n) (c ∷ h) m+1+n≡l)
+    where
+    open ≡-Reasoning
+    m+1+n≡l = begin m + suc n ≡⟨ m+1+n≡1+m+n m n ⟩ suc (m + n) ≡⟨ d ⟩ l ∎
+
+  hlBar[] : Bar HLDangerous []
+  hlBar[] = hlBar l zero [] (l + zero ≡ l ∋ proj₂ *+.+-identity l)
 
 -- ScWorld3
 
@@ -248,6 +266,9 @@ module ScWorld3 where
   c0 ↴′ = , c1 ∷ []
   _ ↴′ = , []
 
+
+  open HistoryLengthWhistle Conf3
+
   scWorld3 : ScWorld
   scWorld3 = record
     { Conf = Conf3
@@ -256,48 +277,10 @@ module ScWorld3 where
     ; _⊑?_ = _≟Conf3_
     ; _⇉ = _⇉′
     ; _↴ = _↴′
+    ; Dangerous = HLDangerous 4
+    ; dangerous? = hlDangerous? 4
+    ; bar[] = hlBar[] 4
     }
-
--- HistoryLengthWhistle
-
-module HistoryLengthWhistle (scWorld : ScWorld) (l : ℕ) where
-
-  open ScWorld scWorld
-
-  HLDangerous : ∀ {n} (h : History n) → Set
-  HLDangerous {n} h = l ≤ n
-
-  hlDangerous? : ∀ {n} (h : History n) → Dec (HLDangerous h)
-  hlDangerous? {n} h = l ≤? n
-
-  hlBar : ∀ m n (h : History n) (d : m + n ≡ l) → Bar HLDangerous h
-  hlBar zero .l h refl =
-    now (≤′⇒≤ ≤′-refl)
-  hlBar (suc m) n h d =
-    later (λ c → hlBar m (suc n) (c ∷ h) m+1+n≡l)
-    where
-    open ≡-Reasoning
-    m+1+n≡l = begin m + suc n ≡⟨ m+1+n≡1+m+n m n ⟩ suc (m + n) ≡⟨ d ⟩ l ∎
-
-  hlBar[] : Bar HLDangerous []
-  hlBar[] = hlBar l zero [] (l + zero ≡ l ∋ proj₂ *+.+-identity l)
-
-  hlWhistleWorld : WhistleWorld scWorld
-  hlWhistleWorld = record
-    { Dangerous = HLDangerous
-    ; dangerous? = hlDangerous?
-    ; bar[] = hlBar[]
-    }
-
-
--- Whistle3
-
-module Whistle3 where
-
-  open ScWorld3
-  open ScWorld scWorld3
-
-  open HistoryLengthWhistle scWorld3 4
 
 
 -- NDSC-test3
