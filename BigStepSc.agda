@@ -57,10 +57,10 @@ open import Util
 --     (1) D (a₁ ∷ h) is valid right now; or
 --     (2) for all possible a₂ ∷ a₁ ∷ h either ...
 
-data Bar {A : Set} (D : ∀ {m} → Vec A m → Set) :
+data Bar {A : Set} (B : ∀ {m} → Vec A m → Set) :
          {n : ℕ} (h : Vec A n) → Set where
-  now   : ∀ {n} {h : Vec A n} (bz : D h) → Bar D h
-  later : ∀ {n} {h : Vec A n} (bs : ∀ a → Bar D (a ∷ h)) → Bar D h
+  now   : ∀ {n} {h : Vec A n} (bz : B h) → Bar B h
+  later : ∀ {n} {h : Vec A n} (bs : ∀ a → Bar B (a ∷ h)) → Bar B h
 
 -- ScWorld
 
@@ -117,8 +117,8 @@ record ScWorld : Set₁ where
     bar[] : Bar Dangerous []
 
   data Graph : (n : ℕ) → Set where
-    case    : ∀ {n k} (c : Conf) (gs : Vec (Graph (suc n)) k) → Graph n
     back    : ∀ {n} (c : Conf) (b : Fin n) → Graph n
+    case    : ∀ {n k} (c : Conf) (gs : Vec (Graph (suc n)) k) → Graph n
     rebuild : ∀ {n} (c : Conf) (g : Graph (suc n)) → Graph n
 
 
@@ -184,8 +184,10 @@ module BigStepMRSC (scWorld : ScWorld) where
   -- Functional big-step multi-result supercompilation.
   -- (The naive version builds Cartesian products immediately.)
 
+  -- naive-mrsc′
+
   naive-mrsc′ : ∀ {n} (h : History n) (b : Bar Dangerous h) (c : Conf) →
-                  List(Graph n)
+                  List (Graph n)
   naive-mrsc′ {n} h b c with foldable? h c
   ... | yes (i , c⊑hi) = [ back c i ]
   ... | no ¬f with dangerous? h
@@ -196,15 +198,80 @@ module BigStepMRSC (scWorld : ScWorld) where
     where
     drive! : List (Graph n)
     drive! with c ⇉
-    ... | k , cs with Vec.map (naive-mrsc′ (c ∷ h) (bs c)) cs
-    ... | gss = map (case c) (cartesian gss)
+    ... | k , cs =
+      map (case c)
+          (cartesian (Vec.map (naive-mrsc′ (c ∷ h) (bs c)) cs))
     rebuild! : List (Graph n)
     rebuild! with c ↴
-    ... | k , cs with Vec.map (naive-mrsc′ (c ∷ h) (bs c)) cs
-    ... | gss = map (rebuild c) (concat (Vec.toList gss))
+    ... | k , cs =
+      map (rebuild c)
+          (concat (Vec.toList (Vec.map (naive-mrsc′ (c ∷ h) (bs c)) cs)))
   
+  -- naive-mrsc
+
   naive-mrsc : (c : Conf) → List(Graph 0)
   naive-mrsc c = naive-mrsc′ [] bar[] c
+
+  -- "Lazy" multi-result supercompilation.
+  -- (Cartesian products are not immediately built.)
+
+  data LazyGraph : (n : ℕ) → Set where
+    alt     : ∀ {n} (gs : List (LazyGraph n)) → LazyGraph n
+    back    : ∀ {n} (c : Conf) (b : Fin n) → LazyGraph n
+    case    : ∀ {n k} (c : Conf) (gss : Vec (LazyGraph (suc n)) k) →
+                LazyGraph n
+    rebuild : ∀ {n} (c : Conf) (gs : LazyGraph (suc n)) →
+                LazyGraph n
+
+  -- lazy-mrsc′
+
+  lazy-mrsc′ : ∀ {n} (h : History n) (b : Bar Dangerous h) (c : Conf) →
+                  LazyGraph n
+  lazy-mrsc′ {n} h b c with foldable? h c
+  ... | yes (i , c⊑hi) = back c i
+  ... | no ¬f with dangerous? h
+  ... | yes w = alt []
+  ... | no ¬w with b
+  ... | now bz = ⊥-elim (¬w bz)
+  ... | later bs = alt (drive! ∷ rebuild! ∷ [])
+    where
+    drive! : LazyGraph n
+    drive! with c ⇉
+    ... | k , cs =
+      case c (Vec.map (lazy-mrsc′ (c ∷ h) (bs c)) cs)
+    rebuild! : LazyGraph n
+    rebuild! with c ↴
+    ... | k , cs =
+      rebuild c (alt (Vec.toList (Vec.map (lazy-mrsc′ (c ∷ h) (bs c)) cs)))
+
+  -- lazy-mrsc
+
+  lazy-mrsc : (c : Conf) → LazyGraph 0
+  lazy-mrsc c = lazy-mrsc′ [] bar[] c
+
+  -- generate-graphs
+
+  mutual
+
+    get-graphs : ∀ {n} (gs : LazyGraph n) → List (Graph n)
+
+    get-graphs (alt gss) =
+      map-alt gss
+    get-graphs (back c b) =
+      [ back c b ]
+    get-graphs (case c gss) =
+      map (case c) (cartesian (map-vec gss))
+    get-graphs (rebuild c gs) =
+      map (rebuild c) (get-graphs gs)
+
+    map-alt : ∀ {n} (gss : List (LazyGraph n)) → List (Graph n)
+    map-alt [] = []
+    map-alt (gs ∷ gss) = get-graphs gs ++ map-alt gss
+
+    map-vec : ∀ {n k} → (gss : Vec (LazyGraph n) k) →
+                Vec (List (Graph n)) k
+    map-vec [] = []
+    map-vec (gs ∷ gss) = get-graphs gs ∷ map-vec gss
 
 
 module MRSC→NDSC (scWorld : ScWorld) where

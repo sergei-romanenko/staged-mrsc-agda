@@ -92,16 +92,3 @@ cartesian2 (x ∷ xs) yss = map (_∷_ x) yss ++ cartesian2 xs yss
 cartesian : ∀ {n} {A : Set} (xss : Vec (List A) n) → List (Vec A n)
 cartesian [] = [ [] ]
 cartesian (xs ∷ xss) = cartesian2 xs (cartesian xss)
-
-{-
-test2 : cartesian2 (0 ∷ 1 ∷ []) ((0 ∷ []) ∷ (1 ∷ []) ∷ []) ≡
-  (zero ∷ zero ∷ []) ∷ (zero ∷ suc zero ∷ []) ∷
-    (suc zero ∷ zero ∷ []) ∷ (suc zero ∷ suc zero ∷ []) ∷ []
-test2 = refl
-
-test : cartesian ((0 ∷ 1 ∷ 2 ∷ []) ∷ (0 ∷ 1 ∷ []) ∷ []) ≡
-  (zero ∷ zero ∷ []) ∷ (zero ∷ suc zero ∷ []) ∷
-    (suc zero ∷ zero ∷ []) ∷ (suc zero ∷ suc zero ∷ []) ∷
-    (suc (suc zero) ∷ zero ∷ []) ∷ (suc (suc zero) ∷ suc zero ∷ []) ∷ []
-test = refl
--}
