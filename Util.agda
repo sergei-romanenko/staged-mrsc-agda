@@ -4,6 +4,7 @@ open import Data.Nat
   hiding(_⊔_)
 open import Data.Nat.Properties
   using (≤′⇒≤; ≤⇒≤′; ≰⇒>)
+open import Data.List
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.Vec as Vec
@@ -17,6 +18,7 @@ open import Relation.Unary
   using (Decidable)
 
 open import Relation.Binary.PropositionalEquality as P
+  renaming ([_] to [_]ⁱ)
 
 open import Algebra
   using (module CommutativeSemiring)
@@ -75,3 +77,31 @@ m∸n+n≡m .(suc n) .(suc m) (s≤s {m} {n} n≤m) = begin
   suc n
   ∎
   where open ≡-Reasoning
+
+-- Cartesian product
+
+-- cartesian2
+
+cartesian2 : ∀ {n} {A : Set} → List A → List (Vec A n) →
+                List (Vec A (suc n))
+cartesian2 [] yss = []
+cartesian2 (x ∷ xs) yss = map (_∷_ x) yss ++ cartesian2 xs yss
+
+-- cartesian
+
+cartesian : ∀ {n} {A : Set} (xss : Vec (List A) n) → List (Vec A n)
+cartesian [] = [ [] ]
+cartesian (xs ∷ xss) = cartesian2 xs (cartesian xss)
+
+{-
+test2 : cartesian2 (0 ∷ 1 ∷ []) ((0 ∷ []) ∷ (1 ∷ []) ∷ []) ≡
+  (zero ∷ zero ∷ []) ∷ (zero ∷ suc zero ∷ []) ∷
+    (suc zero ∷ zero ∷ []) ∷ (suc zero ∷ suc zero ∷ []) ∷ []
+test2 = refl
+
+test : cartesian ((0 ∷ 1 ∷ 2 ∷ []) ∷ (0 ∷ 1 ∷ []) ∷ []) ≡
+  (zero ∷ zero ∷ []) ∷ (zero ∷ suc zero ∷ []) ∷
+    (suc zero ∷ zero ∷ []) ∷ (suc zero ∷ suc zero ∷ []) ∷
+    (suc (suc zero) ∷ zero ∷ []) ∷ (suc (suc zero) ∷ suc zero ∷ []) ∷ []
+test = refl
+-}

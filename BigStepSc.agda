@@ -21,6 +21,9 @@ open import Data.Nat
   hiding(_⊔_)
 open import Data.Nat.Properties
   using (≤′⇒≤; ≤⇒≤′; ≰⇒>)
+open import Data.List as List
+open import Data.List.Any as AnyL
+  using ()
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.Vec as Vec
@@ -41,6 +44,7 @@ open import Relation.Unary
 open import Relation.Binary
   using (Setoid; DecSetoid)
 open import Relation.Binary.PropositionalEquality as P
+  renaming ([_] to [_]ⁱ)
 
 open import Util
 
@@ -118,22 +122,6 @@ record ScWorld : Set₁ where
     rebuild : ∀ {n} (c : Conf) (g : Graph (suc n)) → Graph n
 
 
-{-
--- WhistleWorld
-
-record WhistleWorld (scWorld : ScWorld) : Set₁ where
-  open ScWorld scWorld
-
-  field
-
-    -- Dangerous histories
-    Dangerous : ∀ {n} (h : History n) → Set
-    dangerous? : ∀ {n} (h : History n) → Dec (Dangerous h)
-
-    -- Bar-induction
-    bar[] : Bar Dangerous []
--}
-
 -- BigStepNDSC
 
 module BigStepNDSC (scWorld : ScWorld) where
@@ -168,10 +156,11 @@ module BigStepMRSC (scWorld : ScWorld) where
 
   open ScWorld scWorld
 
+  -- Relational big-step multi-result supercompilation.
+
   infix 4 _⊢MRSC_↪_
 
-  data _⊢MRSC_↪_ : {n : ℕ}
-    (h : History n) (c : Conf) (g : Graph n) → Set where
+  data _⊢MRSC_↪_ : ∀ {n} (h : History n) (c : Conf) (g : Graph n) → Set where
     mrsc-fold  : ∀ {n} {h : History n} {c}
       (f : Foldable h c) →
       h ⊢MRSC c ↪ back c (proj₁ f)
@@ -186,10 +175,37 @@ module BigStepMRSC (scWorld : ScWorld) where
     mrsc-rebuild : ∀ {n h c k}
       {cs : Vec Conf k} {g : Graph (suc n)}
       (¬f : ¬ Foldable h c)
+      (¬w : ¬ Dangerous h) →
       (r : c ↴ ≡ k , cs)
       (i : Fin k) →
       c ∷ h ⊢MRSC (lookup i cs) ↪ g →
       h ⊢MRSC c ↪ rebuild c g
+
+  -- Functional big-step multi-result supercompilation.
+  -- (The naive version builds Cartesian products immediately.)
+
+  naive-mrsc′ : ∀ {n} (h : History n) (b : Bar Dangerous h) (c : Conf) →
+                  List(Graph n)
+  naive-mrsc′ {n} h b c with foldable? h c
+  ... | yes (i , c⊑hi) = [ back c i ]
+  ... | no ¬f with dangerous? h
+  ... | yes w = []
+  ... | no ¬w with b
+  ... | now bz = ⊥-elim (¬w bz)
+  ... | later bs = drive! ++ rebuild!
+    where
+    drive! : List (Graph n)
+    drive! with c ⇉
+    ... | k , cs with Vec.map (naive-mrsc′ (c ∷ h) (bs c)) cs
+    ... | gss = map (case c) (cartesian gss)
+    rebuild! : List (Graph n)
+    rebuild! with c ↴
+    ... | k , cs with Vec.map (naive-mrsc′ (c ∷ h) (bs c)) cs
+    ... | gss = map (rebuild c) (concat (Vec.toList gss))
+  
+  naive-mrsc : (c : Conf) → List(Graph 0)
+  naive-mrsc c = naive-mrsc′ [] bar[] c
+
 
 module MRSC→NDSC (scWorld : ScWorld) where
 
@@ -207,7 +223,7 @@ module MRSC→NDSC (scWorld : ScWorld) where
               Pointwise′ (_⊢NDSC_↪_ (c ∷ h)) cs gs
     pw-map [] = []
     pw-map (q ∷ qs) = MRSC→NDSC q ∷ (pw-map qs)
-  MRSC→NDSC (mrsc-rebuild ¬f r i ⊢ci↪g) =
+  MRSC→NDSC (mrsc-rebuild ¬f ¬w r i ⊢ci↪g) =
     ndsc-rebuild ¬f r i (MRSC→NDSC ⊢ci↪g)
 
 
