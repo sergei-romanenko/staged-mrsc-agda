@@ -82,13 +82,12 @@ m∸n+n≡m .(suc n) .(suc m) (s≤s {m} {n} n≤m) = begin
 
 -- cartesian2
 
-cartesian2 : ∀ {n} {A : Set} → List A → List (Vec A n) →
-                List (Vec A (suc n))
+cartesian2 : ∀ {A : Set} → List A → List (List A) → List (List A)
 cartesian2 [] yss = []
 cartesian2 (x ∷ xs) yss = map (_∷_ x) yss ++ cartesian2 xs yss
 
 -- cartesian
 
-cartesian : ∀ {n} {A : Set} (xss : Vec (List A) n) → List (Vec A n)
+cartesian : ∀ {A : Set} (xss : List (List A)) → List (List A)
 cartesian [] = [ [] ]
 cartesian (xs ∷ xss) = cartesian2 xs (cartesian xss)

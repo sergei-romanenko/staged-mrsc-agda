@@ -22,14 +22,15 @@ open import Data.Nat
 open import Data.Nat.Properties
   using (≤′⇒≤; ≤⇒≤′; ≰⇒>)
 open import Data.List as List
-open import Data.List.Any as AnyL
-  using ()
+open import Data.List.Any
+  using (Any; here; there)
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.Vec as Vec
   using (Vec; []; _∷_; lookup)
-open import Relation.Binary.Vec.Pointwise
-  using (Pointwise′; []; _∷_)
+open import Relation.Binary.List.Pointwise
+  using ([]; _∷_)
+  renaming (Rel to Pointwise)
 open import Data.Product
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃)
 open import Data.Sum
@@ -52,9 +53,9 @@ open import Util
 -- Bar
 
 -- The set of finite paths such that either
--- (1) D h is valid right now; or
--- (2) for all possible a ∷ h either
---     (1) D (a₁ ∷ h) is valid right now; or
+-- (1) B h is valid right now; or
+-- (2) for all possible a₁ ∷ h either
+--     (1) B (a₁ ∷ h) is valid right now; or
 --     (2) for all possible a₂ ∷ a₁ ∷ h either ...
 
 data Bar {A : Set} (B : ∀ {m} → Vec A m → Set) :
@@ -84,11 +85,11 @@ record ScWorld : Set₁ where
     --Contr : Set
 
     -- Driving a configuration leads to a finite number of new ones.
-    _⇉ : (c : Conf) → ∃ λ k → Vec Conf k
+    _⇉ : (c : Conf) → List Conf
 
     -- Rebuilding a configuration replaces it with an equivalent one.
     -- We suppose that the number of possible rebuildings is finite!
-    _↴ : (c : Conf) → ∃ λ k → Vec Conf k
+    _↴ : (c : Conf) → List Conf
 
 
   conf-setoid : Setoid _ _
@@ -118,7 +119,7 @@ record ScWorld : Set₁ where
 
   data Graph : (n : ℕ) → Set where
     back    : ∀ {n} (c : Conf) (b : Fin n) → Graph n
-    case    : ∀ {n k} (c : Conf) (gs : Vec (Graph (suc n)) k) → Graph n
+    case    : ∀ {n} (c : Conf) (gs : List (Graph (suc n))) → Graph n
     rebuild : ∀ {n} (c : Conf) (g : Graph (suc n)) → Graph n
 
 
@@ -130,24 +131,20 @@ module BigStepNDSC (scWorld : ScWorld) where
 
   infix 4 _⊢NDSC_↪_
 
-  data _⊢NDSC_↪_ : {n : ℕ}
-    (h : History n) (c : Conf) (g : Graph n) → Set where
+  data _⊢NDSC_↪_ : {n} (h : History n) (c : Conf) (g : Graph n) → Set where
     ndsc-fold  : ∀ {n} {h : History n} {c}
       (f : Foldable h c) →
       h ⊢NDSC c ↪ back c (proj₁ f)
-    ndsc-drive : ∀ {n h c k}
-      {cs : Vec Conf k} {gs : Vec (Graph (suc n)) k}
-      (¬f : ¬ Foldable h c)
-      (ds : c ⇉ ≡ k , cs) →
-      --(∀ i → c ∷ h ⊢NDSC (lookup i cs) ↪ (lookup i gs)) →
-      Pointwise′ (_⊢NDSC_↪_ (c ∷ h)) cs gs →
+    ndsc-drive : ∀ {n h c}
+      {gs : List (Graph (suc n))}
+      (¬f : ¬ Foldable h c) →
+      Pointwise (_⊢NDSC_↪_ (c ∷ h)) (c ⇉) gs →
       h ⊢NDSC c ↪ (case c gs)
-    ndsc-rebuild : ∀ {n h c k}
-      {cs : Vec Conf k} {g : Graph (suc n)}
+    ndsc-rebuild : ∀ {n h c c′}
+      {g : Graph (suc n)}
       (¬f : ¬ Foldable h c)
-      (r : c ↴ ≡ k , cs)
-      (i : Fin k) →
-      c ∷ h ⊢NDSC (lookup i cs) ↪ g →
+      (i : Any (_≡_ c′) (c ↴)) →
+      c ∷ h ⊢NDSC c′ ↪ g →
       h ⊢NDSC c ↪ rebuild c g
 
 -- BigStepMRSC
@@ -164,21 +161,18 @@ module BigStepMRSC (scWorld : ScWorld) where
     mrsc-fold  : ∀ {n} {h : History n} {c}
       (f : Foldable h c) →
       h ⊢MRSC c ↪ back c (proj₁ f)
-    mrsc-drive : ∀ {n h c k}
-      {cs : Vec Conf k} {gs : Vec (Graph (suc n)) k}
+    mrsc-drive : ∀ {n h c}
+      {gs : List (Graph (suc n))}
       (¬f : ¬ Foldable h c)
       (¬w : ¬ Dangerous h) →
-      (ds : c ⇉ ≡ k , cs) →
-      --(∀ i → c ∷ h ⊢MRSC (lookup i cs) ↪ (lookup i gs)) →
-      Pointwise′ (_⊢MRSC_↪_ (c ∷ h)) cs gs →
+      Pointwise (_⊢MRSC_↪_ (c ∷ h)) (c ⇉) gs →
       h ⊢MRSC c ↪ (case c gs)
-    mrsc-rebuild : ∀ {n h c k}
-      {cs : Vec Conf k} {g : Graph (suc n)}
+    mrsc-rebuild : ∀ {n h c c′}
+      {g : Graph (suc n)}
       (¬f : ¬ Foldable h c)
       (¬w : ¬ Dangerous h) →
-      (r : c ↴ ≡ k , cs)
-      (i : Fin k) →
-      c ∷ h ⊢MRSC (lookup i cs) ↪ g →
+      (i : Any (_≡_ c′) (c ↴)) →
+      c ∷ h ⊢MRSC c′ ↪ g →
       h ⊢MRSC c ↪ rebuild c g
 
   -- Functional big-step multi-result supercompilation.
@@ -197,15 +191,13 @@ module BigStepMRSC (scWorld : ScWorld) where
   ... | later bs = drive! ++ rebuild!
     where
     drive! : List (Graph n)
-    drive! with c ⇉
-    ... | k , cs =
+    drive! =
       map (case c)
-          (cartesian (Vec.map (naive-mrsc′ (c ∷ h) (bs c)) cs))
+          (cartesian (map (naive-mrsc′ (c ∷ h) (bs c)) (c ⇉)))
     rebuild! : List (Graph n)
-    rebuild! with c ↴
-    ... | k , cs =
+    rebuild! =
       map (rebuild c)
-          (concat (Vec.toList (Vec.map (naive-mrsc′ (c ∷ h) (bs c)) cs)))
+          (concat (map (naive-mrsc′ (c ∷ h) (bs c)) (c ↴)))
   
   -- naive-mrsc
 
@@ -218,7 +210,7 @@ module BigStepMRSC (scWorld : ScWorld) where
   data LazyGraph : (n : ℕ) → Set where
     alt     : ∀ {n} (gs : List (LazyGraph n)) → LazyGraph n
     back    : ∀ {n} (c : Conf) (b : Fin n) → LazyGraph n
-    case    : ∀ {n k} (c : Conf) (gss : Vec (LazyGraph (suc n)) k) →
+    case    : ∀ {n} (c : Conf) (gss : List (LazyGraph (suc n))) →
                 LazyGraph n
     rebuild : ∀ {n} (c : Conf) (gs : LazyGraph (suc n)) →
                 LazyGraph n
@@ -236,13 +228,11 @@ module BigStepMRSC (scWorld : ScWorld) where
   ... | later bs = alt (drive! ∷ rebuild! ∷ [])
     where
     drive! : LazyGraph n
-    drive! with c ⇉
-    ... | k , cs =
-      case c (Vec.map (lazy-mrsc′ (c ∷ h) (bs c)) cs)
+    drive! =
+      case c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ⇉))
     rebuild! : LazyGraph n
-    rebuild! with c ↴
-    ... | k , cs =
-      rebuild c (alt (Vec.toList (Vec.map (lazy-mrsc′ (c ∷ h) (bs c)) cs)))
+    rebuild! =
+      rebuild c (alt (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ↴)))
 
   -- lazy-mrsc
 
@@ -260,7 +250,7 @@ module BigStepMRSC (scWorld : ScWorld) where
     get-graphs (back c b) =
       [ back c b ]
     get-graphs (case c gss) =
-      map (case c) (cartesian (map-vec gss))
+      map (case c) (cartesian (map-list gss))
     get-graphs (rebuild c gs) =
       map (rebuild c) (get-graphs gs)
 
@@ -268,10 +258,10 @@ module BigStepMRSC (scWorld : ScWorld) where
     map-alt [] = []
     map-alt (gs ∷ gss) = get-graphs gs ++ map-alt gss
 
-    map-vec : ∀ {n k} → (gss : Vec (LazyGraph n) k) →
-                Vec (List (Graph n)) k
-    map-vec [] = []
-    map-vec (gs ∷ gss) = get-graphs gs ∷ map-vec gss
+    map-list : ∀ {n} → (gss : List (LazyGraph n)) →
+                List (List (Graph n))
+    map-list [] = []
+    map-list (gs ∷ gss) = get-graphs gs ∷ map-list gss
 
 
 module MRSC→NDSC (scWorld : ScWorld) where
@@ -282,16 +272,16 @@ module MRSC→NDSC (scWorld : ScWorld) where
 
   MRSC→NDSC : ∀ {n h c g} → _⊢MRSC_↪_ {n} h c g → h ⊢NDSC c ↪ g
   MRSC→NDSC (mrsc-fold f) = ndsc-fold f
-  MRSC→NDSC (mrsc-drive {n} {h} {c} {k} {cs} {gs} ¬f ¬w ds ∀i⊢ci↪g) =
-    ndsc-drive ¬f ds (pw-map ∀i⊢ci↪g)
+  MRSC→NDSC (mrsc-drive {n} {h} {c} {gs} ¬f ¬w ∀i⊢ci↪g) =
+    ndsc-drive ¬f (pw-map ∀i⊢ci↪g)
     where
-    pw-map : ∀ {k} {cs : Vec Conf k} {gs : Vec (Graph (suc n)) k}
-                    (qs : Pointwise′ (_⊢MRSC_↪_ (c ∷ h)) cs gs) →
-              Pointwise′ (_⊢NDSC_↪_ (c ∷ h)) cs gs
+    pw-map : ∀ {cs : List Conf} {gs : List (Graph (suc n))}
+               (qs : Pointwise (_⊢MRSC_↪_ (c ∷ h)) cs gs) →
+             Pointwise (_⊢NDSC_↪_ (c ∷ h)) cs gs
     pw-map [] = []
     pw-map (q ∷ qs) = MRSC→NDSC q ∷ (pw-map qs)
-  MRSC→NDSC (mrsc-rebuild ¬f ¬w r i ⊢ci↪g) =
-    ndsc-rebuild ¬f r i (MRSC→NDSC ⊢ci↪g)
+  MRSC→NDSC (mrsc-rebuild ¬f ¬w i ⊢ci↪g) =
+    ndsc-rebuild ¬f i (MRSC→NDSC ⊢ci↪g)
 
 
 -- HistoryLengthWhistle
@@ -339,15 +329,15 @@ module ScWorld3 where
   c2 ≟Conf3 c1 = no (λ ())
   c2 ≟Conf3 c2 = yes refl
 
-  _⇉′ : (c : Conf3) → (∃ λ k → Vec Conf3 k)
+  _⇉′ : (c : Conf3) → List Conf3
 
-  c0 ⇉′ = , c1 ∷ c2 ∷ []
-  c1 ⇉′ = , c0 ∷ []
-  c2 ⇉′ = , c1 ∷ []
+  c0 ⇉′ = c1 ∷ c2 ∷ []
+  c1 ⇉′ = c0 ∷ []
+  c2 ⇉′ = c1 ∷ []
 
-  _↴′ : (c : Conf3) → (∃ λ k → Vec Conf3 k)
-  c0 ↴′ = , c1 ∷ []
-  _ ↴′ = , []
+  _↴′ : (c : Conf3) → List Conf3
+  c0 ↴′ = c1 ∷ []
+  _ ↴′  = []
 
 
   open HistoryLengthWhistle Conf3
@@ -380,11 +370,11 @@ module NDSC-test3 where
         case c2
           (case c1 (back c0 (suc (suc zero)) ∷ []) ∷ []) ∷ [])
   w3graph1 =
-    ndsc-drive ¬f1 refl
-      ((ndsc-drive ¬f2 refl
+    ndsc-drive ¬f1
+      ((ndsc-drive ¬f2
         ((ndsc-fold (suc zero , refl)) ∷ [])) ∷
-      (ndsc-drive ¬f3 refl
-        ((ndsc-drive ¬f4 refl
+      (ndsc-drive ¬f3
+        ((ndsc-drive ¬f4
           ((ndsc-fold (suc (suc zero) , refl)) ∷ []))
         ∷ [])) ∷ [])
     where
@@ -404,8 +394,8 @@ module NDSC-test3 where
   w3graph2 : [] ⊢NDSC c0 ↪
     rebuild c0 (case c1 (back c0 (suc zero) ∷ []))
   w3graph2 =
-    ndsc-rebuild ¬f1 refl zero
-      (ndsc-drive ¬f2 refl ((ndsc-fold (suc zero , refl)) ∷ []))
+    ndsc-rebuild ¬f1 (here refl)
+      (ndsc-drive ¬f2 ((ndsc-fold (suc zero , refl)) ∷ []))
     where
     ¬f1 : Σ (Fin zero) (λ z → c0 ≡ lookup z []) → ⊥
     ¬f1 (() , _)
@@ -428,8 +418,8 @@ module GraphExtraction (scWorld : ScWorld) where
     (p : h ⊢NDSC c ↪ g) → Graph n
 
   getGraph (ndsc-fold {c = c} (i , c⊑c′)) = back c i
-  getGraph (ndsc-drive {c = c} {gs = gs} ¬f ds ps) = case c gs
-  getGraph (ndsc-rebuild {c = c} {g = g} ¬f r i p) = rebuild c g
+  getGraph (ndsc-drive {c = c} {gs = gs} ¬f ps) = case c gs
+  getGraph (ndsc-rebuild {c = c} {g = g} ¬f i p) = rebuild c g
 
   -- getGraph-sound
 
@@ -437,5 +427,5 @@ module GraphExtraction (scWorld : ScWorld) where
     (p : h ⊢NDSC c ↪ g) → getGraph p ≡ g
 
   getGraph-sound (ndsc-fold f) = refl
-  getGraph-sound (ndsc-drive ¬f ds x) = refl
-  getGraph-sound (ndsc-rebuild ¬f r i p) = refl
+  getGraph-sound (ndsc-drive ¬f ps) = refl
+  getGraph-sound (ndsc-rebuild ¬f i p) = refl
