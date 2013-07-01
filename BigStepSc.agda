@@ -50,20 +50,8 @@ open import Relation.Binary.PropositionalEquality as P
   renaming ([_] to [_]ⁱ)
 
 open import Util
+open import BarWhistles
 
-
--- Bar
-
--- The set of finite paths such that either
--- (1) B h is valid right now; or
--- (2) for all possible a₁ ∷ h either
---     (1) B (a₁ ∷ h) is valid right now; or
---     (2) for all possible a₂ ∷ a₁ ∷ h either ...
-
-data Bar {A : Set} (B : ∀ {m} → Vec A m → Set) :
-         {n : ℕ} (h : Vec A n) → Set where
-  now   : ∀ {n} {h : Vec A n} (bz : B h) → Bar B h
-  later : ∀ {n} {h : Vec A n} (bs : ∀ a → Bar B (a ∷ h)) → Bar B h
 
 -- ScWorld
 
@@ -93,6 +81,10 @@ record ScWorld : Set₁ where
     -- We suppose that the number of possible rebuildings is finite!
     _↴ : (c : Conf) → List Conf
 
+    -- A bar whistle.
+    whistle : BarWhistle Conf
+
+  open BarWhistle whistle public
 
   conf-setoid : Setoid _ _
   conf-setoid = P.setoid Conf
@@ -108,16 +100,6 @@ record ScWorld : Set₁ where
 
   foldable? : ∀ {n} (h : History n) (c : Conf) → Dec (Foldable h c)
   foldable? h c = anyV (_⊑?_ c) h
-
-  field
-    -- Whistles deal with histories
-
-    -- Dangerous histories
-    Dangerous : ∀ {n} (h : History n) → Set
-    dangerous? : ∀ {n} (h : History n) → Dec (Dangerous h)
-
-    -- Bar-induction
-    bar[] : Bar Dangerous []
 
   data Graph : (n : ℕ) → Set where
     back    : ∀ {n} (c : Conf) (b : Fin n) → Graph n
@@ -140,13 +122,13 @@ module BigStepNDSC (scWorld : ScWorld) where
     ndsc-drive : ∀ {n h c}
       {gs : List (Graph (suc n))}
       (¬f : ¬ Foldable h c) →
-      Pointwise (_⊢NDSC_↪_ (c ∷ h)) (c ⇉) gs →
+      (s  : Pointwise (_⊢NDSC_↪_ (c ∷ h)) (c ⇉) gs) →
       h ⊢NDSC c ↪ (case c gs)
     ndsc-rebuild : ∀ {n h c c′}
-      {g : Graph (suc n)}
+      {g  : Graph (suc n)}
       (¬f : ¬ Foldable h c)
-      (i : Any (_≡_ c′) (c ↴)) →
-      c ∷ h ⊢NDSC c′ ↪ g →
+      (i  : Any (_≡_ c′) (c ↴)) →
+      (s  : c ∷ h ⊢NDSC c′ ↪ g) →
       h ⊢NDSC c ↪ rebuild c g
 
 -- BigStepMRSC
@@ -167,14 +149,14 @@ module BigStepMRSC (scWorld : ScWorld) where
       {gs : List (Graph (suc n))}
       (¬f : ¬ Foldable h c)
       (¬w : ¬ Dangerous h) →
-      Pointwise (_⊢MRSC_↪_ (c ∷ h)) (c ⇉) gs →
+      (s  : Pointwise (_⊢MRSC_↪_ (c ∷ h)) (c ⇉) gs) →
       h ⊢MRSC c ↪ (case c gs)
     mrsc-rebuild : ∀ {n h c c′}
-      {g : Graph (suc n)}
+      {g  : Graph (suc n)}
       (¬f : ¬ Foldable h c)
       (¬w : ¬ Dangerous h) →
-      (i : Any (_≡_ c′) (c ↴)) →
-      c ∷ h ⊢MRSC c′ ↪ g →
+      (i  : Any (_≡_ c′) (c ↴)) →
+      (s  : c ∷ h ⊢MRSC c′ ↪ g) →
       h ⊢MRSC c ↪ rebuild c g
 
   -- Functional big-step multi-result supercompilation.
@@ -319,6 +301,7 @@ module BigStepMRSC (scWorld : ScWorld) where
     naive-mrsc c ≡ get-graphs (lazy-mrsc c)
   naive↔lazy c = naive↔lazy′ [] bar[] c
 
+
 module MRSC→NDSC (scWorld : ScWorld) where
 
   open ScWorld scWorld
@@ -339,29 +322,32 @@ module MRSC→NDSC (scWorld : ScWorld) where
     ndsc-rebuild ¬f i (MRSC→NDSC ⊢ci↪g)
 
 
--- HistoryLengthWhistle
+--
+-- Extracting the residual graph from a proof
+--
 
-module HistoryLengthWhistle (A : Set) (l : ℕ) where
+module GraphExtraction (scWorld : ScWorld) where
+  open ScWorld scWorld
+  open BigStepNDSC scWorld
 
-  --open ScWorld scWorld
+  -- getGraph
 
-  HLDangerous : ∀ {n} (h : Vec A n) → Set
-  HLDangerous {n} h = l ≤ n
+  getGraph : ∀ {n} {h : History n} {c : Conf} {g : Graph n}
+    (p : h ⊢NDSC c ↪ g) → Graph n
 
-  hlDangerous? : ∀ {n} (h : Vec A n) → Dec (HLDangerous h)
-  hlDangerous? {n} h = l ≤? n
+  getGraph (ndsc-fold {c = c} (i , c⊑c′)) = back c i
+  getGraph (ndsc-drive {c = c} {gs = gs} ¬f ps) = case c gs
+  getGraph (ndsc-rebuild {c = c} {g = g} ¬f i p) = rebuild c g
 
-  hlBar : ∀ m n (h : Vec A n) (d : m + n ≡ l) → Bar HLDangerous h
-  hlBar zero .l h refl =
-    now (≤′⇒≤ ≤′-refl)
-  hlBar (suc m) n h d =
-    later (λ c → hlBar m (suc n) (c ∷ h) m+1+n≡l)
-    where
-    open ≡-Reasoning
-    m+1+n≡l = begin m + suc n ≡⟨ m+1+n≡1+m+n m n ⟩ suc (m + n) ≡⟨ d ⟩ l ∎
+  -- getGraph-sound
 
-  hlBar[] : Bar HLDangerous []
-  hlBar[] = hlBar l zero [] (l + zero ≡ l ∋ proj₂ *+.+-identity l)
+  getGraph-sound : ∀ {n} {h : History n} {c : Conf} {g : Graph n}
+    (p : h ⊢NDSC c ↪ g) → getGraph p ≡ g
+
+  getGraph-sound (ndsc-fold f) = refl
+  getGraph-sound (ndsc-drive ¬f ps) = refl
+  getGraph-sound (ndsc-rebuild ¬f i p) = refl
+
 
 -- ScWorld3
 
@@ -395,8 +381,6 @@ module ScWorld3 where
   _ ↴′  = []
 
 
-  open HistoryLengthWhistle Conf3
-
   scWorld3 : ScWorld
   scWorld3 = record
     { Conf = Conf3
@@ -405,9 +389,7 @@ module ScWorld3 where
     ; _⊑?_ = _≟Conf3_
     ; _⇉ = _⇉′
     ; _↴ = _↴′
-    ; Dangerous = HLDangerous 4
-    ; dangerous? = hlDangerous? 4
-    ; bar[] = hlBar[] 4
+    ; whistle = pathLengthWhistle Conf3 4
     }
 
 
@@ -458,29 +440,3 @@ module NDSC-test3 where
     ¬f2 (zero , ())
     ¬f2 (suc () , _)
 
-
---
--- Extracting the residual graph from a proof
---
-
-module GraphExtraction (scWorld : ScWorld) where
-  open ScWorld scWorld
-  open BigStepNDSC scWorld
-
-  -- getGraph
-
-  getGraph : ∀ {n} {h : History n} {c : Conf} {g : Graph n}
-    (p : h ⊢NDSC c ↪ g) → Graph n
-
-  getGraph (ndsc-fold {c = c} (i , c⊑c′)) = back c i
-  getGraph (ndsc-drive {c = c} {gs = gs} ¬f ps) = case c gs
-  getGraph (ndsc-rebuild {c = c} {g = g} ¬f i p) = rebuild c g
-
-  -- getGraph-sound
-
-  getGraph-sound : ∀ {n} {h : History n} {c : Conf} {g : Graph n}
-    (p : h ⊢NDSC c ↪ g) → getGraph p ≡ g
-
-  getGraph-sound (ndsc-fold f) = refl
-  getGraph-sound (ndsc-drive ¬f ps) = refl
-  getGraph-sound (ndsc-rebuild ¬f i p) = refl
