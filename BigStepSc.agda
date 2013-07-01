@@ -192,11 +192,9 @@ module BigStepMRSC (scWorld : ScWorld) where
   ... | now bz = ⊥-elim (¬w bz)
   ... | later bs = drive! ++ rebuild!
     where
-    drive! : List (Graph n)
     drive! =
       map (case c)
           (cartesian (map (naive-mrsc′ (c ∷ h) (bs c)) (c ⇉)))
-    rebuild! : List (Graph n)
     rebuild! =
       map (rebuild c)
           (concat (map (naive-mrsc′ (c ∷ h) (bs c)) (c ↴)))
@@ -219,6 +217,10 @@ module BigStepMRSC (scWorld : ScWorld) where
     rebuild : ∀ {n} (c : Conf) (gss : List (LazyGraph (suc n))) →
                 LazyGraph n
 
+  -- lazy-mrsc is essentially a "staged" version of naive-mrsc
+  -- with get-graphs being an "interpreter" that evaluates the "program"
+  -- returned by lazy-mrsc.
+
   -- lazy-mrsc′
 
   lazy-mrsc′ : ∀ {n} (h : History n) (b : Bar Dangerous h) (c : Conf) →
@@ -231,19 +233,15 @@ module BigStepMRSC (scWorld : ScWorld) where
   ... | now bz = ↯ (¬w bz)
   ... | later bs = alt drive! rebuild!
     where
-    drive! : LazyGraph n
-    drive! =
-      case c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ⇉))
-    rebuild! : LazyGraph n
-    rebuild! =
-      rebuild c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ↴))
+    drive!   = case    c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ⇉))
+    rebuild! = rebuild c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ↴))
 
   -- lazy-mrsc
 
   lazy-mrsc : (c : Conf) → LazyGraph 0
   lazy-mrsc c = lazy-mrsc′ [] bar[] c
 
-  -- generate-graphs
+  -- get-graphs
 
   mutual
 
@@ -258,22 +256,23 @@ module BigStepMRSC (scWorld : ScWorld) where
     get-graphs (back c b) =
       [ back c b ]
     get-graphs (case c gss) =
-      map (case c) (cartesian (map-get-graphs gss))
+      map (case c) (cartesian (get-graphs* gss))
     get-graphs (rebuild c gss) =
-      map (rebuild c) (concat (map-get-graphs gss))
+      map (rebuild c) (concat (get-graphs* gss))
 
-    map-get-graphs : ∀ {n} → (gss : List (LazyGraph n)) →
+    get-graphs* : ∀ {n} → (gss : List (LazyGraph n)) →
                 List (List (Graph n))
-    map-get-graphs [] = []
-    map-get-graphs (gs ∷ gss) = get-graphs gs ∷ map-get-graphs gss
+    get-graphs* [] = []
+    get-graphs* (gs ∷ gss) = get-graphs gs ∷ get-graphs* gss
 
   -- `map-get-graphs` has only been introduced to make the termination
   -- checker happy.
 
-  mapgg≡map-gg : ∀ {n} (gss : List (LazyGraph n)) →
-    map-get-graphs gss ≡ map get-graphs gss
-  mapgg≡map-gg [] = refl
-  mapgg≡map-gg (x ∷ gss) = cong (_∷_ (get-graphs x)) (mapgg≡map-gg gss)
+  get-graphs*-is-map : ∀ {n} (gss : List (LazyGraph n)) →
+    get-graphs* gss ≡ map get-graphs gss
+  get-graphs*-is-map [] = refl
+  get-graphs*-is-map (x ∷ gss) =
+    cong (_∷_ (get-graphs x)) (get-graphs*-is-map gss)
 
   --
   -- naive-mrsc and lazy-mrsc produce the same bag of graphs!
@@ -281,33 +280,38 @@ module BigStepMRSC (scWorld : ScWorld) where
 
   -- naive↔lazy′
 
-  naive↔lazy′ : ∀ {n} (h : History n) (b : Bar Dangerous h) (c : Conf) →
-    naive-mrsc′ h b c ≡ get-graphs (lazy-mrsc′ h b c)
-  naive↔lazy′ {n} h b c with foldable? h c
-  ... | yes (i , c⊑hi) = refl
-  ... | no ¬f with dangerous? h
-  ... | yes w = refl
-  ... | no ¬w with b
-  ... | now bz = refl
-  ... | later bs =
-    cong₂ (λ u v → map (case c) (cartesian u) ++ map (rebuild c) (concat v))
-          (helper (c ⇉)) (helper (c ↴))
-    where
-    open ≡-Reasoning
+  mutual
 
-    helper : ∀ cs →
-      map (naive-mrsc′ (c ∷ h) (bs c)) cs ≡
-      map-get-graphs (map (lazy-mrsc′ (c ∷ h) (bs c)) cs)
+    naive↔lazy′ : ∀ {n} (h : History n) (b : Bar Dangerous h) (c : Conf) →
+      naive-mrsc′ h b c ≡ get-graphs (lazy-mrsc′ h b c)
 
-    helper cs = begin
-      map (naive-mrsc′ (c ∷ h) (bs c)) cs
-        ≡⟨ map-cong (naive↔lazy′ (c ∷ h) (bs c)) cs ⟩
-      map (get-graphs ∘ lazy-mrsc′ (c ∷ h) (bs c)) cs
+    naive↔lazy′ {n} h b c with foldable? h c
+    ... | yes (i , c⊑hi) = refl
+    ... | no ¬f with dangerous? h
+    ... | yes w = refl
+    ... | no ¬w with b
+    ... | now bz = refl
+    ... | later bs =
+      cong₂ (λ u v → map (case c) (cartesian u) ++ map (rebuild c) (concat v))
+            (map∘naive-mrsc′ (c ∷ h) (bs c) (c ⇉))
+            (map∘naive-mrsc′ (c ∷ h) (bs c) (c ↴))
+
+    -- map∘naive-mrsc′
+
+    map∘naive-mrsc′ : ∀ {n} (h : History n) (b : Bar Dangerous h)
+                            (cs : List Conf) →
+      map (naive-mrsc′ h b) cs ≡ get-graphs* (map (lazy-mrsc′ h b) cs)
+
+    map∘naive-mrsc′ h b cs = begin
+      map (naive-mrsc′ h b) cs
+        ≡⟨ map-cong (naive↔lazy′ h b) cs ⟩
+      map (get-graphs ∘ lazy-mrsc′ h b) cs
         ≡⟨ map-compose cs ⟩
-      map get-graphs (map (lazy-mrsc′ (c ∷ h) (bs c)) cs)
-        ≡⟨ sym $ mapgg≡map-gg (map (lazy-mrsc′ (c ∷ h) (bs c)) cs) ⟩
-      map-get-graphs (map (lazy-mrsc′ (c ∷ h) (bs c)) cs)
+      map get-graphs (map (lazy-mrsc′ h b) cs)
+        ≡⟨ sym $ get-graphs*-is-map (map (lazy-mrsc′ h b) cs) ⟩
+      get-graphs* (map (lazy-mrsc′ h b) cs)
       ∎
+      where open ≡-Reasoning
 
   -- naive↔lazy
 
