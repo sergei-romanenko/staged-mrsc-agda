@@ -9,7 +9,7 @@ open import Data.Vec as Vec
   using (Vec; []; _∷_; lookup)
 open import Data.Product
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃)
-
+open import Data.Empty
 
 open import Function
 
@@ -36,9 +36,11 @@ data Bar {A : Set} (B : ∀ {m} → Vec A m → Set) :
 
 record BarWhistle (A : Set) : Set₁ where
 
-  -- Bar whistles deal with sequences some entities
+  -- Bar whistles deal with sequences of some entities
   -- (which in our model of supercompilations are configurations).
 
+  constructor
+    ⟨_,_,_⟩
   field
 
     -- Dangerous histories
@@ -53,26 +55,36 @@ record BarWhistle (A : Set) : Set₁ where
 
 pathLengthWhistle : (A : Set) (l : ℕ) → BarWhistle A
 
-pathLengthWhistle A l = record
-  { Dangerous = PLDangerous
-  ; dangerous? = plDangerous?
-  ; bar[] = plBar[] }
+pathLengthWhistle A l = ⟨ Dangerous , Dangerous? , bar[] ⟩
   where
 
-  PLDangerous : ∀ {n} (h : Vec A n) → Set
-  PLDangerous {n} h = l ≤ n
+  Dangerous : ∀ {n} (h : Vec A n) → Set
+  Dangerous {n} h = l ≤ n
 
-  plDangerous? : ∀ {n} (h : Vec A n) → Dec (PLDangerous h)
-  plDangerous? {n} h = l ≤? n
+  Dangerous? : ∀ {n} (h : Vec A n) → Dec (Dangerous h)
+  Dangerous? {n} h = l ≤? n
 
-  plBar : ∀ m n (h : Vec A n) (d : m + n ≡ l) → Bar PLDangerous h
-  plBar zero .l h refl =
+  bar : ∀ m n (h : Vec A n) (d : m + n ≡ l) → Bar Dangerous h
+  bar zero .l h refl =
     now (≤′⇒≤ ≤′-refl)
-  plBar (suc m) n h d =
-    later (λ c → plBar m (suc n) (c ∷ h) m+1+n≡l)
+  bar (suc m) n h d =
+    later (λ c → bar m (suc n) (c ∷ h) m+1+n≡l)
     where
     open ≡-Reasoning
     m+1+n≡l = begin m + suc n ≡⟨ m+1+n≡1+m+n m n ⟩ suc (m + n) ≡⟨ d ⟩ l ∎
 
-  plBar[] : Bar PLDangerous []
-  plBar[] = plBar l zero [] (l + zero ≡ l ∋ proj₂ *+.+-identity l)
+  bar[] : Bar Dangerous []
+  bar[] = bar l zero [] (l + zero ≡ l ∋ proj₂ *+.+-identity l)
+
+-- inverseImageWhistle
+
+inverseImageWhistle : (A B : Set) (f : A → B)
+  (w : BarWhistle B) → BarWhistle A
+
+inverseImageWhistle A B f ⟨ d , d? , bd[] ⟩ =
+  ⟨ d ∘ Vec.map f , d? ∘ Vec.map f , bar [] bd[] ⟩
+  where
+  bar : ∀ {n} (h : Vec A n) (b : Bar d (Vec.map f h)) → Bar (d ∘ Vec.map f) h
+  bar h (now bz) = now bz
+  bar h (later bs) = later (λ c → bar (c ∷ h) (bs (f c)))
+
