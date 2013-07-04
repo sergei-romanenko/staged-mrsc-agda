@@ -5,10 +5,11 @@ open import Data.Nat
   hiding(_⊔_)
 open import Data.Nat.Properties
   using (≤′⇒≤; ≤⇒≤′; ≰⇒>)
+open import Data.List as List
 open import Data.Vec as Vec
   using (Vec; []; _∷_; lookup)
 open import Data.Product
-  using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃)
+  using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃; ∃₂)
 open import Data.Empty
 
 open import Function
@@ -51,6 +52,50 @@ record BarWhistle (A : Set) : Set₁ where
     bar[] : Bar Dangerous []
 
 
+-- BarGen
+
+-- This module shows the generation of finite sequences
+-- by means of a bar whistle.
+
+module BarGen {A : Set} (g : ∀ {m} → Vec A m → A) (w : BarWhistle A) where
+
+  open BarWhistle w
+
+  barGen′ : ∀ {k} (h : Vec A k) (b : Bar Dangerous h) →
+              ∃₂ λ n (h′ : Vec A n) → Dangerous h′
+  barGen′ {k} h (now bz) = k , h , bz
+  barGen′ {k} h (later bs) with g h
+  ... | c = barGen′ (c ∷ h) (bs c)
+
+  barGen : ∃₂ λ n (h : Vec A n) → Dangerous h
+  barGen = barGen′ [] bar[]
+
+
+-- A fan, or an finitely branching tree, is a tree
+-- each node of which has a finite number of immediate successor nodes.
+
+data Fan (A : Set) : Set where
+  fan : List (A × Fan A) → Fan A
+
+-- BarFanGen
+
+-- This module shows the generation of finitely branching trees
+-- by means of a bar whistle.
+
+module BarFanGen
+  {A : Set} (_⇉ : ∀ {k} → Vec A k → List A) (w : BarWhistle A)
+  where
+  open BarWhistle w
+
+  fanGen′ : ∀ {k} (h : Vec A k) (b : Bar Dangerous h) → Fan A
+  fanGen′ h (now bz) =
+    fan []
+  fanGen′ h (later bs) =
+    fan (map (λ c → c , fanGen′ (c ∷ h) (bs c)) (h ⇉))
+
+  fanGen : Fan A
+  fanGen = fanGen′ [] bar[]
+
 -- pathLengthWhistle
 
 pathLengthWhistle : (A : Set) (l : ℕ) → BarWhistle A
@@ -78,12 +123,13 @@ pathLengthWhistle A l = ⟨ Dangerous , Dangerous? , bar[] ⟩
 
 -- inverseImageWhistle
 
-inverseImageWhistle : (A B : Set) (f : A → B)
+inverseImageWhistle : {A B : Set} (f : A → B)
   (w : BarWhistle B) → BarWhistle A
 
-inverseImageWhistle A B f ⟨ d , d? , bd[] ⟩ =
+inverseImageWhistle {A} {B} f ⟨ d , d? , bd[] ⟩ =
   ⟨ d ∘ Vec.map f , d? ∘ Vec.map f , bar [] bd[] ⟩
   where
+
   bar : ∀ {n} (h : Vec A n) (b : Bar d (Vec.map f h)) → Bar (d ∘ Vec.map f) h
   bar h (now bz) = now bz
   bar h (later bs) = later (λ c → bar (c ∷ h) (bs (f c)))
