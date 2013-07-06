@@ -188,3 +188,45 @@ wfWhistle {A} _<_ _<?_ wf = ⟨ Dangerous , dangerous? , bar[] ⟩
   bar[] : Bar Dangerous []
   bar[] = later (λ c → bar c [] (wf c))
 
+--
+-- Whistles based on the idea that some elements of the sequence
+-- "cover" other elements.
+-- c′ ⋑ c means that c′ "covers" c.
+--
+
+module ⊎⋑-Whistle
+  {A : Set} (_⋑_ : A → A → Set) (_⋑?_ : Decidable₂ _⋑_)
+  where
+
+  -- ⊎⋑-Dangerous
+
+  ⊎⋑-Dangerous : {n : ℕ} (h : Vec A n) → Set
+  ⊎⋑-Dangerous [] = ⊥
+  ⊎⋑-Dangerous (c ∷ h) = VecAny (flip _⋑_ c) h
+
+  -- ⊎⋑-dangerous?
+
+  ⊎⋑-dangerous? : {n : ℕ} (h : Vec A n) → Dec (⊎⋑-Dangerous h)
+  ⊎⋑-dangerous? [] = no id
+  ⊎⋑-dangerous? (c ∷ h) = vecAny (flip _⋑?_ c) h
+
+  -- ⊎⋑-Bar
+
+  data ⊎⋑-Bar : {n : ℕ} (h : Vec A n) → Set where
+    now   : ∀ {n} (h : Vec A n) (bz : ⊎⋑-Dangerous h) → ⊎⋑-Bar h
+    later : ∀ {n} {h : Vec A n} (bs : ∀ c → ⊎⋑-Bar (c ∷ h)) → ⊎⋑-Bar h
+
+  -- ⊎⋑-bar→bar
+
+  ⊎⋑-bar→bar : {n : ℕ} (h : Vec A n) → ⊎⋑-Bar h → Bar ⊎⋑-Dangerous  h
+  ⊎⋑-bar→bar h (now .h bz) =
+    now bz
+  ⊎⋑-bar→bar h (later bs) =
+    later (λ c → ⊎⋑-bar→bar (c ∷ h) (bs c))
+
+  -- ⊎⋑-whistle
+
+  ⊎⋑-whistle : (⊎⋑-bar[] : ⊎⋑-Bar []) → BarWhistle A
+  ⊎⋑-whistle ⊎⋑-bar[] =
+    ⟨ ⊎⋑-Dangerous , ⊎⋑-dangerous? , ⊎⋑-bar→bar [] ⊎⋑-bar[] ⟩
+

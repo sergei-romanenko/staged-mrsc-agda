@@ -1,5 +1,7 @@
 module Util where
 
+open import Level
+  using ()
 open import Data.Nat
   hiding(_⊔_)
 open import Data.Nat.Properties
@@ -11,11 +13,14 @@ open import Data.Vec as Vec
   using (Vec; []; _∷_; lookup)
 open import Data.Product
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃)
+open import Data.Sum
+  using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Empty
 
 open import Relation.Nullary
+open import Relation.Nullary
 open import Relation.Unary
-  using (Decidable)
+  using () renaming (Decidable to Decidable₁)
 
 open import Relation.Binary.PropositionalEquality as P
   renaming ([_] to [_]ⁱ)
@@ -34,7 +39,7 @@ AnyV P xs = ∃ λ i → P (lookup i xs)
 -- anyV
 
 anyV : ∀ {n a p} {A : Set a} {P : A → Set p} →
-  Decidable P → Decidable (AnyV {n} P)
+  Decidable₁ P → Decidable₁ (AnyV {n} P)
 
 anyV {P = P} dp [] = no helper
   where helper : AnyV P [] → ⊥
@@ -49,6 +54,22 @@ anyV {P = P} dp (x ∷ xs) with dp x
         helper (zero , px) = ¬px px
         helper (suc i , py) = ¬ipy (i , py)
 
+-- VecAny
+
+VecAny : ∀ {n a ℓ} {A : Set a} (P : A → Set ℓ) (xs : Vec A n) → Set ℓ
+VecAny P [] = Level.Lift ⊥
+VecAny P (x ∷ xs) = P x ⊎ VecAny P xs
+
+-- vecAny
+
+vecAny : ∀ {n a ℓ} {A : Set a} {P : A → Set ℓ} →
+  Decidable₁ P → Decidable₁ (VecAny {n} P)
+vecAny dp [] = no Level.lower
+vecAny dp (x ∷ xs) with dp x
+... | yes dpx = yes (inj₁ dpx)
+... | no ¬dpx with vecAny dp xs
+... | yes dpxs = yes (inj₂ dpxs)
+... | no ¬dpxs = no [ ¬dpx , ¬dpxs ]′
 
 -- m+1+n≡1+m+n
 
