@@ -77,7 +77,8 @@ record ScWorld : Set₁ where
     -- Driving a configuration leads to a finite number of new ones.
     _⇉ : (c : Conf) → List Conf
 
-    -- Rebuilding a configuration replaces it with an equivalent one.
+    -- Rebuilding a configuration replaces it with an equivalent
+    -- or more general one.
     -- We suppose that the number of possible rebuildings is finite!
     _↴ : (c : Conf) → List Conf
 

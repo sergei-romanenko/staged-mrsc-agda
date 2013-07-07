@@ -18,7 +18,6 @@ open import Data.Sum
 open import Data.Empty
 
 open import Relation.Nullary
-open import Relation.Nullary
 open import Relation.Unary
   using () renaming (Decidable to Decidable₁)
 
@@ -112,3 +111,19 @@ cartesian2 (x ∷ xs) yss = map (_∷_ x) yss ++ cartesian2 xs yss
 cartesian : ∀ {A : Set} (xss : List (List A)) → List (List A)
 cartesian [] = [ [] ]
 cartesian (xs ∷ xss) = cartesian2 xs (cartesian xss)
+
+-- Cartesian product for vectors
+
+-- vec-cartesian2
+
+vec-cartesian2 : ∀ {k} {A : Set} → List A → List (Vec A k) →
+  List (Vec A (suc k))
+
+vec-cartesian2 [] yss = []
+vec-cartesian2 (x ∷ xs) yss = map (_∷_ x) yss ++ vec-cartesian2 xs yss
+
+-- vec-cartesian
+
+vec-cartesian : ∀ {k} {A : Set} (xss : Vec (List A) k) → List (Vec A k)
+vec-cartesian [] = [ [] ]
+vec-cartesian (xs ∷ xss) = vec-cartesian2 xs (vec-cartesian xss)
