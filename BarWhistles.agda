@@ -23,7 +23,7 @@ open import Relation.Unary
   using () renaming (Decidable to Decidable₁)
 
 open import Relation.Binary
-  using (Rel) renaming (Decidable to Decidable₂)
+  using (Rel) renaming (Decidable to Decidable₂; _⇒_ to _⇒₂_)
 open import Relation.Binary.PropositionalEquality as P
   renaming ([_] to [_]ⁱ)
 
@@ -106,6 +106,23 @@ module BarFanGen
 
   fanGen : Fan A
   fanGen = fanGen′ [] bar[]
+
+--
+-- Bar whistles are "monotonic" with respect to `Dangerous`.
+--
+
+{-
+barWhistle-mono : ∀ {A : Set}
+  {w : BarWhistle A}
+  {D D′ : ∀ {n} (h : Vec A n) → Set}
+  {d? : ∀ {n} (h : Vec A n) → Dec (D h)} {b : Bar D []} →
+  w ≡ ⟨ D , d? , b ⟩ →
+  {d′? : ∀ {n} (h : Vec A n) → Dec (D′ h)} →
+  (D ⇒₂ D′) →
+  ∃₂ λ w′ (b′ : Bar D′ []) → w′ ≡ ⟨ D′ , d′? , b′ ⟩
+
+barWhistle-mono {A} {w} {D} {D′} {d?} w≡ = {!!}
+-}
 
 --
 -- Bar whistles based on the length of the sequence

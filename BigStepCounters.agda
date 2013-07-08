@@ -10,7 +10,13 @@ open import Data.Vec as Vec
   using (Vec; []; _∷_)
 open import Relation.Binary.Vec.Pointwise as Pointwise
   using (Pointwise; Pointwise-≡)
+open import Data.Bool as Bool
+  using (Bool; true; false)
 open import Data.Empty
+open import Data.Unit
+  using (⊤; tt)
+open import Data.Sum
+  using (_⊎_; inj₁; inj₂)
 
 open import Function
 open import Function.Equivalence as FEQV
@@ -31,6 +37,8 @@ open import Relation.Binary.PropositionalEquality
   renaming ([_] to [_]ⁱ)
 
 open import Util
+open import BigStepSc
+open import BarWhistles
 
 -- ℕω
 
@@ -175,6 +183,68 @@ _↴₁ : ∀ (n : ℕω) → List ℕω
 -- _↴ 
 
 _↴ : ∀ {k} (c : ωConf k) → List (ωConf k)
---_↴ {k} c =  remove (vec-cartesian (Vec.map _↴₁ c))
 _↴ {k} c = remove-c (vec-cartesian (Vec.map _↴₁ c))
   where remove-c = List.filter (λ c′ → ⌊ ¬? (c ≟ωConf c′) ⌋)
+
+record CntWorld (k : ℕ) : Set₁ where
+  constructor
+    ⟪_,_,_⟫
+  field
+
+    start : ωConf k
+
+    _⇉ω : (c : ωConf k) → List (ωConf k)
+
+    unsafe? : (c : ωConf k) → Bool
+
+-- TooBig₁
+
+TooBig₁ : ∀ (l : ℕ) (n : ℕω) → Set
+TooBig₁ l ω = ⊥
+TooBig₁ l ⟨ i ⟩ = l N.≤ i
+
+-- tooBig₁?
+
+tooBig₁? : ∀ (l : ℕ) → Decidable₁ (TooBig₁ l)
+tooBig₁? l ω = no id
+tooBig₁? l ⟨ i ⟩ = l N.≤? i
+
+-- TooBig
+
+TooBig : ∀ (l : ℕ) {k} (c : ωConf k) → Set
+TooBig l {k} c = VecAny (TooBig₁ l) c
+
+tooBig? : ∀ (l : ℕ) {k} → Decidable₁ (TooBig l {k})
+tooBig? l {k} c = vecAny (tooBig₁? l) c
+
+
+mkScWorld : ∀ (l : ℕ) (maxDepth : ℕ) {k} (cntWorld : CntWorld k) → ScWorld
+mkScWorld l maxDepth {k} ⟪ start , _⇉ω , unsafe? ⟫ = record
+  { Conf = ωConf k
+  ; _≟Conf_ = _≟ωConf_
+  ; _⊑_ = _⊑_
+  ; _⊑?_ = _⊑?_
+  ; _⇉ = _⇉ω
+  ; _↴ = _↴
+  ; whistle = ⟨ Dangerous , dangerous? , bar[] ⟩
+  }
+  where
+
+  Dangerous : ∀ {n} (h : Vec (ωConf k) n) → Set
+
+  Dangerous [] = ⊥
+  Dangerous (c ∷ h) = TooBig l c ⊎ Bool.T (unsafe? c)
+
+  dangerous? : ∀ {n} → Decidable₁ (Dangerous {n})
+  dangerous? [] = no id
+  dangerous? (c ∷ h) with tooBig? l c
+  ... | yes tooBig-c = yes (inj₁ tooBig-c)
+  ... | no ¬tooBig-c with unsafe? c
+  ... | true = yes (inj₂ tt)
+  ... | false = no helper
+    where helper : (VecAny (TooBig₁ l) c ⊎ ⊥) → ⊥
+          helper (inj₁ tooBig-c) = ¬tooBig-c tooBig-c
+          helper (inj₂ ())
+
+  postulate -- TODO: The number of non-dangerous configurations is finite!
+    bar[] : Bar Dangerous []
