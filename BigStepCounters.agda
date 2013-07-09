@@ -11,7 +11,7 @@ open import Data.Vec as Vec
 open import Relation.Binary.Vec.Pointwise as Pointwise
   using (Pointwise; Pointwise-≡)
 open import Data.Bool as Bool
-  using (Bool; true; false)
+  using (Bool; true; false; _∧_; if_then_else_)
 open import Data.Empty
 open import Data.Unit
   using (⊤; tt)
@@ -45,8 +45,8 @@ open import BarWhistles
 -- ℕω
 
 data ℕω : Set where
-  ω : ℕω
-  ⟨_⟩ : (i : ℕ) → ℕω
+  ω  : ℕω
+  #_ : (i : ℕ) → ℕω
 
 infixl 6 _+_ _∸_
 
@@ -56,7 +56,7 @@ _+_ : (m n : ℕω) → ℕω
 
 ω + n = ω
 m + ω = ω
-⟨ i ⟩ + ⟨ j ⟩ = ⟨ i N.+ j ⟩
+# i + # j = # (i N.+ j)
 
 -- _∸_
 
@@ -64,7 +64,7 @@ _∸_ : (m n : ℕω) → ℕω
 
 ω ∸ n = ω
 m ∸ ω = ω
-⟨ i ⟩ ∸ ⟨ j ⟩ = ⟨ i N.∸ j ⟩
+# i ∸ # j = # (i N.∸ j)
 
 infix 4 _≥_ _≥?_ _▹ω_ _▹ω?_
 
@@ -72,7 +72,7 @@ infix 4 _≥_ _≥?_ _▹ω_ _▹ω?_
 
 data _≥_ : (m : ℕω) (j : ℕ) → Set where
   ω≥j   : ∀ {j : ℕ} → ω ≥ j
-  ⟨i⟩≥j : ∀ {i j : ℕ} → (i≥j : i N.≥ j) → ⟨ i ⟩ ≥ j
+  #i≥j : ∀ {i j : ℕ} → (i≥j : i N.≥ j) → # i ≥ j
 
 -- _≥?_
 
@@ -80,33 +80,33 @@ _≥?_ : Decidable₂ _≥_
 
 ω ≥? j = yes ω≥j
 
-⟨ i ⟩ ≥? j with j N.≤? i
-... | yes j≤i = yes (⟨i⟩≥j j≤i)
+# i ≥? j with j N.≤? i
+... | yes j≤i = yes (#i≥j j≤i)
 ... | no ¬j≤i = no helper
-  where helper : ⟨ i ⟩ ≥ j → ⊥
-        helper (⟨i⟩≥j i≥j) = ¬j≤i i≥j
+  where helper : # i ≥ j → ⊥
+        helper (#i≥j i≥j) = ¬j≤i i≥j
 
 -- _▹ω_
 
 data _▹ω_ : (m : ℕω) (j : ℕ) → Set where
   ω=j   : ∀ {j} → ω ▹ω j
-  ⟨i⟩=i : ∀ {i} → ⟨ i ⟩ ▹ω i
+  #i=i : ∀ {i} → # i ▹ω i
 
--- ⟨i⟩=j→i≡j
+-- #i=j→i≡j
 
-⟨i⟩=j→i≡j : ∀ {i j} → ⟨ i ⟩ ▹ω j → i ≡ j
-⟨i⟩=j→i≡j ⟨i⟩=i = refl
+#i▹ωj→i≡j : ∀ {i j} → # i ▹ω j → i ≡ j
+#i▹ωj→i≡j #i=i = refl
 
 -- _▹ω?_
 
 _▹ω?_ : Decidable₂ _▹ω_
 
 ω ▹ω? n = yes ω=j
-⟨ i ⟩ ▹ω? j with i N.≟ j
-... | yes i≡j rewrite i≡j = yes ⟨i⟩=i
+# i ▹ω? j with i N.≟ j
+... | yes i≡j rewrite i≡j = yes #i=i
 ... | no  i≢j = no helper
-  where helper : ⟨ i ⟩ ▹ω j → ⊥
-        helper ⟨i⟩=j = i≢j (⟨i⟩=j→i≡j ⟨i⟩=j)
+  where helper : # i ▹ω j → ⊥
+        helper #i=j = i≢j (#i▹ωj→i≡j #i=j)
 
 -- m ⊑₁ n means that n is more general than m.
 
@@ -114,12 +114,12 @@ _▹ω?_ : Decidable₂ _▹ω_
 
 data _⊑₁_ : (m n : ℕω) → Set where
   m⊑₁ω : ∀ {m} → m ⊑₁ ω
-  ⟨i⟩⊑₁⟨i⟩ : ∀ {i} → ⟨ i ⟩ ⊑₁ ⟨ i ⟩
+  #i⊑₁#i : ∀ {i} → # i ⊑₁ # i
 
--- ⟨i⟩⊑₁⟨j⟩→i≡j
+-- #i⊑₁#j→i≡j
 
-⟨i⟩⊑₁⟨j⟩→i≡j : ∀ {i j} → ⟨ i ⟩ ⊑₁ ⟨ j ⟩ → i ≡ j
-⟨i⟩⊑₁⟨j⟩→i≡j ⟨i⟩⊑₁⟨i⟩ = refl
+#i⊑₁#j→i≡j : ∀ {i j} → # i ⊑₁ # j → i ≡ j
+#i⊑₁#j→i≡j #i⊑₁#i = refl
 
 -- _⊑₁?_
 
@@ -127,29 +127,29 @@ _⊑₁?_ : Decidable₂ _⊑₁_
 
 m ⊑₁? ω =
   yes m⊑₁ω
-ω ⊑₁? ⟨ i ⟩ =
+ω ⊑₁? # i =
   no (λ ())
-⟨ i ⟩ ⊑₁? ⟨ j ⟩ with i N.≟ j
-... | yes i≡j rewrite i≡j = yes ⟨i⟩⊑₁⟨i⟩
+# i ⊑₁? # j with i N.≟ j
+... | yes i≡j rewrite i≡j = yes #i⊑₁#i
 ... | no  i≢j = no helper
-  where helper : ⟨ i ⟩ ⊑₁ ⟨ j ⟩ → ⊥
-        helper ⟨i⟩⊑₁⟨j⟩ = i≢j (⟨i⟩⊑₁⟨j⟩→i≡j ⟨i⟩⊑₁⟨j⟩)
+  where helper : # i ⊑₁ # j → ⊥
+        helper #i⊑₁#j = i≢j (#i⊑₁#j→i≡j #i⊑₁#j)
 
 infix 4 _≟ω_
 
-⟨i⟩≡⟨j⟩→i≡j : ∀ {i j} → ⟨ i ⟩ ≡ ⟨ j ⟩ → i ≡ j
-⟨i⟩≡⟨j⟩→i≡j refl = refl
+#i≡#j→i≡j : ∀ {i j} → # i ≡ # j → i ≡ j
+#i≡#j→i≡j refl = refl
 
 -- _≟ω_
 
 _≟ω_ : Decidable₂ {A = ℕω} _≡_
 
 ω ≟ω ω = yes refl
-ω ≟ω ⟨ i ⟩ = no (λ ())
-⟨ i ⟩ ≟ω ω = no (λ ())
-⟨ i ⟩ ≟ω ⟨ j ⟩ with i N.≟ j
+ω ≟ω # i = no (λ ())
+# i ≟ω ω = no (λ ())
+# i ≟ω # j with i N.≟ j
 ... | yes i≡j rewrite i≡j = yes refl
-... | no  i≢j = no (i≢j ∘ ⟨i⟩≡⟨j⟩→i≡j)
+... | no  i≢j = no (i≢j ∘ #i≡#j→i≡j)
 
 --
 -- Configurations
@@ -180,7 +180,7 @@ _⊑?_ = Pointwise.decidable _⊑₁?_
 
 _↴₁ : ∀ (n : ℕω) → List ℕω
 ω ↴₁ = ω ∷ []
-⟨ i ⟩ ↴₁ = ω ∷ ⟨ i ⟩ ∷ []
+(# i) ↴₁ = ω ∷ # i ∷ []
 
 -- _↴ 
 
@@ -203,13 +203,13 @@ record CntWorld (k : ℕ) : Set₁ where
 
 TooBig₁ : ∀ (l : ℕ) (n : ℕω) → Set
 TooBig₁ l ω = ⊥
-TooBig₁ l ⟨ i ⟩ = l N.≤ i
+TooBig₁ l (# i) = l N.≤ i
 
 -- tooBig₁?
 
 tooBig₁? : ∀ (l : ℕ) → Decidable₁ (TooBig₁ l)
 tooBig₁? l ω = no id
-tooBig₁? l ⟨ i ⟩ = l N.≤? i
+tooBig₁? l (# i) = l N.≤? i
 
 -- TooBig
 
@@ -253,3 +253,25 @@ mkScWorld l maxDepth {k} ⟪ start , _⇉ω , unsafe ⟫ = record
   bar[] : Bar (λ {m} h → maxDepth N.≤ m ⊎ Dangerous h) []
   bar[] = bar-⊎ [] (BarWhistle.bar[] (pathLengthWhistle (ωConf k) maxDepth))
 
+--
+-- A "DSL" for encoding counter systems in a user-friendly form.
+--
+
+-- ¶_≥_⇒_□
+
+¶_≥_⇒_□ : ∀ {k} (m : ℕω) (j : ℕ) (result : ωConf k) → List (ωConf k)
+
+¶ m ≥ j ⇒ r □ =
+  if ⌊ m ≥? j ⌋ then r ∷ [] else []
+
+-- ¶_≥_□
+
+¶?_≥_□ : ∀ (m : ℕω) (j : ℕ) → Bool
+¶? m ≥ n □ =
+  ⌊ m ≥? n ⌋
+
+-- ¶_≥_∧_≥_□
+
+¶?_≥_∧_≥_□ : ∀ (m : ℕω) (j : ℕ)(m′ : ℕω) (j′ : ℕ) → Bool
+¶? m ≥ j ∧ m′ ≥ j′ □ =
+  ⌊ m ≥? j ⌋ ∧ ⌊ m′ ≥? j′ ⌋
