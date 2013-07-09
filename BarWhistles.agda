@@ -14,13 +14,15 @@ open import Data.Vec as Vec
   using (Vec; []; _∷_; _∈_; here; there; lookup)
 open import Data.Product
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃; ∃₂)
+open import Data.Sum
+  using (_⊎_; inj₁; inj₂)
 open import Data.Empty
 
 open import Function
 
 open import Relation.Nullary
 open import Relation.Unary
-  using () renaming (Decidable to Decidable₁)
+  using (_∪_) renaming (Decidable to Decidable₁)
 
 open import Relation.Binary
   using (Rel) renaming (Decidable to Decidable₂; _⇒_ to _⇒₂_)
@@ -108,21 +110,28 @@ module BarFanGen
   fanGen = fanGen′ [] bar[]
 
 --
--- Bar whistles are "monotonic" with respect to `Dangerous`.
+-- Bar D h is "monotonic" with respect to D.
 --
 
-{-
-barWhistle-mono : ∀ {A : Set}
-  {w : BarWhistle A}
-  {D D′ : ∀ {n} (h : Vec A n) → Set}
-  {d? : ∀ {n} (h : Vec A n) → Dec (D h)} {b : Bar D []} →
-  w ≡ ⟨ D , d? , b ⟩ →
-  {d′? : ∀ {n} (h : Vec A n) → Dec (D′ h)} →
-  (D ⇒₂ D′) →
-  ∃₂ λ w′ (b′ : Bar D′ []) → w′ ≡ ⟨ D′ , d′? , b′ ⟩
+-- bar-mono
 
-barWhistle-mono {A} {w} {D} {D′} {d?} w≡ = {!!}
--}
+bar-mono : ∀ {A : Set}
+  {D D′ : ∀ {m} (h : Vec A m) → Set} →
+  (∀ {m} (h : Vec A m) → D h → D′ h) →
+  ∀ {n} (h : Vec A n) (b : Bar D h) → Bar D′ h
+bar-mono D→D′ h (now bz) =
+  now (D→D′ h bz)
+bar-mono D→D′ h (later bs) =
+  later (λ c → bar-mono D→D′ (c ∷ h) (bs c))
+
+-- bar-⊎
+
+bar-⊎ : ∀ {A : Set}
+  {D P : ∀ {m} (h : Vec A m) → Set} →
+  ∀ {n} (h : Vec A n) →
+  Bar D h → Bar (D ∪ P) h
+bar-⊎ = bar-mono (λ {m} h → inj₁)
+
 
 --
 -- Bar whistles based on the length of the sequence

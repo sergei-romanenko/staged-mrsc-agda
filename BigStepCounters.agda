@@ -29,6 +29,8 @@ open import Relation.Nullary.Decidable
   using (⌊_⌋)
 open import Relation.Nullary.Negation
   using (¬?)
+open import Relation.Nullary.Sum
+
 open import Relation.Unary
   using () renaming (Decidable to Decidable₁)
 open import Relation.Binary
@@ -195,7 +197,7 @@ record CntWorld (k : ℕ) : Set₁ where
 
     _⇉ω : (c : ωConf k) → List (ωConf k)
 
-    unsafe? : (c : ωConf k) → Bool
+    unsafe : (c : ωConf k) → Bool
 
 -- TooBig₁
 
@@ -219,32 +221,35 @@ tooBig? l {k} c = vecAny (tooBig₁? l) c
 
 
 mkScWorld : ∀ (l : ℕ) (maxDepth : ℕ) {k} (cntWorld : CntWorld k) → ScWorld
-mkScWorld l maxDepth {k} ⟪ start , _⇉ω , unsafe? ⟫ = record
+mkScWorld l maxDepth {k} ⟪ start , _⇉ω , unsafe ⟫ = record
   { Conf = ωConf k
   ; _≟Conf_ = _≟ωConf_
   ; _⊑_ = _⊑_
   ; _⊑?_ = _⊑?_
   ; _⇉ = _⇉ω
   ; _↴ = _↴
-  ; whistle = ⟨ Dangerous , dangerous? , bar[] ⟩
+  ; whistle = ⟨ (λ {n} h → (maxDepth N.≤ n) ⊎  (Dangerous h))
+              , (λ {n} h → (maxDepth N.≤? n) ⊎-dec (dangerous? h))
+              , bar[]
+              ⟩
   }
   where
 
   Dangerous : ∀ {n} (h : Vec (ωConf k) n) → Set
 
   Dangerous [] = ⊥
-  Dangerous (c ∷ h) = TooBig l c ⊎ Bool.T (unsafe? c)
+  Dangerous (c ∷ h) = TooBig l c ⊎ unsafe c ≡ true
 
   dangerous? : ∀ {n} → Decidable₁ (Dangerous {n})
   dangerous? [] = no id
-  dangerous? (c ∷ h) with tooBig? l c
-  ... | yes tooBig-c = yes (inj₁ tooBig-c)
-  ... | no ¬tooBig-c with unsafe? c
-  ... | true = yes (inj₂ tt)
-  ... | false = no helper
-    where helper : (VecAny (TooBig₁ l) c ⊎ ⊥) → ⊥
-          helper (inj₁ tooBig-c) = ¬tooBig-c tooBig-c
-          helper (inj₂ ())
+  dangerous? (c ∷ h) = tooBig? l c ⊎-dec ((unsafe c) Bool.≟ true)
 
-  postulate -- TODO: The number of non-dangerous configurations is finite!
-    bar[] : Bar Dangerous []
+  -- The whistle is based on the combination of `pathLengthWhistle` and
+  -- and `Dangerous`.
+
+  -- TODO: It is possible to construct a whistle based on the fact that
+  -- the set of configurations such that `¬ TooBig l c` is finite.
+
+  bar[] : Bar (λ {m} h → maxDepth N.≤ m ⊎ Dangerous h) []
+  bar[] = bar-⊎ [] (BarWhistle.bar[] (pathLengthWhistle (ωConf k) maxDepth))
+
