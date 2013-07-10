@@ -16,9 +16,8 @@ University of Pereslavl, 2012, 260 p. ISBN 978-5-901795-28-6, pages
 -}
 
 open import Level
-  using (Level; _⊔_)
+  using (Level)
 open import Data.Nat
-  hiding(_⊔_)
 open import Data.Nat.Properties
   using (≤′⇒≤; ≤⇒≤′; ≰⇒>)
 open import Data.List as List
@@ -51,6 +50,7 @@ open import Relation.Binary.PropositionalEquality as P
 
 open import Util
 open import BarWhistles
+open import Graphs
 
 
 -- ScWorld
@@ -102,15 +102,6 @@ record ScWorld : Set₁ where
   foldable? : ∀ {n} (h : History n) (c : Conf) → Dec (Foldable h c)
   foldable? h c = anyV (_⊑?_ c) h
 
---
--- Graphs of configurations
---
-
-data Graph (C : Set) : (n : ℕ) → Set where
-  back    : ∀ {n} (c : C) (b : Fin n) → Graph C n
-  case    : ∀ {n} (c : C) (gs : List (Graph C (suc n))) → Graph C n
-  rebuild : ∀ {n} (c : C) (g : Graph C (suc n)) → Graph C n
-
 
 -- BigStepNDSC
 
@@ -141,18 +132,6 @@ module BigStepNDSC (scWorld : ScWorld) where
 -- Big-step multi-result supercompilation
 --
 
--- "Lazy" graphs of configurations will be produced
--- by the "lazy" (staged) version of mrsc.
-
-data LazyGraph (C : Set) : (n : ℕ) → Set where
-  ↯       : ∀ {n} → ⊥ → LazyGraph C n
-  nil     : ∀ {n} → LazyGraph C n
-  alt     : ∀ {n} (gs₁ gs₂ : LazyGraph C n) → LazyGraph C n
-  back    : ∀ {n} (c : C) (b : Fin n) → LazyGraph C n
-  case    : ∀ {n} (c : C) (gss : List (LazyGraph C (suc n))) →
-              LazyGraph C n
-  rebuild : ∀ {n} (c : C) (gss : List (LazyGraph C (suc n))) →
-              LazyGraph C n
 -- BigStepMRSC
 
 module BigStepMRSC (scWorld : ScWorld) where
@@ -236,51 +215,18 @@ module BigStepMRSC (scWorld : ScWorld) where
   lazy-mrsc : (c : Conf) → LazyGraph Conf 0
   lazy-mrsc c = lazy-mrsc′ [] bar[] c
 
-  -- get-graphs
-
-  mutual
-
-    get-graphs : ∀ {n} (gs : LazyGraph Conf n) → List (Graph Conf n)
-
-    get-graphs (↯ ⊥) =
-      ⊥-elim ⊥
-    get-graphs nil =
-      []
-    get-graphs (alt gs₁ gs₂) =
-      get-graphs gs₁ ++ get-graphs gs₂
-    get-graphs (back c b) =
-      [ back c b ]
-    get-graphs (case c gss) =
-      map (case c) (cartesian (get-graphs* gss))
-    get-graphs (rebuild c gss) =
-      map (rebuild c) (concat (get-graphs* gss))
-
-    get-graphs* : ∀ {n} → (gss : List (LazyGraph Conf n)) →
-                List (List (Graph Conf n))
-    get-graphs* [] = []
-    get-graphs* (gs ∷ gss) = get-graphs gs ∷ get-graphs* gss
-
-  -- `map-get-graphs` has only been introduced to make the termination
-  -- checker happy.
-
-  get-graphs*-is-map : ∀ {n} (gss : List (LazyGraph Conf n)) →
-    get-graphs* gss ≡ map get-graphs gss
-  get-graphs*-is-map [] = refl
-  get-graphs*-is-map (x ∷ gss) =
-    cong (_∷_ (get-graphs x)) (get-graphs*-is-map gss)
-
   --
   -- naive-mrsc and lazy-mrsc produce the same bag of graphs!
   --
 
-  -- naive↔lazy′
+  -- naive≡lazy′
 
   mutual
 
-    naive↔lazy′ : ∀ {n} (h : History n) (b : Bar Dangerous h) (c : Conf) →
+    naive≡lazy′ : ∀ {n} (h : History n) (b : Bar Dangerous h) (c : Conf) →
       naive-mrsc′ h b c ≡ get-graphs (lazy-mrsc′ h b c)
 
-    naive↔lazy′ {n} h b c with foldable? h c
+    naive≡lazy′ {n} h b c with foldable? h c
     ... | yes (i , c⊑hi) = refl
     ... | no ¬f with dangerous? h
     ... | yes w = refl
@@ -299,7 +245,7 @@ module BigStepMRSC (scWorld : ScWorld) where
 
     map∘naive-mrsc′ h b cs = begin
       map (naive-mrsc′ h b) cs
-        ≡⟨ map-cong (naive↔lazy′ h b) cs ⟩
+        ≡⟨ map-cong (naive≡lazy′ h b) cs ⟩
       map (get-graphs ∘ lazy-mrsc′ h b) cs
         ≡⟨ map-compose cs ⟩
       map get-graphs (map (lazy-mrsc′ h b) cs)
@@ -308,12 +254,16 @@ module BigStepMRSC (scWorld : ScWorld) where
       ∎
       where open ≡-Reasoning
 
-  -- naive↔lazy
+  -- naive≡lazy
 
-  naive↔lazy : ∀ (c : Conf) →
+  naive≡lazy : ∀ (c : Conf) →
     naive-mrsc c ≡ get-graphs (lazy-mrsc c)
-  naive↔lazy c = naive↔lazy′ [] bar[] c
+  naive≡lazy c = naive≡lazy′ [] bar[] c
 
+
+--
+-- MRSC is sound with respect to NDSC
+--
 
 module MRSC→NDSC (scWorld : ScWorld) where
 
@@ -343,113 +293,21 @@ module GraphExtraction (scWorld : ScWorld) where
   open ScWorld scWorld
   open BigStepNDSC scWorld
 
-  -- getGraph
+  -- extractGraph
 
-  getGraph : ∀ {n} {h : History n} {c : Conf} {g : Graph Conf n}
+  extractGraph : ∀ {n} {h : History n} {c : Conf} {g : Graph Conf n}
     (p : h ⊢NDSC c ↪ g) → Graph Conf n
 
-  getGraph (ndsc-fold {c = c} (i , c⊑c′)) = back c i
-  getGraph (ndsc-drive {c = c} {gs = gs} ¬f ps) = case c gs
-  getGraph (ndsc-rebuild {c = c} {g = g} ¬f i p) = rebuild c g
+  extractGraph (ndsc-fold {c = c} (i , c⊑c′)) = back c i
+  extractGraph (ndsc-drive {c = c} {gs = gs} ¬f ps) = case c gs
+  extractGraph (ndsc-rebuild {c = c} {g = g} ¬f i p) = rebuild c g
 
-  -- getGraph-sound
+  -- extractGraph-sound
 
-  getGraph-sound : ∀ {n} {h : History n} {c : Conf} {g : Graph Conf n}
-    (p : h ⊢NDSC c ↪ g) → getGraph p ≡ g
+  extractGraph-sound : ∀ {n} {h : History n} {c : Conf} {g : Graph Conf n}
+    (p : h ⊢NDSC c ↪ g) → extractGraph p ≡ g
 
-  getGraph-sound (ndsc-fold f) = refl
-  getGraph-sound (ndsc-drive ¬f ps) = refl
-  getGraph-sound (ndsc-rebuild ¬f i p) = refl
-
-
--- ScWorld3
-
-module ScWorld3 where
-
-  -- This is a silly world with 3 possible configurations.
-  -- (Just for testing.)
-
-  data Conf3 : Set where
-    c0 c1 c2 : Conf3
-
-  _≟Conf3_ : (c c′ : Conf3) → Dec (c ≡ c′)
-  c0 ≟Conf3 c0 = yes refl
-  c0 ≟Conf3 c1 = no (λ ())
-  c0 ≟Conf3 c2 = no (λ ())
-  c1 ≟Conf3 c0 = no (λ ())
-  c1 ≟Conf3 c1 = yes refl
-  c1 ≟Conf3 c2 = no (λ ())
-  c2 ≟Conf3 c0 = no (λ ())
-  c2 ≟Conf3 c1 = no (λ ())
-  c2 ≟Conf3 c2 = yes refl
-
-  _⇉′ : (c : Conf3) → List Conf3
-
-  c0 ⇉′ = c1 ∷ c2 ∷ []
-  c1 ⇉′ = c0 ∷ []
-  c2 ⇉′ = c1 ∷ []
-
-  _↴′ : (c : Conf3) → List Conf3
-  c0 ↴′ = c1 ∷ []
-  _ ↴′  = []
-
-
-  scWorld3 : ScWorld
-  scWorld3 = record
-    { Conf = Conf3
-    ; _≟Conf_ = _≟Conf3_
-    ; _⊑_ = _≡_
-    ; _⊑?_ = _≟Conf3_
-    ; _⇉ = _⇉′
-    ; _↴ = _↴′
-    ; whistle = pathLengthWhistle Conf3 4
-    }
-
-
--- NDSC-test3
-
-module NDSC-test3 where
-
-  open ScWorld3
-  open ScWorld scWorld3
-  open BigStepNDSC scWorld3
-
-  w3graph1 : [] ⊢NDSC c0 ↪
-    case c0
-      (case c1 (back c0 (suc zero) ∷ []) ∷
-        case c2
-          (case c1 (back c0 (suc (suc zero)) ∷ []) ∷ []) ∷ [])
-  w3graph1 =
-    ndsc-drive ¬f1
-      ((ndsc-drive ¬f2
-        ((ndsc-fold (suc zero , refl)) ∷ [])) ∷
-      (ndsc-drive ¬f3
-        ((ndsc-drive ¬f4
-          ((ndsc-fold (suc (suc zero) , refl)) ∷ []))
-        ∷ [])) ∷ [])
-    where
-    ¬f1 : ¬ Σ (Fin zero) (λ z → c0 ≡ lookup z [])
-    ¬f1 (() , _)
-    ¬f2 : ¬ Σ (Fin (suc zero)) (λ z → c1 ≡ lookup z (c0 ∷ []))
-    ¬f2 (zero , ())
-    ¬f2 (suc () , _)
-    ¬f3 : ¬ Σ (Fin (suc zero)) (λ z → c2 ≡ lookup z (c0 ∷ []))
-    ¬f3 (zero , ())
-    ¬f3 (suc () , _)
-    ¬f4 : ¬ Σ (Fin (suc (suc zero))) (λ z → c1 ≡ lookup z (c2 ∷ c0 ∷ []))
-    ¬f4 (zero , ())
-    ¬f4 (suc zero , ())
-    ¬f4 (suc (suc ()) , _)
-
-  w3graph2 : [] ⊢NDSC c0 ↪
-    rebuild c0 (case c1 (back c0 (suc zero) ∷ []))
-  w3graph2 =
-    ndsc-rebuild ¬f1 (here refl)
-      (ndsc-drive ¬f2 ((ndsc-fold (suc zero , refl)) ∷ []))
-    where
-    ¬f1 : Σ (Fin zero) (λ z → c0 ≡ lookup z []) → ⊥
-    ¬f1 (() , _)
-    ¬f2 : Σ (Fin (suc zero)) (λ z → c1 ≡ lookup z (c0 ∷ [])) → ⊥
-    ¬f2 (zero , ())
-    ¬f2 (suc () , _)
+  extractGraph-sound (ndsc-fold f) = refl
+  extractGraph-sound (ndsc-drive ¬f ps) = refl
+  extractGraph-sound (ndsc-rebuild ¬f i p) = refl
 

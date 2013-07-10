@@ -13,6 +13,7 @@ open import Data.Vec
 
 open import Relation.Nullary
 
+open import Graphs
 open import BigStepSc
 open import BigStepCounters
 

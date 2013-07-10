@@ -13,6 +13,7 @@ open import Data.Vec
 
 open import Relation.Nullary
 
+open import Graphs
 open import BigStepSc
 open import BigStepCounters
 
@@ -45,5 +46,5 @@ scwMOESI = mkScWorld 2 10 MOESI
 
 open BigStepMRSC scwMOESI
 
-MOESI-graph : LazyGraph zero
+MOESI-graph : LazyGraph (ωConf 5) zero
 MOESI-graph = lazy-mrsc (CntWorld.start MOESI)
