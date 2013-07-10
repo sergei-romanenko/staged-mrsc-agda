@@ -2,6 +2,8 @@ module ProtocolMOESI where
 
 open import Data.Nat as N
   using (ℕ; zero; suc)
+open import Data.Fin as F
+  using (Fin; zero; suc)
 open import Data.Bool
   using (Bool; true; false; _∨_)
 open import Data.List
@@ -41,7 +43,7 @@ MOESI = ⟪ start , rules , unsafe ⟫
 scwMOESI : ScWorld
 scwMOESI = mkScWorld 2 10 MOESI
 
-module mrscMOESI = BigStepMRSC scwMOESI
+open BigStepMRSC scwMOESI
 
-MOESI-graph : mrscMOESI.LazyGraph zero
-MOESI-graph = mrscMOESI.lazy-mrsc (CntWorld.start MOESI)
+MOESI-graph : LazyGraph zero
+MOESI-graph = lazy-mrsc (CntWorld.start MOESI)

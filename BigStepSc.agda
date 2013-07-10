@@ -102,10 +102,14 @@ record ScWorld : Set₁ where
   foldable? : ∀ {n} (h : History n) (c : Conf) → Dec (Foldable h c)
   foldable? h c = anyV (_⊑?_ c) h
 
-  data Graph : (n : ℕ) → Set where
-    back    : ∀ {n} (c : Conf) (b : Fin n) → Graph n
-    case    : ∀ {n} (c : Conf) (gs : List (Graph (suc n))) → Graph n
-    rebuild : ∀ {n} (c : Conf) (g : Graph (suc n)) → Graph n
+--
+-- Graphs of configurations
+--
+
+data Graph (C : Set) : (n : ℕ) → Set where
+  back    : ∀ {n} (c : C) (b : Fin n) → Graph C n
+  case    : ∀ {n} (c : C) (gs : List (Graph C (suc n))) → Graph C n
+  rebuild : ∀ {n} (c : C) (g : Graph C (suc n)) → Graph C n
 
 
 -- BigStepNDSC
@@ -116,22 +120,39 @@ module BigStepNDSC (scWorld : ScWorld) where
 
   infix 4 _⊢NDSC_↪_
 
-  data _⊢NDSC_↪_ : ∀ {n} (h : History n) (c : Conf) (g : Graph n) → Set where
+  data _⊢NDSC_↪_ : ∀ {n} (h : History n) (c : Conf) (g : Graph Conf n)
+                                                               → Set where
     ndsc-fold  : ∀ {n} {h : History n} {c}
       (f : Foldable h c) →
       h ⊢NDSC c ↪ back c (proj₁ f)
     ndsc-drive : ∀ {n h c}
-      {gs : List (Graph (suc n))}
+      {gs : List (Graph Conf (suc n))}
       (¬f : ¬ Foldable h c) →
       (s  : Pointwise (_⊢NDSC_↪_ (c ∷ h)) (c ⇉) gs) →
       h ⊢NDSC c ↪ (case c gs)
     ndsc-rebuild : ∀ {n h c c′}
-      {g  : Graph (suc n)}
+      {g  : Graph Conf (suc n)}
       (¬f : ¬ Foldable h c)
       (i  : Any (_≡_ c′) (c ↴)) →
       (s  : c ∷ h ⊢NDSC c′ ↪ g) →
       h ⊢NDSC c ↪ rebuild c g
 
+--
+-- Big-step multi-result supercompilation
+--
+
+-- "Lazy" graphs of configurations will be produced
+-- by the "lazy" (staged) version of mrsc.
+
+data LazyGraph (C : Set) : (n : ℕ) → Set where
+  ↯       : ∀ {n} → ⊥ → LazyGraph C n
+  nil     : ∀ {n} → LazyGraph C n
+  alt     : ∀ {n} (gs₁ gs₂ : LazyGraph C n) → LazyGraph C n
+  back    : ∀ {n} (c : C) (b : Fin n) → LazyGraph C n
+  case    : ∀ {n} (c : C) (gss : List (LazyGraph C (suc n))) →
+              LazyGraph C n
+  rebuild : ∀ {n} (c : C) (gss : List (LazyGraph C (suc n))) →
+              LazyGraph C n
 -- BigStepMRSC
 
 module BigStepMRSC (scWorld : ScWorld) where
@@ -142,18 +163,19 @@ module BigStepMRSC (scWorld : ScWorld) where
 
   infix 4 _⊢MRSC_↪_
 
-  data _⊢MRSC_↪_ : ∀ {n} (h : History n) (c : Conf) (g : Graph n) → Set where
+  data _⊢MRSC_↪_ : ∀ {n} (h : History n) (c : Conf) (g : Graph Conf n)
+                                                               → Set where
     mrsc-fold  : ∀ {n} {h : History n} {c}
       (f : Foldable h c) →
       h ⊢MRSC c ↪ back c (proj₁ f)
     mrsc-drive : ∀ {n h c}
-      {gs : List (Graph (suc n))}
+      {gs : List (Graph Conf (suc n))}
       (¬f : ¬ Foldable h c)
       (¬w : ¬ Dangerous h) →
       (s  : Pointwise (_⊢MRSC_↪_ (c ∷ h)) (c ⇉) gs) →
       h ⊢MRSC c ↪ (case c gs)
     mrsc-rebuild : ∀ {n h c c′}
-      {g  : Graph (suc n)}
+      {g  : Graph Conf (suc n)}
       (¬f : ¬ Foldable h c)
       (¬w : ¬ Dangerous h) →
       (i  : Any (_≡_ c′) (c ↴)) →
@@ -166,7 +188,7 @@ module BigStepMRSC (scWorld : ScWorld) where
   -- naive-mrsc′
 
   naive-mrsc′ : ∀ {n} (h : History n) (b : Bar Dangerous h) (c : Conf) →
-                  List (Graph n)
+                  List (Graph Conf n)
   naive-mrsc′ {n} h b c with foldable? h c
   ... | yes (i , c⊑hi) = [ back c i ]
   ... | no ¬f with dangerous? h
@@ -184,21 +206,11 @@ module BigStepMRSC (scWorld : ScWorld) where
   
   -- naive-mrsc
 
-  naive-mrsc : (c : Conf) → List(Graph 0)
+  naive-mrsc : (c : Conf) → List(Graph Conf 0)
   naive-mrsc c = naive-mrsc′ [] bar[] c
 
   -- "Lazy" multi-result supercompilation.
   -- (Cartesian products are not immediately built.)
-
-  data LazyGraph : (n : ℕ) → Set where
-    ↯       : ∀ {n} → ⊥ → LazyGraph n
-    nil     : ∀ {n} → LazyGraph n
-    alt     : ∀ {n} (gs₁ gs₂ : LazyGraph n) → LazyGraph n
-    back    : ∀ {n} (c : Conf) (b : Fin n) → LazyGraph n
-    case    : ∀ {n} (c : Conf) (gss : List (LazyGraph (suc n))) →
-                LazyGraph n
-    rebuild : ∀ {n} (c : Conf) (gss : List (LazyGraph (suc n))) →
-                LazyGraph n
 
   -- lazy-mrsc is essentially a "staged" version of naive-mrsc
   -- with get-graphs being an "interpreter" that evaluates the "program"
@@ -207,7 +219,7 @@ module BigStepMRSC (scWorld : ScWorld) where
   -- lazy-mrsc′
 
   lazy-mrsc′ : ∀ {n} (h : History n) (b : Bar Dangerous h) (c : Conf) →
-                  LazyGraph n
+                  LazyGraph Conf n
   lazy-mrsc′ {n} h b c with foldable? h c
   ... | yes (i , c⊑hi) = back c i
   ... | no ¬f with dangerous? h
@@ -221,14 +233,14 @@ module BigStepMRSC (scWorld : ScWorld) where
 
   -- lazy-mrsc
 
-  lazy-mrsc : (c : Conf) → LazyGraph 0
+  lazy-mrsc : (c : Conf) → LazyGraph Conf 0
   lazy-mrsc c = lazy-mrsc′ [] bar[] c
 
   -- get-graphs
 
   mutual
 
-    get-graphs : ∀ {n} (gs : LazyGraph n) → List (Graph n)
+    get-graphs : ∀ {n} (gs : LazyGraph Conf n) → List (Graph Conf n)
 
     get-graphs (↯ ⊥) =
       ⊥-elim ⊥
@@ -243,15 +255,15 @@ module BigStepMRSC (scWorld : ScWorld) where
     get-graphs (rebuild c gss) =
       map (rebuild c) (concat (get-graphs* gss))
 
-    get-graphs* : ∀ {n} → (gss : List (LazyGraph n)) →
-                List (List (Graph n))
+    get-graphs* : ∀ {n} → (gss : List (LazyGraph Conf n)) →
+                List (List (Graph Conf n))
     get-graphs* [] = []
     get-graphs* (gs ∷ gss) = get-graphs gs ∷ get-graphs* gss
 
   -- `map-get-graphs` has only been introduced to make the termination
   -- checker happy.
 
-  get-graphs*-is-map : ∀ {n} (gss : List (LazyGraph n)) →
+  get-graphs*-is-map : ∀ {n} (gss : List (LazyGraph Conf n)) →
     get-graphs* gss ≡ map get-graphs gss
   get-graphs*-is-map [] = refl
   get-graphs*-is-map (x ∷ gss) =
@@ -314,7 +326,7 @@ module MRSC→NDSC (scWorld : ScWorld) where
   MRSC→NDSC (mrsc-drive {n} {h} {c} {gs} ¬f ¬w ∀i⊢ci↪g) =
     ndsc-drive ¬f (pw-map ∀i⊢ci↪g)
     where
-    pw-map : ∀ {cs : List Conf} {gs : List (Graph (suc n))}
+    pw-map : ∀ {cs : List Conf} {gs : List (Graph Conf (suc n))}
                (qs : Pointwise (_⊢MRSC_↪_ (c ∷ h)) cs gs) →
              Pointwise (_⊢NDSC_↪_ (c ∷ h)) cs gs
     pw-map [] = []
@@ -333,8 +345,8 @@ module GraphExtraction (scWorld : ScWorld) where
 
   -- getGraph
 
-  getGraph : ∀ {n} {h : History n} {c : Conf} {g : Graph n}
-    (p : h ⊢NDSC c ↪ g) → Graph n
+  getGraph : ∀ {n} {h : History n} {c : Conf} {g : Graph Conf n}
+    (p : h ⊢NDSC c ↪ g) → Graph Conf n
 
   getGraph (ndsc-fold {c = c} (i , c⊑c′)) = back c i
   getGraph (ndsc-drive {c = c} {gs = gs} ¬f ps) = case c gs
@@ -342,7 +354,7 @@ module GraphExtraction (scWorld : ScWorld) where
 
   -- getGraph-sound
 
-  getGraph-sound : ∀ {n} {h : History n} {c : Conf} {g : Graph n}
+  getGraph-sound : ∀ {n} {h : History n} {c : Conf} {g : Graph Conf n}
     (p : h ⊢NDSC c ↪ g) → getGraph p ≡ g
 
   getGraph-sound (ndsc-fold f) = refl

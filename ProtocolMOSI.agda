@@ -2,6 +2,8 @@ module ProtocolMOSI where
 
 open import Data.Nat as N
   using (ℕ; zero; suc)
+open import Data.Fin as F
+  using (Fin; zero; suc)
 open import Data.Bool
   using (Bool; true; false; _∨_)
 open import Data.List
@@ -13,34 +15,6 @@ open import Relation.Nullary
 
 open import BigStepSc
 open import BigStepCounters
-
-{-
-  val start: Conf = List(Omega, 0, 0, 0)
-  val rules: List[TransitionRule] =
-    List({
-      case List(i, o, s, m) if i >= 1 =>
-        List(i - 1, m + o, s + 1, 0)
-    }, {
-      case List(i, o, s, m) if o >= 1 =>
-        List(i + o + s + m - 1, 0, 0, 1)
-    }, { // wI
-      case List(i, o, s, m) if i >= 1 =>
-        List(i + o + s + m - 1, 0, 0, 1)
-    }, { // wS
-      case List(i, o, s, m) if s >= 1 =>
-        List(i + o + s + m - 1, 0, 0, 1)
-    }, { // se
-      case List(i, o, s, m) if s >= 1 =>
-        List(i + 1, o, s - 1, m)
-    }, { // wbm
-      case List(i, o, s, m) if m >= 1 =>
-        List(i + 1, o, s, m - 1)
-    }, { // wbo
-      case List(i, o, s, m) if o >= 1 =>
-        List(i + 1, o - 1, s, m)
-    })
-  }
--}
 
 MOSI : CntWorld 4
 MOSI = ⟪ start , rules , unsafe ⟫
@@ -75,7 +49,7 @@ MOSI = ⟪ start , rules , unsafe ⟫
 scwMOSI : ScWorld
 scwMOSI = mkScWorld 2 10 MOSI
 
-module mrscMOSI = BigStepMRSC scwMOSI
+open BigStepMRSC scwMOSI public
 
-MOSI-graph : mrscMOSI.LazyGraph zero
-MOSI-graph = mrscMOSI.lazy-mrsc (CntWorld.start MOSI)
+MOSI-graph : LazyGraph (ωConf 4) 0
+MOSI-graph = lazy-mrsc (CntWorld.start MOSI)
