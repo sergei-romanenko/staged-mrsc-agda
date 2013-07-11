@@ -10,6 +10,8 @@ open import Data.List
   using (List; []; _∷_; _++_)
 open import Data.Vec
   using (Vec; []; _∷_)
+open import Data.Product
+  using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃)
 
 open import Relation.Nullary
 
@@ -48,9 +50,12 @@ MOSI = ⟪ start , rules , unsafe ⟫
     ¶? s ≥ 1 ∧ m ≥ 1 □
 
 scwMOSI : ScWorld
-scwMOSI = mkScWorld 2 10 MOSI
+scwMOSI = mkScWorld 3 10 MOSI
 
 open BigStepMRSC scwMOSI public
 
-MOSI-graph : LazyGraph (ωConf 4) 0
-MOSI-graph = lazy-mrsc (CntWorld.start MOSI)
+graph : LazyGraph (ωConf 4) 0
+graph = lazy-mrsc (CntWorld.start MOSI)
+
+graph-cl-min-size = cl-min-size graph
+graph-min-size = get-graphs (proj₂ graph-cl-min-size)

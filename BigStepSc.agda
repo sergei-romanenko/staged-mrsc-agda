@@ -22,7 +22,7 @@ open import Data.Nat.Properties
   using (≤′⇒≤; ≤⇒≤′; ≰⇒>)
 open import Data.List as List
 open import Data.List.Properties
-  using (map-compose; map-cong)
+  using (map-compose; map-cong; foldr-fusion)
 open import Data.List.Any
   using (Any; here; there)
 open import Data.Fin as F
@@ -47,6 +47,11 @@ open import Relation.Binary
   using (Setoid; DecSetoid)
 open import Relation.Binary.PropositionalEquality as P
   renaming ([_] to [_]ⁱ)
+
+open import Algebra
+  using (module Monoid)
+private
+  module LM {a} {A : Set a} = Monoid (List.monoid A)
 
 open import Util
 open import BarWhistles
@@ -202,13 +207,14 @@ module BigStepMRSC (scWorld : ScWorld) where
   lazy-mrsc′ {n} h b c with foldable? h c
   ... | yes (i , c⊑hi) = back c i
   ... | no ¬f with dangerous? h
-  ... | yes w = nil
+  ... | yes w = Ø
   ... | no ¬w with b
   ... | now bz = ↯ (¬w bz)
-  ... | later bs = alt drive! rebuild!
+  ... | later bs = alt (drive! ∷ rebuild! ∷ [])
     where
-    drive!   = case    c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ⇉))
-    rebuild! = rebuild c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ↴))
+    drive!   = case c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ⇉))
+    rebuild! = rebuild c (alt (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ↴)))
+
 
   -- lazy-mrsc
 
@@ -233,9 +239,18 @@ module BigStepMRSC (scWorld : ScWorld) where
     ... | no ¬w with b
     ... | now bz = refl
     ... | later bs =
-      cong₂ (λ u v → map (case c) (cartesian u) ++ map (rebuild c) (concat v))
+      cong₂ (λ u v → map (case c) (cartesian u) ++ v)
             (map∘naive-mrsc′ (c ∷ h) (bs c) (c ⇉))
-            (map∘naive-mrsc′ (c ∷ h) (bs c) (c ↴))
+            (helper (map (rebuild c) ∘ concat)
+                    (map (naive-mrsc′ (c ∷ h) (bs c)) (c ↴))
+                    (get-graphs* (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ↴)))
+                    (map∘naive-mrsc′ (c ∷ h) (bs c) (c ↴)))
+      where open ≡-Reasoning
+            helper : ∀ f x y → x ≡ y → f x ≡ f y ++ []
+            helper f x y x≡y = begin
+              f x    ≡⟨ cong f x≡y ⟩
+              f y    ≡⟨ sym $ proj₂ LM.identity (f y) ⟩
+              f y ++ [] ∎
 
     -- map∘naive-mrsc′
 
