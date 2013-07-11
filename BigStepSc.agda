@@ -210,10 +210,10 @@ module BigStepMRSC (scWorld : ScWorld) where
   ... | yes w = Ø
   ... | no ¬w with b
   ... | now bz = ↯ (¬w bz)
-  ... | later bs = alt (drive! ∷ rebuild! ∷ [])
+  ... | later bs = alt drive! rebuild!
     where
     drive!   = case c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ⇉))
-    rebuild! = rebuild c (alt (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ↴)))
+    rebuild! = rebuild c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ↴))
 
 
   -- lazy-mrsc
@@ -239,18 +239,9 @@ module BigStepMRSC (scWorld : ScWorld) where
     ... | no ¬w with b
     ... | now bz = refl
     ... | later bs =
-      cong₂ (λ u v → map (case c) (cartesian u) ++ v)
-            (map∘naive-mrsc′ (c ∷ h) (bs c) (c ⇉))
-            (helper (map (rebuild c) ∘ concat)
-                    (map (naive-mrsc′ (c ∷ h) (bs c)) (c ↴))
-                    (get-graphs* (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ↴)))
-                    (map∘naive-mrsc′ (c ∷ h) (bs c) (c ↴)))
-      where open ≡-Reasoning
-            helper : ∀ f x y → x ≡ y → f x ≡ f y ++ []
-            helper f x y x≡y = begin
-              f x    ≡⟨ cong f x≡y ⟩
-              f y    ≡⟨ sym $ proj₂ LM.identity (f y) ⟩
-              f y ++ [] ∎
+      cong₂ (λ u v → map (case c) (cartesian u) ++ map (rebuild c) (concat v))
+        (map∘naive-mrsc′ (c ∷ h) (bs c) (c ⇉))
+        (map∘naive-mrsc′ (c ∷ h) (bs c) (c ↴))
 
     -- map∘naive-mrsc′
 

@@ -66,11 +66,11 @@ data Graph (C : Set) : (n : ℕ) → Set where
 data LazyGraph (C : Set) : (n : ℕ) → Set where
   ↯       : ∀ {n} → ⊥ → LazyGraph C n
   Ø       : ∀ {n} → LazyGraph C n
-  alt     : ∀ {n} (gss : List (LazyGraph C n)) → LazyGraph C n
+  alt     : ∀ {n} (gs₁ gs₂ : LazyGraph C n) → LazyGraph C n
   back    : ∀ {n} (c : C) (b : Fin n) → LazyGraph C n
   case    : ∀ {n} (c : C) (gss : List (LazyGraph C (suc n))) →
               LazyGraph C n
-  rebuild : ∀ {n} (c : C) (gs : LazyGraph C (suc n)) →
+  rebuild : ∀ {n} (c : C) (gss : List (LazyGraph C (suc n))) →
               LazyGraph C n
 
 -- The semantics of `LazyGraph C n` is formally defined by
@@ -87,14 +87,14 @@ mutual
     ⊥-elim a-⊥
   get-graphs Ø =
     []
-  get-graphs (alt gss) =
-    concat (get-graphs* gss)
+  get-graphs (alt gs₁ gs₂) =
+    get-graphs gs₁ ++ get-graphs gs₂
   get-graphs (back c b) =
     [ back c b ]
   get-graphs (case c gss) =
     map (case c) (cartesian (get-graphs* gss))
-  get-graphs (rebuild c gs) =
-    map (rebuild c) (get-graphs gs)
+  get-graphs (rebuild c gss) =
+    map (rebuild c) (concat (get-graphs* gss))
 
   -- get-graphs*
 
@@ -204,16 +204,16 @@ cl-min-size (↯ a-⊥) =
   ⊥-elim a-⊥
 cl-min-size Ø =
   0 , Ø -- should be ∞ , Ø
-cl-min-size (alt gss) =
-  select-min (cl-min-size* gss)
+cl-min-size (alt gs₁ gs₂) =
+  select-min₂ (cl-min-size gs₁) (cl-min-size gs₂)
 cl-min-size (back c b) =
   1 , back c b
 cl-min-size (case c gss) with cl-min-size-∧ gss
 ... | 0 , _ = 0 , Ø
 ... | k , gs = k , case c gs
-cl-min-size (rebuild c gs) with cl-min-size gs
+cl-min-size (rebuild c gss) with select-min (cl-min-size* gss)
 ... | _ , Ø = 0 , Ø
-... | k , gs′ = suc k , rebuild c gs′
+... | k , gs = suc k , rebuild c [ gs ]
 
 -- cl-min-size*
 

@@ -11,7 +11,7 @@ open import Data.Vec as Vec
 open import Relation.Binary.Vec.Pointwise as Pointwise
   using (Pointwise; Pointwise-≡)
 open import Data.Bool as Bool
-  using (Bool; true; false; _∧_; if_then_else_)
+  using (Bool; true; false; not; _∧_; if_then_else_)
 open import Data.Empty
 open import Data.Unit
   using (⊤; tt)
@@ -227,7 +227,7 @@ mkScWorld l maxDepth {k} ⟪ start , _⇉ω , unsafe ⟫ = record
   ; _⊑_ = _⊑_
   ; _⊑?_ = _⊑?_
   ; _⇉ = _⇉ω
-  ; _↴ = _↴
+  ; _↴ = List.filter (not ∘ unsafe) ∘  _↴
   ; whistle = ⟨ (λ {n} h → (maxDepth N.≤ n) ⊎  (Dangerous h))
               , (λ {n} h → (maxDepth N.≤? n) ⊎-dec (dangerous? h))
               , bar[]
