@@ -227,7 +227,7 @@ mkScWorld l maxDepth {k} ⟪ start , _⇉ω , unsafe ⟫ = record
   ; _⊑_ = _⊑_
   ; _⊑?_ = _⊑?_
   ; _⇉ = _⇉ω
-  ; _↴ = List.filter (not ∘ unsafe) ∘  _↴
+  ; _↴ = List.filter (not ∘ unsafe) ∘ _↴
   ; whistle = ⟨ (λ {n} h → (maxDepth N.≤ n) ⊎  (Dangerous h))
               , (λ {n} h → (maxDepth N.≤? n) ⊎-dec (dangerous? h))
               , bar[]

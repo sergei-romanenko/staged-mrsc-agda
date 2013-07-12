@@ -42,16 +42,18 @@ open import Function
 
 open import Relation.Nullary
 open import Relation.Unary
-  using (Decidable)
+  using () renaming (Decidable to Decidable₁)
 open import Relation.Binary
   using (Setoid; DecSetoid)
 open import Relation.Binary.PropositionalEquality as P
   renaming ([_] to [_]ⁱ)
 
+{-
 open import Algebra
   using (module Monoid)
 private
   module LM {a} {A : Set a} = Monoid (List.monoid A)
+-}
 
 open import Util
 open import BarWhistles
@@ -220,76 +222,6 @@ module BigStepMRSC (scWorld : ScWorld) where
 
   lazy-mrsc : (c : Conf) → LazyGraph Conf 0
   lazy-mrsc c = lazy-mrsc′ [] bar[] c
-
-  --
-  -- naive-mrsc and lazy-mrsc produce the same bag of graphs!
-  --
-
-  -- naive≡lazy′
-
-  mutual
-
-    naive≡lazy′ : ∀ {n} (h : History n) (b : Bar Dangerous h) (c : Conf) →
-      naive-mrsc′ h b c ≡ get-graphs (lazy-mrsc′ h b c)
-
-    naive≡lazy′ {n} h b c with foldable? h c
-    ... | yes (i , c⊑hi) = refl
-    ... | no ¬f with dangerous? h
-    ... | yes w = refl
-    ... | no ¬w with b
-    ... | now bz = refl
-    ... | later bs =
-      cong₂ (λ u v → map (case c) (cartesian u) ++ map (rebuild c) (concat v))
-        (map∘naive-mrsc′ (c ∷ h) (bs c) (c ⇉))
-        (map∘naive-mrsc′ (c ∷ h) (bs c) (c ↴))
-
-    -- map∘naive-mrsc′
-
-    map∘naive-mrsc′ : ∀ {n} (h : History n) (b : Bar Dangerous h)
-                            (cs : List Conf) →
-      map (naive-mrsc′ h b) cs ≡ get-graphs* (map (lazy-mrsc′ h b) cs)
-
-    map∘naive-mrsc′ h b cs = begin
-      map (naive-mrsc′ h b) cs
-        ≡⟨ map-cong (naive≡lazy′ h b) cs ⟩
-      map (get-graphs ∘ lazy-mrsc′ h b) cs
-        ≡⟨ map-compose cs ⟩
-      map get-graphs (map (lazy-mrsc′ h b) cs)
-        ≡⟨ sym $ get-graphs*-is-map (map (lazy-mrsc′ h b) cs) ⟩
-      get-graphs* (map (lazy-mrsc′ h b) cs)
-      ∎
-      where open ≡-Reasoning
-
-  -- naive≡lazy
-
-  naive≡lazy : ∀ (c : Conf) →
-    naive-mrsc c ≡ get-graphs (lazy-mrsc c)
-  naive≡lazy c = naive≡lazy′ [] bar[] c
-
-
---
--- MRSC is sound with respect to NDSC
---
-
-module MRSC→NDSC (scWorld : ScWorld) where
-
-  open ScWorld scWorld
-  open BigStepNDSC scWorld
-  open BigStepMRSC scWorld
-
-  MRSC→NDSC : ∀ {n h c g} → _⊢MRSC_↪_ {n} h c g → h ⊢NDSC c ↪ g
-  MRSC→NDSC (mrsc-fold f) = ndsc-fold f
-  MRSC→NDSC (mrsc-drive {n} {h} {c} {gs} ¬f ¬w ∀i⊢ci↪g) =
-    ndsc-drive ¬f (pw-map ∀i⊢ci↪g)
-    where
-    pw-map : ∀ {cs : List Conf} {gs : List (Graph Conf (suc n))}
-               (qs : Pointwise (_⊢MRSC_↪_ (c ∷ h)) cs gs) →
-             Pointwise (_⊢NDSC_↪_ (c ∷ h)) cs gs
-    pw-map [] = []
-    pw-map (q ∷ qs) = MRSC→NDSC q ∷ (pw-map qs)
-  MRSC→NDSC (mrsc-rebuild ¬f ¬w i ⊢ci↪g) =
-    ndsc-rebuild ¬f i (MRSC→NDSC ⊢ci↪g)
-
 
 --
 -- Extracting the residual graph from a proof

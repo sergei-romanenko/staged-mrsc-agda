@@ -11,6 +11,7 @@ import Util
 import BarWhistles
 import Graphs
 import BigStepSc
+import BigStepScTheorems
 import BigStepScTests
 
 -- An instantiation of the model for counter systems
