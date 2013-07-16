@@ -1,12 +1,14 @@
 module Util where
 
 open import Level
-  using ()
+  using (Lift; lift; lower)
 open import Data.Nat
   hiding(_⊔_)
 open import Data.Nat.Properties
   using (≤′⇒≤; ≤⇒≤′; ≰⇒>)
 open import Data.List
+open import Data.List.Properties
+  using (foldr-universal; foldr-fusion)
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.Vec as Vec
@@ -17,12 +19,15 @@ open import Data.Sum
   using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Empty
 
+open import Function
+
 open import Relation.Nullary
 open import Relation.Unary
   using () renaming (Decidable to Decidable₁)
 
 open import Relation.Binary.PropositionalEquality as P
-  renaming ([_] to [_]ⁱ)
+  hiding (sym)
+  renaming ([_] to P[_])
 
 open import Algebra
   using (module CommutativeSemiring)
@@ -98,19 +103,161 @@ m∸n+n≡m .(suc n) .(suc m) (s≤s {m} {n} n≤m) = begin
   ∎
   where open ≡-Reasoning
 
+
+-- foldr∘map
+
+foldr∘map : ∀ {a b c} {A : Set a} {B : Set b} {C : Set c}
+  (f : A → B) (g : B → C → C) (n : C) →
+  foldr g n ∘ map f ≗ foldr (g ∘ f) n
+foldr∘map f g n =
+  foldr-universal (foldr g n ∘ map f) (g ∘ f) n refl (λ x xs → refl)
+
 -- Cartesian product
 
 -- cartesian2
 
-cartesian2 : ∀ {A : Set} → List A → List (List A) → List (List A)
+cartesian2 : ∀ {a} {A : Set a} → List A → List (List A) → List (List A)
 cartesian2 [] yss = []
 cartesian2 (x ∷ xs) yss = map (_∷_ x) yss ++ cartesian2 xs yss
+
+-- []∉cartesian2
+
+open import Data.List.Any
+  using (Any; here; there; module Membership-≡)
+open import Data.List.Any.Properties
+  using (++↔; ∷↔; ⊥↔Any[])
+
+open import Function.Equality
+  using (_⟨$⟩_)
+open import Function.Equivalence as Eq
+  using (_⇔_; module Equivalence)
+open import Function.Inverse as Inv
+  using (_↔_; module Inverse)
+
+open import Function.Related as Related
+  using ()
+  renaming (module EquationalReasoning to ∼-Reasoning)
+
+open import Function.Related.TypeIsomorphisms
+  using(×⊎-CommutativeSemiring)
+private
+  module ×⊎ {k ℓ} = CommutativeSemiring (×⊎-CommutativeSemiring k ℓ)
+
+open Membership-≡
+
+-- ⊥⊎
+
+⊥⊎ : ∀ {A : Set} → A ↔ (⊥ ⊎ A)
+
+⊥⊎ {A} = record
+  { to = →-to-⟶ from
+  ; from = →-to-⟶ to
+  ; inverse-of = record
+    { left-inverse-of = λ x → refl
+    ; right-inverse-of = from∘to
+    }
+  }
+  where
+  from = inj₂
+  to : (⊥ ⊎ A) → A
+  to (inj₁ ())
+  to (inj₂ x) = x
+  from∘to : (x : ⊥ ⊎ A) → inj₂ (to x) ≡ x
+  from∘to (inj₁ ())
+  from∘to (inj₂ x) = refl
+
+-- Lift⊥↔⊥
+
+Lift⊥↔⊥ : ∀ {ℓ} → Lift {Level.zero} {ℓ} ⊥ ↔ ⊥
+Lift⊥↔⊥ {ℓ} = record
+  { to = →-to-⟶ lower
+  ; from = →-to-⟶ lift
+  ; inverse-of = record
+    { left-inverse-of = λ _ → refl
+    ; right-inverse-of = λ ()
+    }
+  }
+
+-- Lift⊥↔Any[]
+
+Lift⊥↔Any[] : ∀ {a} {A : Set a} {P : A → Set} → Lift {ℓ = a} ⊥ ↔ Any P []
+
+Lift⊥↔Any[] {P = P} =
+  Lift ⊥ ↔⟨ Lift⊥↔⊥ ⟩ ⊥ ↔⟨ ⊥↔Any[] ⟩ Any P [] ∎
+  where open ∼-Reasoning
+
+-- []∉map∷
+
+[]∉map∷ : ∀ {A : Set} (x : A) (yss : List (List A)) →
+  ⊥ ↔ (List A ∋ []) ∈ map (_∷_ x) yss
+
+[]∉map∷ {A} x yss = record
+  { to = →-to-⟶ (to x yss)
+  ; from = →-to-⟶ (from x yss)
+  ; inverse-of = record
+    { left-inverse-of = λ a⊥ → ⊥-elim a⊥
+    ; right-inverse-of = to∘from x yss
+    }
+  }
+  where
+  to : ∀ (x : A) (yss : List (List A)) → ⊥ → [] ∈ map (_∷_ x) yss
+  to x [] a⊥ = ⊥-elim a⊥
+  to x (ys ∷ yss) a⊥ = there (to x yss a⊥)
+
+  from : ∀ (x : A) (yss : List (List A)) → [] ∈ map (_∷_ x) yss → ⊥
+  from x [] ()
+  from x (ys ∷ yss) (here ())
+  from x (ys ∷ yss) (there []∈map∷) = from x yss []∈map∷
+
+  to∘from : ∀ (x′ : A) (yss′ : List (List A)) →
+    (p : [] ∈ map (_∷_ x′) yss′) → to x′ yss′ (from x′ yss′ p) ≡ p
+  to∘from x [] ()
+  to∘from x (ys ∷ yss) (here ())
+  to∘from x (ys ∷ yss) (there p) = cong there (to∘from x yss p)
+
+-- []∉cartesian2
+
+[]∉cartesian2 : ∀ {A : Set} (xs : List A) (yss : List (List A)) →
+  ⊥ ↔ [] ∈ cartesian2 xs yss
+[]∉cartesian2 [] yss =
+  ⊥↔Any[]
+[]∉cartesian2 {A} (x ∷ xs) yss =
+  ⊥
+    ↔⟨ ⊥⊎ ⟩
+  (⊥ ⊎ ⊥)
+    ↔⟨ []∉map∷ x yss ⟨ ×⊎.+-cong ⟩ []∉cartesian2 xs yss ⟩
+  ([] ∈ map (_∷_ x) yss ⊎ [] ∈ cartesian2 xs yss)
+    ↔⟨ ++↔ ⟩
+  [] ∈ (map (_∷_ x) yss ++ cartesian2 xs yss)
+  ∎
+  where open ∼-Reasoning
 
 -- cartesian
 
 cartesian : ∀ {A : Set} (xss : List (List A)) → List (List A)
 cartesian [] = [ [] ]
 cartesian (xs ∷ xss) = cartesian2 xs (cartesian xss)
+
+-- cartesian-is-foldr
+
+cartesian-is-foldr : ∀  {A : Set} (xss : List (List A)) →
+  cartesian xss ≡ foldr cartesian2 [ [] ] xss
+
+cartesian-is-foldr [] = refl
+cartesian-is-foldr (xs ∷ xss) = cong (cartesian2 xs) (cartesian-is-foldr xss)
+
+-- cartesian∘map
+
+cartesian∘map : ∀ {A B : Set} (f : A → List B) (xs : List A) →
+  cartesian (map f xs) ≡ foldr (cartesian2 ∘ f) [ [] ]  xs
+cartesian∘map f xs = begin
+  cartesian (map f xs)
+    ≡⟨ cartesian-is-foldr (map f xs) ⟩
+  foldr cartesian2 [ [] ] (map f xs)
+    ≡⟨ foldr∘map f cartesian2 [ [] ] xs ⟩
+  foldr (cartesian2 ∘ f) [ [] ] xs
+  ∎
+  where open ≡-Reasoning
 
 -- Cartesian product for vectors
 
