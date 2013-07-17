@@ -1,3 +1,15 @@
+{-
+In our model of big-step supercompilation whistles are assumed to be
+"inductive bars". See:
+
+Thierry Coquand. About Brouwer's fan theorem. September 23, 2003.
+Revue internationale de philosophie, 2004/4 n° 230, p. 483-489.
+
+http://www.cairn.info/revue-internationale-de-philosophie-2004-4-page-483.htm
+http://www.cairn.info/load_pdf.php?ID_ARTICLE=RIP_230_0483
+
+-}
+
 module BarWhistles where
 
 open import Level
@@ -27,7 +39,7 @@ open import Relation.Unary
 open import Relation.Binary
   using (Rel) renaming (Decidable to Decidable₂; _⇒_ to _⇒₂_)
 open import Relation.Binary.PropositionalEquality as P
-  renaming ([_] to [_]ⁱ)
+  renaming ([_] to P[_])
 
 open import Induction.WellFounded
 
@@ -62,6 +74,7 @@ record BarWhistle (A : Set) : Set₁ where
     dangerous? : ∀ {n} (h : Vec A n) → Dec (Dangerous h)
 
     -- Bar-induction
+    -- (In Coquand's terms, Bar Dangerous is required to be "an inductive bar".)
     bar[] : Bar Dangerous []
 
 
