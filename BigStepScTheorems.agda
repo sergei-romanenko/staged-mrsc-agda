@@ -82,6 +82,7 @@ module MRSC→NDSC′ where
 -- `naive-mrsc` is correct with respect to `_⊢MRSC_↪_`
 --
 
+{-
 module MRSC-correctness where
 
   open Membership-≡
@@ -163,9 +164,11 @@ module MRSC-correctness where
               Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) cs′′ gs′′
       pw′ [] .[] (here refl) = []
       pw′ [] gs′′ (there ())
-      pw′ (c′′ ∷ cs′′) [] gs′′∈ = ⊥-elim (Inverse.from (
-          []∉cartesian2 (step c′′) (cartesian (map step cs′′))) ⟨$⟩ gs′′∈)
-      pw′ (c′′ ∷ cs′′) (g′′ ∷ gs′′) gs′′∈ = {!!}
+      pw′ (c′′ ∷ cs′′) [] gs′′∈ =
+        ⊥-elim ([]∉cartesian2 (step c′′) (cartesian (map step cs′′)) gs′′∈)
+      pw′ (c′′ ∷ cs′′) (g′′ ∷ gs′′) gs′′∈ =
+        naive-mrsc-sound′ (c ∷ h) (bs c) c′′ g′′ {!!} ∷
+        pw′ cs′′ gs′′ {!!}
 
 
       pw : Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) (c ⇉) gs′
@@ -174,6 +177,7 @@ module MRSC-correctness where
     helper (inj₂ g∈gs₂) with Inverse.from rebuild-helper ⟨$⟩ g∈gs₂
     ... | c′ , c′∈c↴ , g′ , g′∈step-c′ , g≡ rewrite g≡ =
       mrsc-rebuild ¬f ¬w c′∈c↴ (naive-mrsc-sound′ (c ∷ h) (bs c) c′ g′ g′∈step-c′)
+-}
 
 --
 -- `naive-mrsc` and `lazy-mrsc` produce the same bag of graphs!
