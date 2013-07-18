@@ -4,6 +4,8 @@
 
 module Graphs where
 
+open import Data.Bool
+  using (Bool; true; false; if_then_else_)
 open import Data.Nat
 open import Data.Fin as F
   using (Fin; zero; suc)
@@ -13,6 +15,9 @@ open import Data.Product
 open import Data.Empty
 open import Data.Maybe
   using (Maybe; nothing; just)
+
+open import Function
+  using (_∘_)
 
 open import Relation.Nullary
 
@@ -83,8 +88,8 @@ mutual
 
   get-graphs : ∀ {C : Set} {n} (gs : LazyGraph C n) → List (Graph C n)
 
-  get-graphs (↯ a-⊥) =
-    ⊥-elim a-⊥
+  get-graphs (↯ a⊥) =
+    ⊥-elim a⊥
   get-graphs Ø =
     []
   get-graphs (alt gs₁ gs₂) =
@@ -154,7 +159,121 @@ get-graphs*-is-map (x ∷ gss) =
 -- given `cleaner₁` and `cleaner₂`, `cleaner₂ ∘ cleaner₁` is also a cleaner.
 --
 
+--
+-- Some cleaners
+--
+
+--
+-- A cleaner that removes subtrees that represent empty sets of graphs.
+--
+
+cl-empty′ : ∀ {C : Set} {n} (gs : LazyGraph C n) →
+  Maybe (LazyGraph C n)
+cl-empty-∨ : ∀ {C : Set} {n} (gss : List (LazyGraph C n)) →
+  List (LazyGraph C n)
+cl-empty-∧ : ∀ {C : Set} {n} (gss : List (LazyGraph C n)) →
+  Maybe (List (LazyGraph C n))
+
+-- cl-empty
+
+cl-empty′ (↯ a⊥) =
+  nothing
+cl-empty′ Ø =
+  nothing
+cl-empty′ (alt gs₁ gs₂) with cl-empty′ gs₁ | cl-empty′ gs₂
+... | nothing | gs₂′ = gs₂′
+... | gs₁′ | nothing = gs₁′
+... | just gs₁′ | just gs₂′ = just (alt gs₁′ gs₂′)
+cl-empty′ (back c b) =
+  just (back c b)
+cl-empty′ (case c gss) with cl-empty-∧ gss
+... | nothing = nothing
+... | just gss′ = just (case c gss′)
+cl-empty′ (rebuild c gss) with cl-empty-∨ gss
+... | [] = nothing
+... | gss′ = just (rebuild c gss′)
+
+-- cl-empty-∨
+
+cl-empty-∨ [] = []
+cl-empty-∨ (gs ∷ gss) with cl-empty′ gs | cl-empty-∨ gss
+... | nothing | gss′ = gss′
+... | just gs′ | gss′ = gs′ ∷ gss′
+
+-- cl-empty-∧
+
+cl-empty-∧ [] = just []
+cl-empty-∧ (gs ∷ gss) with cl-empty′ gs
+... | nothing = nothing
+... | just gs′ with cl-empty-∧ gss
+... | nothing = nothing
+... | just gss′ = just (gs′ ∷ gss′)
+
+cl-empty : ∀ {C : Set} {n} (gs : LazyGraph C n) → LazyGraph C n
+
+cl-empty gs with cl-empty′ gs
+... | nothing = Ø
+... | just gs′ = gs′
+
+{-
+-- TODO:
+--`cl-empty` is correct
+
+-- cl-empty-correct
+
+cl-empty-correct : ∀ {C : Set} {n} (gs : LazyGraph C n) →
+  get-graphs (cl-empty gs) ≡ get-graphs gs
+-}
+
+--
+-- Removing graphs that contain "bad" configurations.
+-- Configurations represent states of a computation process.
+-- Some of these states may be "bad" with respect to the problem
+-- that is to be solved by means of supercompilation.
+--
+-- The cleaner `cl-bad-config` assumes "badness" to be monotonic,
+-- in the sense that a single "bad" configuration spoils the whole
+-- graph it appears in.
+--
+-- The graph returned by `cl-bad-config` may be cleaned by `cl-empty`.
+--
+
+cl-bad-config : ∀ {C : Set} {n} (bad : C → Bool) (gs : LazyGraph C n) →
+  LazyGraph C n
+cl-bad-config* : ∀ {C : Set} {n} (bad : C → Bool)
+  (gss : List (LazyGraph C n)) → List (LazyGraph C n)
+
+-- cl-bad-config
+
+cl-bad-config bad (↯ a⊥) =
+  ↯ a⊥
+cl-bad-config bad Ø =
+  Ø
+cl-bad-config bad (alt gs₁ gs₂) =
+  alt (cl-bad-config bad gs₁) (cl-bad-config bad gs₂)
+cl-bad-config bad (back c b) =
+  if bad c then Ø else (back c b)
+cl-bad-config bad (case c gss) =
+  if bad c then Ø else (case c (cl-bad-config* bad gss))
+cl-bad-config bad (rebuild c gss) =
+  if bad c then Ø else (rebuild c (cl-bad-config* bad gss))
+
+-- cl-bad-config*
+
+cl-bad-config* bad [] = []
+cl-bad-config* bad (gs ∷ gss) =
+  (cl-bad-config bad gs) ∷ cl-bad-config* bad gss
+
+-- cl-empty-bad
+
+cl-empty-bad : ∀ {C : Set} {n} (bad : C → Bool) (gs : LazyGraph C n) →
+  LazyGraph C n
+
+cl-empty-bad bad = cl-empty ∘ cl-bad-config bad
+
+--
 -- Extracting a graph of minimal size (if any).
+--
 
 -- graph-size
 
@@ -200,8 +319,8 @@ cl-min-size* : ∀ {C : Set} {n} (gss : List(LazyGraph C n)) →
 cl-min-size-∧ : ∀ {C : Set} {n} (gss : List (LazyGraph C n)) →
   ℕ × List (LazyGraph C n)
 
-cl-min-size (↯ a-⊥) =
-  ⊥-elim a-⊥
+cl-min-size (↯ a⊥) =
+  ⊥-elim a⊥
 cl-min-size Ø =
   0 , Ø -- should be ∞ , Ø
 cl-min-size (alt gs₁ gs₂) =

@@ -39,6 +39,7 @@ open import Relation.Binary.PropositionalEquality
   renaming ([_] to [_]ⁱ)
 
 open import Util
+open import Graphs
 open import BigStepSc
 open import BarWhistles
 
@@ -199,6 +200,9 @@ record CntWorld (k : ℕ) : Set₁ where
 
     unsafe : (c : ωConf k) → Bool
 
+  cl-unsafe : ∀ {n} (gs : LazyGraph (ωConf k) n) → LazyGraph (ωConf k) n
+  cl-unsafe = cl-empty-bad unsafe
+
 -- TooBig₁
 
 TooBig₁ : ∀ (l : ℕ) (n : ℕω) → Set
@@ -238,11 +242,11 @@ mkScWorld l maxDepth {k} ⟪ start , _⇉ω , unsafe ⟫ = record
   Dangerous : ∀ {n} (h : Vec (ωConf k) n) → Set
 
   Dangerous [] = ⊥
-  Dangerous (c ∷ h) = TooBig l c ⊎ unsafe c ≡ true
+  Dangerous (c ∷ h) = TooBig l c -- ⊎ unsafe c ≡ true
 
   dangerous? : ∀ {n} → Decidable₁ (Dangerous {n})
   dangerous? [] = no id
-  dangerous? (c ∷ h) = tooBig? l c ⊎-dec ((unsafe c) Bool.≟ true)
+  dangerous? (c ∷ h) = tooBig? l c -- ⊎-dec ((unsafe c) Bool.≟ true)
 
   -- The whistle is based on the combination of `pathLengthWhistle` and
   -- and `Dangerous`.

@@ -52,10 +52,13 @@ MOSI = ⟪ start , rules , unsafe ⟫
 scwMOSI : ScWorld
 scwMOSI = mkScWorld 3 10 MOSI
 
-open BigStepMRSC scwMOSI public
+open BigStepMRSC scwMOSI
 
 graph : LazyGraph (ωConf 4) 0
 graph = lazy-mrsc (CntWorld.start MOSI)
 
-graph-cl-min-size = cl-min-size graph
+graph-cl-unsafe : LazyGraph (ωConf 4) 0
+graph-cl-unsafe = CntWorld.cl-unsafe MOSI graph
+
+graph-cl-min-size = cl-min-size graph-cl-unsafe
 graph-min-size = get-graphs (proj₂ graph-cl-min-size)

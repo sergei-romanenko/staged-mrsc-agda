@@ -10,6 +10,8 @@ open import Data.List
   using (List; []; _∷_; _++_)
 open import Data.Vec
   using (Vec; []; _∷_)
+open import Data.Product
+  using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃)
 
 open import Relation.Nullary
 
@@ -46,5 +48,11 @@ scwMOESI = mkScWorld 2 10 MOESI
 
 open BigStepMRSC scwMOESI
 
-MOESI-graph : LazyGraph (ωConf 5) zero
-MOESI-graph = lazy-mrsc (CntWorld.start MOESI)
+graph : LazyGraph (ωConf 5) zero
+graph = lazy-mrsc (CntWorld.start MOESI)
+
+graph-cl-unsafe : LazyGraph (ωConf 5) 0
+graph-cl-unsafe = CntWorld.cl-unsafe MOESI graph
+
+graph-cl-min-size = cl-min-size graph-cl-unsafe
+graph-min-size = get-graphs (proj₂ graph-cl-min-size)
