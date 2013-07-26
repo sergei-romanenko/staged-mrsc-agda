@@ -24,20 +24,23 @@ open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.Vec as Vec
   using (Vec; []; _∷_; _∈_; here; there; lookup)
-open import Data.Product
+open import Data.Product as Prod
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃; ∃₂)
-open import Data.Sum
-  using (_⊎_; inj₁; inj₂)
+open import Data.Sum as Sum
+  using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Empty
 
 open import Function
+open import Function.Related as Related
+  using ()
+  renaming (module EquationalReasoning to ∼-Reasoning)
 
 open import Relation.Nullary
 open import Relation.Unary
   using (_∪_) renaming (Decidable to Decidable₁)
 
 open import Relation.Binary
-  using (Rel) renaming (Decidable to Decidable₂; _⇒_ to _⇒₂_)
+  using (Rel; _⇒_) renaming (Decidable to Decidable₂)
 open import Relation.Binary.PropositionalEquality as P
   renaming ([_] to P[_])
 
@@ -241,31 +244,88 @@ module ⊎⋑-Whistle
 
   ⊎⋑-Dangerous : {n : ℕ} (h : Vec A n) → Set
   ⊎⋑-Dangerous [] = ⊥
-  ⊎⋑-Dangerous (c ∷ h) = VecAny (flip _⋑_ c) h
+  ⊎⋑-Dangerous (c ∷ h) = VecAny (flip _⋑_ c) h ⊎ ⊎⋑-Dangerous h
 
   -- ⊎⋑-dangerous?
 
   ⊎⋑-dangerous? : {n : ℕ} (h : Vec A n) → Dec (⊎⋑-Dangerous h)
   ⊎⋑-dangerous? [] = no id
-  ⊎⋑-dangerous? (c ∷ h) = vecAny (flip _⋑?_ c) h
-
-  -- ⊎⋑-Bar
-
-  data ⊎⋑-Bar : {n : ℕ} (h : Vec A n) → Set where
-    now   : ∀ {n} (h : Vec A n) (bz : ⊎⋑-Dangerous h) → ⊎⋑-Bar h
-    later : ∀ {n} {h : Vec A n} (bs : ∀ c → ⊎⋑-Bar (c ∷ h)) → ⊎⋑-Bar h
-
-  -- ⊎⋑-bar→bar
-
-  ⊎⋑-bar→bar : {n : ℕ} (h : Vec A n) → ⊎⋑-Bar h → Bar ⊎⋑-Dangerous  h
-  ⊎⋑-bar→bar h (now .h bz) =
-    now bz
-  ⊎⋑-bar→bar h (later bs) =
-    later (λ c → ⊎⋑-bar→bar (c ∷ h) (bs c))
+  ⊎⋑-dangerous? (c ∷ h) with vecAny (flip _⋑?_ c) h
+  ... | yes ⋑c = yes (inj₁ ⋑c)
+  ... | no ¬⋑c with ⊎⋑-dangerous? h
+  ... | yes dh = yes (inj₂ dh)
+  ... | no ¬dh = no [ ¬⋑c , ¬dh ]′
 
   -- ⊎⋑-whistle
 
-  ⊎⋑-whistle : (⊎⋑-bar[] : ⊎⋑-Bar []) → BarWhistle A
+  ⊎⋑-whistle : (⊎⋑-bar[] : Bar ⊎⋑-Dangerous []) → BarWhistle A
   ⊎⋑-whistle ⊎⋑-bar[] =
-    ⟨ ⊎⋑-Dangerous , ⊎⋑-dangerous? , ⊎⋑-bar→bar [] ⊎⋑-bar[] ⟩
+    ⟨ ⊎⋑-Dangerous , ⊎⋑-dangerous? , ⊎⋑-bar[] ⟩
+
+
+--
+-- Almost-full relations
+--
+
+data Almost-full {ℓ} {A : Set ℓ} : Rel A ℓ → Set (Level.suc ℓ) where
+  now   : ∀ {_≫_} → (r : ∀ x y → x ≫ y) →
+               Almost-full _≫_
+  later : ∀ {_≫_} → (s : ∀ c → Almost-full (λ x y → x ≫ y ⊎ c ≫ x)) →
+               Almost-full _≫_
+
+-- af-⇒
+
+af-⇒ : 
+  ∀ {ℓ} {A : Set ℓ} {P Q : Rel A ℓ} →
+    (p⇒q : P ⇒ Q) →
+    (af : Almost-full P) → Almost-full Q
+
+af-⇒ p⇒q (now r) =
+  now (λ x y → p⇒q (r x y))
+af-⇒ p⇒q (later s) =
+  later (λ c → af-⇒ (Sum.map p⇒q p⇒q) (s c))
+
+module Af-from-⊎⋑
+  {A : Set} (_⋑_ : A → A → Set) (_⋑?_ : Decidable₂ _⋑_)
+  where
+
+  open ⊎⋑-Whistle _⋑_ _⋑?_
+
+  ⊎⋑≫ : {n : ℕ} (h : Vec A n) (x y : A) → Set
+  ⊎⋑≫ h x y = ⊎⋑-Dangerous (x ∷ h) ⊎ (x ⋑ y)
+
+  ⊎⋑≫-is-af : {n : ℕ} (h : Vec A n) → Bar ⊎⋑-Dangerous h →
+               Almost-full (⊎⋑≫ h)
+  ⊎⋑≫-is-af h (now bz) =
+    now (λ x y → inj₁ (inj₂ bz))
+  ⊎⋑≫-is-af {n} h (later bs) =
+    later {_≫_ = ⊎⋑≫ h} (λ c → helper c (afch c))
+    where
+    open ∼-Reasoning
+    afch : ∀ c → Almost-full (⊎⋑≫ (c ∷ h))
+    afch c = ⊎⋑≫-is-af (c ∷ h) (bs c)
+    step : ∀ c {x} {y} → ⊎⋑≫ (c ∷ h) x y → ⊎⋑≫ h x y ⊎ ⊎⋑≫ h c x
+    step c {x} {y} =
+      ⊎⋑≫ (c ∷ h) x y
+        ↔⟨ _ ∎ ⟩
+      (⊎⋑-Dangerous (x ∷ c ∷ h) ⊎ x ⋑ y)
+        ↔⟨ _ ∎ ⟩
+      ((VecAny (flip _⋑_ x) (c ∷ h) ⊎ ⊎⋑-Dangerous (c ∷ h)) ⊎ x ⋑ y)
+        ↔⟨ _ ∎ ⟩
+      (((c ⋑ x ⊎ (VecAny (flip _⋑_ x) h))
+           ⊎ ((VecAny (flip _⋑_ c) h) ⊎ ⊎⋑-Dangerous h))
+        ⊎ x ⋑ y)
+        ∼⟨ [ [ [ inj₂ ∘ inj₂ , inj₁ ∘ inj₁ ∘ inj₁ ]′ ,
+               [ inj₂ ∘ inj₁ ∘ inj₁ , inj₁ ∘ inj₁ ∘ inj₂ ]′ ]′ ,
+             inj₁ ∘ inj₂ ]′ ⟩
+      ((((VecAny (flip _⋑_ x) h) ⊎ (⊎⋑-Dangerous h)) ⊎ (x ⋑ y))
+        ⊎ (((VecAny (flip _⋑_ c) h) ⊎ (⊎⋑-Dangerous h)) ⊎ (c ⋑ x)))
+        ↔⟨ _ ∎ ⟩
+      ((⊎⋑-Dangerous (x ∷ h) ⊎ (x ⋑ y)) ⊎ (⊎⋑-Dangerous (c ∷ h) ⊎ (c ⋑ x)))
+        ↔⟨ _ ∎ ⟩
+      (⊎⋑≫ h x y ⊎ ⊎⋑≫ h c x)
+      ∎
+    helper : ∀ c → Almost-full (⊎⋑≫ (c ∷ h)) → 
+               Almost-full (λ x y → ⊎⋑≫ h x y ⊎ ⊎⋑≫ h c x)
+    helper c = af-⇒ (step c)
 
