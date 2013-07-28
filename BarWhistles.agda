@@ -59,7 +59,7 @@ open import Util
 data Bar {A : Set} (B : ∀ {m} → Vec A m → Set) :
          {n : ℕ} (h : Vec A n) → Set where
   now   : ∀ {n} {h : Vec A n} (bz : B h) → Bar B h
-  later : ∀ {n} {h : Vec A n} (bs : ∀ a → Bar B (a ∷ h)) → Bar B h
+  later : ∀ {n} {h : Vec A n} (bs : ∀ c → Bar B (c ∷ h)) → Bar B h
 
 
 record BarWhistle (A : Set) : Set₁ where
@@ -301,23 +301,23 @@ af-⇒ p⇒q (later s) =
   later (λ c → af-⇒ (Sum.map p⇒q p⇒q) (s c))
 
 
-module Af-from-⋑ {A : Set} (⋑-world : ⋑-World A) where
+module bar⋑↯⇔af⋑≫ {A : Set} (⋑-world : ⋑-World A) where
 
   open ⋑-World ⋑-world
 
   ⋑≫ : {n : ℕ} (h : Vec A n) (x y : A) → Set
   ⋑≫ h x y = ⋑↯ (x ∷ h) ⊎ (x ⋑ y)
 
-  ⋑≫-is-af : {n : ℕ} (h : Vec A n) → Bar ⋑↯ h →
+  bar⋑↯→af⋑≫ : {n : ℕ} (h : Vec A n) → Bar ⋑↯ h →
                Almost-full (⋑≫ h)
-  ⋑≫-is-af h (now bz) =
+  bar⋑↯→af⋑≫ h (now bz) =
     now (λ x y → inj₁ (inj₂ bz))
-  ⋑≫-is-af {n} h (later bs) =
-    later {_≫_ = ⋑≫ h} (λ c → helper c (afch c))
+  bar⋑↯→af⋑≫ {n} h (later bs) =
+    later {_≫_ = ⋑≫ h} (λ c → af-⇒ (step c) (afch c))
     where
     open ∼-Reasoning
     afch : ∀ c → Almost-full (⋑≫ (c ∷ h))
-    afch c = ⋑≫-is-af (c ∷ h) (bs c)
+    afch c = bar⋑↯→af⋑≫ (c ∷ h) (bs c)
     step : ∀ c {x} {y} → ⋑≫ (c ∷ h) x y → ⋑≫ h x y ⊎ ⋑≫ h c x
     step c {x} {y} =
       ⋑≫ (c ∷ h) x y
@@ -336,7 +336,45 @@ module Af-from-⋑ {A : Set} (⋑-world : ⋑-World A) where
         ↔⟨ _ ∎ ⟩
       (⋑≫ h x y ⊎ ⋑≫ h c x)
       ∎
-    helper : ∀ c → Almost-full (⋑≫ (c ∷ h)) → 
-               Almost-full (λ x y → ⋑≫ h x y ⊎ ⋑≫ h c x)
-    helper c = af-⇒ (step c)
+
+  ----
+
+  af⋑≫→bar⋑↯ : {n : ℕ} (h : Vec A n) →
+    Almost-full (⋑≫ h) → Bar ⋑↯ h
+
+  af⋑≫→bar⋑↯ {n} h (now z) = later (λ c → later (λ c′ → now (helper c′ c (z c c′))))
+    where
+    open ∼-Reasoning
+    helper : ∀ c′ c → ⋑↯ (c ∷ h) ⊎ c ⋑ c′ → ⋑↯ (c′ ∷ c ∷ h)
+    helper c′ c =
+      (⋑↯ (c ∷ h) ⊎ c ⋑ c′)
+        ∼⟨ [ inj₂ , inj₁ ∘ inj₁ ]′ ⟩
+      ((c ⋑ c′ ⊎ (h ⋑⋑ c′)) ⊎ ⋑↯ (c ∷ h))
+        ↔⟨ _ ∎ ⟩
+      (c ∷ h ⋑⋑ c′ ⊎ ⋑↯ (c ∷ h))
+        ↔⟨ _ ∎ ⟩
+      ⋑↯ (c′ ∷ c ∷ h) ∎ 
+  af⋑≫→bar⋑↯ {n} h (later s) = later (λ c → helper c)
+    where
+    open ∼-Reasoning
+    step : ∀ c {x y} → ⋑≫ h x y ⊎ ⋑≫ h c x → ⋑≫ (c ∷ h) x y
+    step c {x} {y} =
+      (⋑≫ h x y ⊎ ⋑≫ h c x)
+        ↔⟨ _ ∎ ⟩
+      ((⋑↯ (x ∷ h) ⊎ x ⋑ y) ⊎ ⋑↯ (c ∷ h) ⊎ c ⋑ x)
+        ↔⟨ _ ∎ ⟩
+      (((h ⋑⋑ x ⊎ ⋑↯ h) ⊎ x ⋑ y) ⊎ (h ⋑⋑ c ⊎ ⋑↯ h) ⊎ c ⋑ x)
+        ∼⟨ [ [ [ inj₁ ∘ inj₁ ∘ inj₂ , inj₁ ∘ inj₂ ∘ inj₂ ]′ , inj₂ ]′ ,
+             [ [ inj₁ ∘ inj₂ ∘ inj₁ , inj₁ ∘ inj₂ ∘ inj₂ ]′ ,
+                 inj₁ ∘ inj₁ ∘ inj₁ ]′ ]′ ⟩
+      (((c ⋑ x ⊎ h ⋑⋑ x) ⊎ h ⋑⋑ c ⊎ ⋑↯ h) ⊎ x ⋑ y)
+        ↔⟨ _ ∎ ⟩
+      ((c ∷ h ⋑⋑ x ⊎ ⋑↯ (c ∷ h)) ⊎ x ⋑ y)
+        ↔⟨ _ ∎ ⟩
+      (⋑↯ (x ∷ c ∷ h) ⊎ x ⋑ y)
+        ↔⟨ _ ∎ ⟩
+      ⋑≫ (c ∷ h) x y
+      ∎
+    helper : ∀ c → Bar ⋑↯ (c ∷ h)
+    helper c = af⋑≫→bar⋑↯ (c ∷ h) (af-⇒ (step c) (s c))
 
