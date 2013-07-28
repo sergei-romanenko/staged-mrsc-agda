@@ -15,15 +15,13 @@ module BarWhistles where
 open import Level
   using ()
 open import Data.Nat
-open import Data.Nat
-  hiding(_⊔_)
 open import Data.Nat.Properties
   using (≤′⇒≤; ≤⇒≤′; ≰⇒>)
 open import Data.List as List
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.Vec as Vec
-  using (Vec; []; _∷_; _∈_; here; there; lookup)
+  using (Vec; []; _∷_; here; there; lookup)
 open import Data.Product as Prod
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃; ∃₂)
 open import Data.Sum as Sum
@@ -37,7 +35,7 @@ open import Function.Related as Related
 
 open import Relation.Nullary
 open import Relation.Unary
-  using (_∪_; _⊆′_)
+  using (_∈_; _∪_; _⊆′_)
   renaming (Decidable to Decidable₁)
 
 open import Relation.Binary
@@ -237,43 +235,47 @@ wfWhistle {A} _<_ _<?_ wf = ⟨ Dangerous , dangerous? , bar[] ⟩
 -- c′ ⋑ c means that c′ "covers" c.
 --
 
-module ⋑-Whistle
-  {A : Set} (_⋑_ : A → A → Set) (_⋑?_ : Decidable₂ _⋑_)
-  where
+record ⋑-World (A : Set) : Set₁ where
 
-  infix 4 _⋑⋑_  _⋑⋑?_
+  infix 4 _⋑_ _⋑?_ _⋑⋑_  _⋑⋑?_
+
+  field
+    _⋑_ : A → A → Set
+    _⋑?_ : Decidable₂ _⋑_
 
   -- _⋑⋑_
 
   _⋑⋑_ : ∀ {n : ℕ} (h : Vec A n) (c : A) → Set
   h ⋑⋑ c = VecAny (flip _⋑_ c) h
 
-  -- ⊎⋑-Dangerous
+  -- ⋑↯
 
-  ⋑-Dangerous : {n : ℕ} (h : Vec A n) → Set
-  ⋑-Dangerous [] = ⊥
-  ⋑-Dangerous (c ∷ h) = h ⋑⋑ c ⊎ ⋑-Dangerous h
+  ⋑↯ : {n : ℕ} (h : Vec A n) → Set
+  ⋑↯ [] = ⊥
+  ⋑↯ (c ∷ h) = h ⋑⋑ c ⊎ ⋑↯ h
 
   -- _⋑⋑?_
 
   _⋑⋑?_ : ∀ {n : ℕ} (h : Vec A n) (c : A) → Dec (h ⋑⋑ c)
   h ⋑⋑? c = vecAny (flip _⋑?_ c) h
 
-  -- ⊎⋑-dangerous?
+  -- ⋑↯?
 
-  ⋑-dangerous? : {n : ℕ} (h : Vec A n) → Dec (⋑-Dangerous h)
-  ⋑-dangerous? [] = no id
-  ⋑-dangerous? (c ∷ h) with h ⋑⋑? c
+  ⋑↯? : {n : ℕ} (h : Vec A n) → Dec (⋑↯ h)
+  ⋑↯? [] = no id
+  ⋑↯? (c ∷ h) with h ⋑⋑? c
   ... | yes ⋑c = yes (inj₁ ⋑c)
-  ... | no ¬⋑c with ⋑-dangerous? h
+  ... | no ¬⋑c with ⋑↯? h
   ... | yes dh = yes (inj₂ dh)
   ... | no ¬dh = no [ ¬⋑c , ¬dh ]′
 
-  -- ⋑-whistle
+-- ⋑-whistle
 
-  ⋑-whistle : (⋑-bar[] : Bar ⋑-Dangerous []) → BarWhistle A
-  ⋑-whistle ⋑-bar[] =
-    ⟨ ⋑-Dangerous , ⋑-dangerous? , ⋑-bar[] ⟩
+⋑-whistle : {A : Set} (⋑-world : ⋑-World A)
+            (⋑-bar[] : Bar (⋑-World.⋑↯ ⋑-world) []) → BarWhistle A
+⋑-whistle ⋑-world ⋑-bar[] =
+  ⟨ ⋑↯ , ⋑↯? , ⋑-bar[] ⟩
+  where open ⋑-World ⋑-world
 
 
 --
@@ -281,7 +283,7 @@ module ⋑-Whistle
 --
 
 data Almost-full {ℓ} {A : Set ℓ} : Rel A ℓ → Set (Level.suc ℓ) where
-  now   : ∀ {_≫_} → (r : ∀ x y → x ≫ y) →
+  now   : ∀ {_≫_} → (z : ∀ x y → x ≫ y) →
                Almost-full _≫_
   later : ∀ {_≫_} → (s : ∀ c → Almost-full (λ x y → x ≫ y ⊎ c ≫ x)) →
                Almost-full _≫_
@@ -293,21 +295,20 @@ af-⇒ :
     (p⇒q : P ⇒ Q) →
     (af : Almost-full P) → Almost-full Q
 
-af-⇒ p⇒q (now r) =
-  now (λ x y → p⇒q (r x y))
+af-⇒ p⇒q (now z) =
+  now (λ x y → p⇒q (z x y))
 af-⇒ p⇒q (later s) =
   later (λ c → af-⇒ (Sum.map p⇒q p⇒q) (s c))
 
-module Af-from-⋑
-  {A : Set} (_⋑_ : A → A → Set) (_⋑?_ : Decidable₂ _⋑_)
-  where
 
-  open ⋑-Whistle _⋑_ _⋑?_
+module Af-from-⋑ {A : Set} (⋑-world : ⋑-World A) where
+
+  open ⋑-World ⋑-world
 
   ⋑≫ : {n : ℕ} (h : Vec A n) (x y : A) → Set
-  ⋑≫ h x y = ⋑-Dangerous (x ∷ h) ⊎ (x ⋑ y)
+  ⋑≫ h x y = ⋑↯ (x ∷ h) ⊎ (x ⋑ y)
 
-  ⋑≫-is-af : {n : ℕ} (h : Vec A n) → Bar ⋑-Dangerous h →
+  ⋑≫-is-af : {n : ℕ} (h : Vec A n) → Bar ⋑↯ h →
                Almost-full (⋑≫ h)
   ⋑≫-is-af h (now bz) =
     now (λ x y → inj₁ (inj₂ bz))
@@ -321,18 +322,17 @@ module Af-from-⋑
     step c {x} {y} =
       ⋑≫ (c ∷ h) x y
         ↔⟨ _ ∎ ⟩
-      (⋑-Dangerous (x ∷ c ∷ h) ⊎ x ⋑ y)
+      (⋑↯ (x ∷ c ∷ h) ⊎ x ⋑ y)
         ↔⟨ _ ∎ ⟩
-      ((c ∷ h ⋑⋑ x ⊎ ⋑-Dangerous (c ∷ h)) ⊎ x ⋑ y)
+      ((c ∷ h ⋑⋑ x ⊎ ⋑↯ (c ∷ h)) ⊎ x ⋑ y)
         ↔⟨ _ ∎ ⟩
-      (((c ⋑ x ⊎ h ⋑⋑ x) ⊎ (h ⋑⋑ c ⊎ ⋑-Dangerous h)) ⊎ x ⋑ y)
+      (((c ⋑ x ⊎ h ⋑⋑ x) ⊎ (h ⋑⋑ c ⊎ ⋑↯ h)) ⊎ x ⋑ y)
         ∼⟨ [ [ [ inj₂ ∘ inj₂ , inj₁ ∘ inj₁ ∘ inj₁ ]′ ,
                [ inj₂ ∘ inj₁ ∘ inj₁ , inj₁ ∘ inj₁ ∘ inj₂ ]′ ]′ ,
              inj₁ ∘ inj₂ ]′ ⟩
-      (((h ⋑⋑ x ⊎ ⋑-Dangerous h) ⊎ x ⋑ y)
-        ⊎ ((h ⋑⋑ c ⊎ ⋑-Dangerous h) ⊎ c ⋑ x))
+      (((h ⋑⋑ x ⊎ ⋑↯ h) ⊎ x ⋑ y) ⊎ ((h ⋑⋑ c ⊎ ⋑↯ h) ⊎ c ⋑ x))
         ↔⟨ _ ∎ ⟩
-      ((⋑-Dangerous (x ∷ h) ⊎ x ⋑ y) ⊎ (⋑-Dangerous (c ∷ h) ⊎ c ⋑ x))
+      ((⋑↯ (x ∷ h) ⊎ x ⋑ y) ⊎ (⋑↯ (c ∷ h) ⊎ c ⋑ x))
         ↔⟨ _ ∎ ⟩
       (⋑≫ h x y ⊎ ⋑≫ h c x)
       ∎

@@ -2,7 +2,6 @@ module Everything where
 
 -- A model of small-step supercompilation
 
-import Rules
 import AbstractSc
 
 -- A model of big-step supercompilation
