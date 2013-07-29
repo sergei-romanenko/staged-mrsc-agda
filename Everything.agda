@@ -7,6 +7,7 @@ import AbstractSc
 -- A model of big-step supercompilation
 
 import Util
+import AlmostFullRel
 import BarWhistles
 import Graphs
 import BigStepSc
