@@ -29,6 +29,8 @@ open import Data.Sum as Sum
 open import Data.Empty
 
 open import Function
+open import Function.Equivalence
+  using (_⇔_; equivalence)
 open import Function.Related as Related
   using ()
   renaming (module EquationalReasoning to ∼-Reasoning)
@@ -39,7 +41,8 @@ open import Relation.Unary
   renaming (Decidable to Decidable₁)
 
 open import Relation.Binary
-  using (Rel; _⇒_) renaming (Decidable to Decidable₂)
+  using (Rel; _⇒_)
+  renaming (Decidable to Decidable₂)
 open import Relation.Binary.PropositionalEquality as P
   renaming ([_] to P[_])
 
@@ -290,8 +293,8 @@ module bar⋑↯⇔af⋑≫ {A : Set} (⋑-world : ⋑-World A) where
   ⋑≫ : {n : ℕ} (h : Vec A n) (x y : A) → Set
   ⋑≫ h x y = ⋑↯ (x ∷ h) ⊎ (x ⋑ y)
 
-  bar⋑↯→af⋑≫ : {n : ℕ} (h : Vec A n) → Bar ⋑↯ h →
-               Almost-full (⋑≫ h)
+  bar⋑↯→af⋑≫ : {n : ℕ} (h : Vec A n) →
+                  Bar ⋑↯ h → Almost-full (⋑≫ h)
   bar⋑↯→af⋑≫ h (now bz) =
     now (λ x y → inj₁ (inj₂ bz))
   bar⋑↯→af⋑≫ {n} h (later bs) =
@@ -319,12 +322,11 @@ module bar⋑↯⇔af⋑≫ {A : Set} (⋑-world : ⋑-World A) where
       (⋑≫ h x y ⊎ ⋑≫ h c x)
       ∎
 
-  ----
+  af⟱⋑≫→bar⋑↯ : {n : ℕ} (h : Vec A n)
+    (t : WFT A) → ⋑≫ h ⟱ t → Bar ⋑↯ h
 
-  af⋑≫→bar⋑↯ : {n : ℕ} (h : Vec A n) →
-    Almost-full (⋑≫ h) → Bar ⋑↯ h
-
-  af⋑≫→bar⋑↯ {n} h (now z) = later (λ c → later (λ c′ → now (helper c′ c (z c c′))))
+  af⟱⋑≫→bar⋑↯ h now R⟱ =
+    later (λ c → later (λ c′ → now (helper c′ c (R⟱ c c′))))
     where
     open ∼-Reasoning
     helper : ∀ c′ c → ⋑↯ (c ∷ h) ⊎ c ⋑ c′ → ⋑↯ (c′ ∷ c ∷ h)
@@ -336,7 +338,8 @@ module bar⋑↯⇔af⋑≫ {A : Set} (⋑-world : ⋑-World A) where
       (c ∷ h ⋑⋑ c′ ⊎ ⋑↯ (c ∷ h))
         ↔⟨ _ ∎ ⟩
       ⋑↯ (c′ ∷ c ∷ h) ∎ 
-  af⋑≫→bar⋑↯ {n} h (later s) = later (λ c → helper c)
+
+  af⟱⋑≫→bar⋑↯ h (later s) R⟱ = later (λ c → helper c)
     where
     open ∼-Reasoning
     step : ∀ c {x y} → ⋑≫ h x y ⊎ ⋑≫ h c x → ⋑≫ (c ∷ h) x y
@@ -357,6 +360,24 @@ module bar⋑↯⇔af⋑≫ {A : Set} (⋑-world : ⋑-World A) where
         ↔⟨ _ ∎ ⟩
       ⋑≫ (c ∷ h) x y
       ∎
-    helper : ∀ c → Bar ⋑↯ (c ∷ h)
-    helper c = af⋑≫→bar⋑↯ (c ∷ h) (af-⇒ (step c) (s c))
 
+    helper : ∀ c → Bar ⋑↯ (c ∷ h)
+    helper c =
+      af⟱⋑≫→bar⋑↯ (c ∷ h) (s c) (⟱-⇒ (step c) (s c) (R⟱ c))
+
+  -- af⋑≫→bar⋑↯
+
+  af⋑≫→bar⋑↯ : {n : ℕ} (h : Vec A n) →
+                  Almost-full (⋑≫ h) → Bar ⋑↯ h
+
+  af⋑≫→bar⋑↯ h af with af→af⟱ af
+  ... | t , R⟱ = af⟱⋑≫→bar⋑↯ h t R⟱
+
+  --
+  -- bar⋑↯⇔af⋑≫
+  --
+
+  bar⋑↯⇔af⋑≫ : {n : ℕ} (h : Vec A n) →
+    Bar ⋑↯ h ⇔ Almost-full (⋑≫ h)
+
+  bar⋑↯⇔af⋑≫ h = equivalence (bar⋑↯→af⋑≫ h) (af⋑≫→bar⋑↯ h)
