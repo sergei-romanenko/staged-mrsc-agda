@@ -3,7 +3,7 @@ module BigStepCounters where
 open import Data.Nat as N
   using (ℕ; zero; suc)
 open import Data.Nat.Properties as NP
-  using ()
+  using (≤-step)
 open import Data.List as List
   using (List; []; _∷_)
 open import Data.Vec as Vec
@@ -16,7 +16,7 @@ open import Data.Empty
 open import Data.Unit
   using (⊤; tt)
 open import Data.Sum
-  using (_⊎_; inj₁; inj₂)
+  using (_⊎_; inj₁; inj₂; [_,_]′)
 
 open import Function
 open import Function.Equivalence as FEQV
@@ -233,6 +233,7 @@ mkScWorld l maxDepth {k} ⟪ start , _⇉ω , unsafe ⟫ = record
   ; _⇉ = _⇉ω
   ; _↴ = List.filter (not ∘ unsafe) ∘ _↴
   ; whistle = ⟨ (λ {n} h → (maxDepth N.≤ n) ⊎  (Dangerous h))
+              , (λ {n} c h → [ inj₁ ∘ ≤-step , inj₂ ∘ inj₂ ]′)
               , (λ {n} h → (maxDepth N.≤? n) ⊎-dec (dangerous? h))
               , bar[]
               ⟩
@@ -242,11 +243,15 @@ mkScWorld l maxDepth {k} ⟪ start , _⇉ω , unsafe ⟫ = record
   Dangerous : ∀ {n} (h : Vec (ωConf k) n) → Set
 
   Dangerous [] = ⊥
-  Dangerous (c ∷ h) = TooBig l c -- ⊎ unsafe c ≡ true
+  Dangerous (c ∷ h) = TooBig l c ⊎ Dangerous h
 
   dangerous? : ∀ {n} → Decidable₁ (Dangerous {n})
   dangerous? [] = no id
-  dangerous? (c ∷ h) = tooBig? l c -- ⊎-dec ((unsafe c) Bool.≟ true)
+  dangerous? (c ∷ h) with dangerous? h
+  ... | yes dh = yes (inj₂ dh)
+  ... | no ¬dh with tooBig? l c
+  ... | yes tb = yes (inj₁ tb)
+  ... | no ¬tb = no [ ¬tb , ¬dh ]′
 
   -- The whistle is based on the combination of `pathLengthWhistle` and
   -- and `Dangerous`.

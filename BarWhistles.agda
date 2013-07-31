@@ -16,7 +16,7 @@ open import Level
   using ()
 open import Data.Nat
 open import Data.Nat.Properties
-  using (≤′⇒≤; ≤⇒≤′; ≰⇒>)
+  using (≤′⇒≤; ≤⇒≤′; ≰⇒>; ≤-step)
 open import Data.List as List
 open import Data.Fin as F
   using (Fin; zero; suc)
@@ -72,11 +72,13 @@ record BarWhistle (A : Set) : Set₁ where
   -- (which in our model of supercompilations are configurations).
 
   constructor
-    ⟨_,_,_⟩
+    ⟨_,_,_,_⟩
   field
 
     -- Dangerous histories
     Dangerous : ∀ {n} (h : Vec A n) → Set
+    Dangerous∷ : ∀ {n} (c : A) (h : Vec A n) →
+      Dangerous h → Dangerous (c ∷ h)
     dangerous? : ∀ {n} (h : Vec A n) → Dec (Dangerous h)
 
     -- Bar-induction
@@ -160,11 +162,15 @@ bar-⊎ = bar-mono (λ {m} h → inj₁)
 
 pathLengthWhistle : (A : Set) (l : ℕ) → BarWhistle A
 
-pathLengthWhistle A l = ⟨ Dangerous , Dangerous? , bar[] ⟩
+pathLengthWhistle A l = ⟨ Dangerous , Dangerous∷ , Dangerous? , bar[] ⟩
   where
 
   Dangerous : ∀ {n} (h : Vec A n) → Set
   Dangerous {n} h = l ≤ n
+
+  Dangerous∷ : ∀ {n} (c : A) (h : Vec A n) →
+      Dangerous h → Dangerous (c ∷ h)
+  Dangerous∷ c h dh = ≤-step dh
 
   Dangerous? : ∀ {n} (h : Vec A n) → Dec (Dangerous h)
   Dangerous? {n} h = l ≤? n
@@ -190,9 +196,13 @@ pathLengthWhistle A l = ⟨ Dangerous , Dangerous? , bar[] ⟩
 inverseImageWhistle : {A B : Set} (f : A → B)
   (w : BarWhistle B) → BarWhistle A
 
-inverseImageWhistle {A} {B} f ⟨ d , d? , bd[] ⟩ =
-  ⟨ d ∘ Vec.map f , d? ∘ Vec.map f , bar [] bd[] ⟩
+inverseImageWhistle {A} {B} f ⟨ d , d∷ , d? , bd[] ⟩ =
+  ⟨ d ∘ Vec.map f , Dangerous∷ , d? ∘ Vec.map f , bar [] bd[] ⟩
   where
+
+  Dangerous∷ : {n : ℕ} (c : A) (h : Vec A n) →
+    d (Vec.map f h) → d (f c ∷ (Vec.map f h))
+  Dangerous∷ c h dh = d∷ (f c) (Vec.map f h) dh
 
   bar : ∀ {n} (h : Vec A n) (b : Bar d (Vec.map f h)) → Bar (d ∘ Vec.map f) h
   bar h (now bz) = now bz
@@ -206,20 +216,29 @@ inverseImageWhistle {A} {B} f ⟨ d , d? , bd[] ⟩ =
 
 wfWhistle : ∀ {A : Set} (_<_ : Rel A Level.zero) → Decidable₂ _<_ →
               (wf : Well-founded _<_) → BarWhistle A
-wfWhistle {A} _<_ _<?_ wf = ⟨ Dangerous , dangerous? , bar[] ⟩
+wfWhistle {A} _<_ _<?_ wf = ⟨ Dangerous , Dangerous∷ , dangerous? , bar[] ⟩
   where
 
   Dangerous : ∀ {n} (h : Vec A n) → Set
   Dangerous [] = ⊥
   Dangerous (c ∷ []) = ⊥
-  Dangerous (c′ ∷ c ∷ h) = ¬ c′ < c
+  Dangerous (c′ ∷ c ∷ h) = ¬ c′ < c ⊎ Dangerous (c ∷ h)
+
+  Dangerous∷ : {n : ℕ} (c : A) (h : Vec A n) →
+    Dangerous h → Dangerous (c ∷ h)
+  Dangerous∷ c [] dh = dh
+  Dangerous∷ c (c′ ∷ h) dh = inj₂ dh
 
   dangerous? : ∀ {n} (h : Vec A n) → Dec (Dangerous h)
   dangerous? [] = no id
   dangerous? (c ∷ []) = no id
-  dangerous? (c′ ∷ c ∷ h) with c′ <? c
-  ... | yes c′<c = no (λ c′≮c → c′≮c c′<c)
-  ... | no  c′≮c = yes c′≮c
+  dangerous? (c′ ∷ c ∷ h) = helper (dangerous? (c ∷ h))
+    where
+    helper : Dec (Dangerous (c ∷ h)) → Dec (¬ (c′ < c) ⊎ Dangerous (c ∷ h))
+    helper (yes dch) = yes (inj₂ dch)
+    helper (no ¬dch) with c′ <? c
+    ... | yes c′<c = no [ (λ c′≮c → c′≮c c′<c) , ¬dch ]′
+    ... | no  c′≮c = yes (inj₁ c′≮c)
 
   bar : ∀ c {n} (h : Vec A n) → Acc _<_ c → Bar Dangerous (c ∷ h)
   bar c h (acc rs) with dangerous? (c ∷ h)
@@ -228,7 +247,7 @@ wfWhistle {A} _<_ _<?_ wf = ⟨ Dangerous , dangerous? , bar[] ⟩
     where helper : ∀ c′ → Bar Dangerous (c′ ∷ c ∷ h)
           helper c′ with c′ <? c
           ... | yes c′<c = bar c′ (c ∷ h) (rs c′ c′<c)
-          ... | no  c′≮c = now c′≮c
+          ... | no  c′≮c = now (inj₁ c′≮c)
 
   bar[] : Bar Dangerous []
   bar[] = later (λ c → bar c [] (wf c))
@@ -278,7 +297,7 @@ record ⋑-World (A : Set) : Set₁ where
 ⋑-whistle : {A : Set} (⋑-world : ⋑-World A)
             (⋑-bar[] : Bar (⋑-World.⋑↯ ⋑-world) []) → BarWhistle A
 ⋑-whistle ⋑-world ⋑-bar[] =
-  ⟨ ⋑↯ , ⋑↯? , ⋑-bar[] ⟩
+  ⟨ ⋑↯ , (λ c h → inj₂) , ⋑↯? , ⋑-bar[] ⟩
   where open ⋑-World ⋑-world
 
 
@@ -292,6 +311,8 @@ module bar⋑↯⇔af⋑≫ {A : Set} (⋑-world : ⋑-World A) where
 
   ⋑≫ : {n : ℕ} (h : Vec A n) (x y : A) → Set
   ⋑≫ h x y = ⋑↯ (x ∷ h) ⊎ (x ⋑ y)
+
+  -- bar⋑↯→af⋑≫
 
   bar⋑↯→af⋑≫ : {n : ℕ} (h : Vec A n) →
                   Bar ⋑↯ h → Almost-full (⋑≫ h)
@@ -321,6 +342,8 @@ module bar⋑↯⇔af⋑≫ {A : Set} (⋑-world : ⋑-World A) where
         ↔⟨ _ ∎ ⟩
       (⋑≫ h x y ⊎ ⋑≫ h c x)
       ∎
+
+  -- af⟱⋑≫→bar⋑↯
 
   af⟱⋑≫→bar⋑↯ : {n : ℕ} (h : Vec A n)
     (t : WFT A) → ⋑≫ h ⟱ t → Bar ⋑↯ h
