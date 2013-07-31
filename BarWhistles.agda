@@ -76,14 +76,13 @@ record BarWhistle (A : Set) : Set₁ where
   field
 
     -- Dangerous histories
-    Dangerous : ∀ {n} (h : Vec A n) → Set
-    Dangerous∷ : ∀ {n} (c : A) (h : Vec A n) →
-      Dangerous h → Dangerous (c ∷ h)
-    dangerous? : ∀ {n} (h : Vec A n) → Dec (Dangerous h)
+    ↯ : ∀ {n} (h : Vec A n) → Set
+    ↯∷ : ∀ {n} (c : A) (h : Vec A n) → ↯ h → ↯ (c ∷ h)
+    ↯? : ∀ {n} (h : Vec A n) → Dec (↯ h)
 
     -- Bar-induction
-    -- (In Coquand's terms, Bar Dangerous is required to be "an inductive bar".)
-    bar[] : Bar Dangerous []
+    -- (In Coquand's terms, `Bar ↯` is required to be "an inductive bar".)
+    bar[] : Bar ↯ []
 
 
 -- BarGen
@@ -95,13 +94,13 @@ module BarGen {A : Set} (g : ∀ {m} → Vec A m → A) (w : BarWhistle A) where
 
   open BarWhistle w
 
-  barGen′ : ∀ {k} (h : Vec A k) (b : Bar Dangerous h) →
-              ∃₂ λ n (h′ : Vec A n) → Dangerous h′
+  barGen′ : ∀ {k} (h : Vec A k) (b : Bar ↯ h) →
+              ∃₂ λ n (h′ : Vec A n) → ↯ h′
   barGen′ {k} h (now bz) = k , h , bz
   barGen′ {k} h (later bs) with g h
   ... | c = barGen′ (c ∷ h) (bs c)
 
-  barGen : ∃₂ λ n (h : Vec A n) → Dangerous h
+  barGen : ∃₂ λ n (h : Vec A n) → ↯ h
   barGen = barGen′ [] bar[]
 
 
@@ -121,7 +120,7 @@ module BarFanGen
   where
   open BarWhistle w
 
-  fanGen′ : ∀ {k} (h : Vec A k) (b : Bar Dangerous h) → Fan A
+  fanGen′ : ∀ {k} (h : Vec A k) (b : Bar ↯ h) → Fan A
   fanGen′ h (now bz) =
     fan []
   fanGen′ h (later bs) =
@@ -162,20 +161,19 @@ bar-⊎ = bar-mono (λ {m} h → inj₁)
 
 pathLengthWhistle : (A : Set) (l : ℕ) → BarWhistle A
 
-pathLengthWhistle A l = ⟨ Dangerous , Dangerous∷ , Dangerous? , bar[] ⟩
+pathLengthWhistle A l = ⟨ ↯ , ↯∷ , ↯? , bar[] ⟩
   where
 
-  Dangerous : ∀ {n} (h : Vec A n) → Set
-  Dangerous {n} h = l ≤ n
+  ↯ : ∀ {n} (h : Vec A n) → Set
+  ↯ {n} h = l ≤ n
 
-  Dangerous∷ : ∀ {n} (c : A) (h : Vec A n) →
-      Dangerous h → Dangerous (c ∷ h)
-  Dangerous∷ c h dh = ≤-step dh
+  ↯∷ : ∀ {n} (c : A) (h : Vec A n) → ↯ h → ↯ (c ∷ h)
+  ↯∷ c h dh = ≤-step dh
 
-  Dangerous? : ∀ {n} (h : Vec A n) → Dec (Dangerous h)
-  Dangerous? {n} h = l ≤? n
+  ↯? : ∀ {n} (h : Vec A n) → Dec (↯ h)
+  ↯? {n} h = l ≤? n
 
-  bar : ∀ m n (h : Vec A n) (d : m + n ≡ l) → Bar Dangerous h
+  bar : ∀ m n (h : Vec A n) (d : m + n ≡ l) → Bar ↯ h
   bar zero .l h refl =
     now (≤′⇒≤ ≤′-refl)
   bar (suc m) n h d =
@@ -184,7 +182,7 @@ pathLengthWhistle A l = ⟨ Dangerous , Dangerous∷ , Dangerous? , bar[] ⟩
     open ≡-Reasoning
     m+1+n≡l = begin m + suc n ≡⟨ m+1+n≡1+m+n m n ⟩ suc (m + n) ≡⟨ d ⟩ l ∎
 
-  bar[] : Bar Dangerous []
+  bar[] : Bar ↯ []
   bar[] = bar l zero [] (l + zero ≡ l ∋ proj₂ *+.+-identity l)
 
 --
@@ -197,12 +195,12 @@ inverseImageWhistle : {A B : Set} (f : A → B)
   (w : BarWhistle B) → BarWhistle A
 
 inverseImageWhistle {A} {B} f ⟨ d , d∷ , d? , bd[] ⟩ =
-  ⟨ d ∘ Vec.map f , Dangerous∷ , d? ∘ Vec.map f , bar [] bd[] ⟩
+  ⟨ d ∘ Vec.map f , ↯∷ , d? ∘ Vec.map f , bar [] bd[] ⟩
   where
 
-  Dangerous∷ : {n : ℕ} (c : A) (h : Vec A n) →
+  ↯∷ : {n : ℕ} (c : A) (h : Vec A n) →
     d (Vec.map f h) → d (f c ∷ (Vec.map f h))
-  Dangerous∷ c h dh = d∷ (f c) (Vec.map f h) dh
+  ↯∷ c h dh = d∷ (f c) (Vec.map f h) dh
 
   bar : ∀ {n} (h : Vec A n) (b : Bar d (Vec.map f h)) → Bar (d ∘ Vec.map f) h
   bar h (now bz) = now bz
@@ -216,40 +214,39 @@ inverseImageWhistle {A} {B} f ⟨ d , d∷ , d? , bd[] ⟩ =
 
 wfWhistle : ∀ {A : Set} (_<_ : Rel A Level.zero) → Decidable₂ _<_ →
               (wf : Well-founded _<_) → BarWhistle A
-wfWhistle {A} _<_ _<?_ wf = ⟨ Dangerous , Dangerous∷ , dangerous? , bar[] ⟩
+wfWhistle {A} _<_ _<?_ wf = ⟨ ↯ , ↯∷ , ↯? , bar[] ⟩
   where
 
-  Dangerous : ∀ {n} (h : Vec A n) → Set
-  Dangerous [] = ⊥
-  Dangerous (c ∷ []) = ⊥
-  Dangerous (c′ ∷ c ∷ h) = ¬ c′ < c ⊎ Dangerous (c ∷ h)
+  ↯ : ∀ {n} (h : Vec A n) → Set
+  ↯ [] = ⊥
+  ↯ (c ∷ []) = ⊥
+  ↯ (c′ ∷ c ∷ h) = ¬ c′ < c ⊎ ↯ (c ∷ h)
 
-  Dangerous∷ : {n : ℕ} (c : A) (h : Vec A n) →
-    Dangerous h → Dangerous (c ∷ h)
-  Dangerous∷ c [] dh = dh
-  Dangerous∷ c (c′ ∷ h) dh = inj₂ dh
+  ↯∷ : {n : ℕ} (c : A) (h : Vec A n) → ↯ h → ↯ (c ∷ h)
+  ↯∷ c [] dh = dh
+  ↯∷ c (c′ ∷ h) dh = inj₂ dh
 
-  dangerous? : ∀ {n} (h : Vec A n) → Dec (Dangerous h)
-  dangerous? [] = no id
-  dangerous? (c ∷ []) = no id
-  dangerous? (c′ ∷ c ∷ h) = helper (dangerous? (c ∷ h))
+  ↯? : ∀ {n} (h : Vec A n) → Dec (↯ h)
+  ↯? [] = no id
+  ↯? (c ∷ []) = no id
+  ↯? (c′ ∷ c ∷ h) = helper (↯? (c ∷ h))
     where
-    helper : Dec (Dangerous (c ∷ h)) → Dec (¬ (c′ < c) ⊎ Dangerous (c ∷ h))
+    helper : Dec (↯ (c ∷ h)) → Dec (¬ (c′ < c) ⊎ ↯ (c ∷ h))
     helper (yes dch) = yes (inj₂ dch)
     helper (no ¬dch) with c′ <? c
     ... | yes c′<c = no [ (λ c′≮c → c′≮c c′<c) , ¬dch ]′
     ... | no  c′≮c = yes (inj₁ c′≮c)
 
-  bar : ∀ c {n} (h : Vec A n) → Acc _<_ c → Bar Dangerous (c ∷ h)
-  bar c h (acc rs) with dangerous? (c ∷ h)
+  bar : ∀ c {n} (h : Vec A n) → Acc _<_ c → Bar ↯ (c ∷ h)
+  bar c h (acc rs) with ↯? (c ∷ h)
   ... | yes dch = now dch
   ... | no ¬dch = later helper
-    where helper : ∀ c′ → Bar Dangerous (c′ ∷ c ∷ h)
+    where helper : ∀ c′ → Bar ↯ (c′ ∷ c ∷ h)
           helper c′ with c′ <? c
           ... | yes c′<c = bar c′ (c ∷ h) (rs c′ c′<c)
           ... | no  c′≮c = now (inj₁ c′≮c)
 
-  bar[] : Bar Dangerous []
+  bar[] : Bar ↯ []
   bar[] = later (λ c → bar c [] (wf c))
 
 --

@@ -89,14 +89,14 @@ module MRSC-correctness where
   open BigStepMRSC scWorld
 
   naive-mrsc-sound′ :
-    ∀ {n} (h : History n) (b : Bar Dangerous h) (c : Conf) (g : Graph Conf n) →
+    ∀ {n} (h : History n) (b : Bar ↯ h) (c : Conf) (g : Graph Conf n) →
     g ∈ naive-mrsc′ h b c → h ⊢MRSC c ↪ g
 
   naive-mrsc-sound′ h b c g q with foldable? h c
   naive-mrsc-sound′ h b c g (here g≡) | yes (i , c⊑hi) rewrite g≡ =
     mrsc-fold (i , c⊑hi)
   naive-mrsc-sound′ h b c g (there ()) | yes (i , c⊑hi)
-  ... | no ¬f with dangerous? h
+  ... | no ¬f with ↯? h
   naive-mrsc-sound′ {n} h b c g () | no ¬f | yes w
   ... | no ¬w with b
   ... | now bz = ⊥-elim (¬w bz)
@@ -191,12 +191,12 @@ module MRSC-naive≡lazy where
 
     -- naive≡lazy′
 
-    naive≡lazy′ : ∀ {n} (h : History n) (b : Bar Dangerous h) (c : Conf) →
+    naive≡lazy′ : ∀ {n} (h : History n) (b : Bar ↯ h) (c : Conf) →
       naive-mrsc′ h b c ≡ get-graphs (lazy-mrsc′ h b c)
 
     naive≡lazy′ {n} h b c with foldable? h c
     ... | yes (i , c⊑hi) = refl
-    ... | no ¬f with dangerous? h
+    ... | no ¬f with ↯? h
     ... | yes w = refl
     ... | no ¬w with b
     ... | now bz = refl
@@ -207,7 +207,7 @@ module MRSC-naive≡lazy where
 
     -- map∘naive-mrsc′
 
-    map∘naive-mrsc′ : ∀ {n} (h : History n) (b : Bar Dangerous h)
+    map∘naive-mrsc′ : ∀ {n} (h : History n) (b : Bar ↯ h)
                             (cs : List Conf) →
       map (naive-mrsc′ h b) cs ≡ get-graphs* (map (lazy-mrsc′ h b) cs)
 

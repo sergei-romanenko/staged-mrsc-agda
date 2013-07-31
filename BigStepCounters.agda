@@ -232,34 +232,34 @@ mkScWorld l maxDepth {k} ⟪ start , _⇉ω , unsafe ⟫ = record
   ; _⊑?_ = _⊑?_
   ; _⇉ = _⇉ω
   ; _↴ = List.filter (not ∘ unsafe) ∘ _↴
-  ; whistle = ⟨ (λ {n} h → (maxDepth N.≤ n) ⊎  (Dangerous h))
+  ; whistle = ⟨ (λ {n} h → (maxDepth N.≤ n) ⊎ (↯ h))
               , (λ {n} c h → [ inj₁ ∘ ≤-step , inj₂ ∘ inj₂ ]′)
-              , (λ {n} h → (maxDepth N.≤? n) ⊎-dec (dangerous? h))
+              , (λ {n} h → (maxDepth N.≤? n) ⊎-dec (↯? h))
               , bar[]
               ⟩
   }
   where
 
-  Dangerous : ∀ {n} (h : Vec (ωConf k) n) → Set
+  ↯ : ∀ {n} (h : Vec (ωConf k) n) → Set
 
-  Dangerous [] = ⊥
-  Dangerous (c ∷ h) = TooBig l c ⊎ Dangerous h
+  ↯ [] = ⊥
+  ↯ (c ∷ h) = TooBig l c ⊎ ↯ h
 
-  dangerous? : ∀ {n} → Decidable₁ (Dangerous {n})
-  dangerous? [] = no id
-  dangerous? (c ∷ h) with dangerous? h
+  ↯? : ∀ {n} → Decidable₁ (↯ {n})
+  ↯? [] = no id
+  ↯? (c ∷ h) with ↯? h
   ... | yes dh = yes (inj₂ dh)
   ... | no ¬dh with tooBig? l c
   ... | yes tb = yes (inj₁ tb)
   ... | no ¬tb = no [ ¬tb , ¬dh ]′
 
   -- The whistle is based on the combination of `pathLengthWhistle` and
-  -- and `Dangerous`.
+  -- and `↯`.
 
   -- TODO: It is possible to construct a whistle based on the fact that
   -- the set of configurations such that `¬ TooBig l c` is finite.
 
-  bar[] : Bar (λ {m} h → maxDepth N.≤ m ⊎ Dangerous h) []
+  bar[] : Bar (λ {m} h → maxDepth N.≤ m ⊎ ↯ h) []
   bar[] = bar-⊎ [] (BarWhistle.bar[] (pathLengthWhistle (ωConf k) maxDepth))
 
 --

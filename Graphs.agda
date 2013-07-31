@@ -69,7 +69,7 @@ data Graph (C : Set) : (n : ℕ) → Set where
 -- LazyGraph
 
 data LazyGraph (C : Set) : (n : ℕ) → Set where
-  ↯       : ∀ {n} → ⊥ → LazyGraph C n
+  ⁇       : ∀ {n} → ⊥ → LazyGraph C n
   Ø       : ∀ {n} → LazyGraph C n
   alt     : ∀ {n} (gs₁ gs₂ : LazyGraph C n) → LazyGraph C n
   back    : ∀ {n} (c : C) (b : Fin n) → LazyGraph C n
@@ -88,7 +88,7 @@ mutual
 
   get-graphs : ∀ {C : Set} {n} (gs : LazyGraph C n) → List (Graph C n)
 
-  get-graphs (↯ a⊥) =
+  get-graphs (⁇ a⊥) =
     ⊥-elim a⊥
   get-graphs Ø =
     []
@@ -176,7 +176,7 @@ cl-empty-∧ : ∀ {C : Set} {n} (gss : List (LazyGraph C n)) →
 
 -- cl-empty
 
-cl-empty′ (↯ a⊥) =
+cl-empty′ (⁇ a⊥) =
   nothing
 cl-empty′ Ø =
   nothing
@@ -245,8 +245,8 @@ cl-bad-config* : ∀ {C : Set} {n} (bad : C → Bool)
 
 -- cl-bad-config
 
-cl-bad-config bad (↯ a⊥) =
-  ↯ a⊥
+cl-bad-config bad (⁇ a⊥) =
+  ⁇ a⊥
 cl-bad-config bad Ø =
   Ø
 cl-bad-config bad (alt gs₁ gs₂) =
@@ -319,7 +319,7 @@ cl-min-size* : ∀ {C : Set} {n} (gss : List(LazyGraph C n)) →
 cl-min-size-∧ : ∀ {C : Set} {n} (gss : List (LazyGraph C n)) →
   ℕ × List (LazyGraph C n)
 
-cl-min-size (↯ a⊥) =
+cl-min-size (⁇ a⊥) =
   ⊥-elim a⊥
 cl-min-size Ø =
   0 , Ø -- should be ∞ , Ø

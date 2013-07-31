@@ -157,13 +157,13 @@ module BigStepMRSC (scWorld : ScWorld) where
     mrsc-drive : ∀ {n h c}
       {gs : List (Graph Conf (suc n))}
       (¬f : ¬ Foldable h c)
-      (¬w : ¬ Dangerous h) →
+      (¬w : ¬ ↯ h) →
       (s  : Pointwise (_⊢MRSC_↪_ (c ∷ h)) (c ⇉) gs) →
       h ⊢MRSC c ↪ (case c gs)
     mrsc-rebuild : ∀ {n h c c′}
       {g  : Graph Conf (suc n)}
       (¬f : ¬ Foldable h c)
-      (¬w : ¬ Dangerous h) →
+      (¬w : ¬ ↯ h) →
       (i  : Any (_≡_ c′) (c ↴)) →
       (s  : c ∷ h ⊢MRSC c′ ↪ g) →
       h ⊢MRSC c ↪ rebuild c g
@@ -173,11 +173,11 @@ module BigStepMRSC (scWorld : ScWorld) where
 
   -- naive-mrsc′
 
-  naive-mrsc′ : ∀ {n} (h : History n) (b : Bar Dangerous h) (c : Conf) →
+  naive-mrsc′ : ∀ {n} (h : History n) (b : Bar ↯ h) (c : Conf) →
                   List (Graph Conf n)
   naive-mrsc′ {n} h b c with foldable? h c
   ... | yes (i , c⊑hi) = [ back c i ]
-  ... | no ¬f with dangerous? h
+  ... | no ¬f with ↯? h
   ... | yes w = []
   ... | no ¬w with b
   ... | now bz = ⊥-elim (¬w bz)
@@ -204,14 +204,14 @@ module BigStepMRSC (scWorld : ScWorld) where
 
   -- lazy-mrsc′
 
-  lazy-mrsc′ : ∀ {n} (h : History n) (b : Bar Dangerous h) (c : Conf) →
+  lazy-mrsc′ : ∀ {n} (h : History n) (b : Bar ↯ h) (c : Conf) →
                   LazyGraph Conf n
   lazy-mrsc′ {n} h b c with foldable? h c
   ... | yes (i , c⊑hi) = back c i
-  ... | no ¬f with dangerous? h
+  ... | no ¬f with ↯? h
   ... | yes w = Ø
   ... | no ¬w with b
-  ... | now bz = ↯ (¬w bz)
+  ... | now bz = ⁇ (¬w bz)
   ... | later bs = alt drive! rebuild!
     where
     drive!   = case c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ⇉))
