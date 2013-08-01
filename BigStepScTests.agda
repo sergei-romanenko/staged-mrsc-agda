@@ -59,7 +59,6 @@ module ScWorld3 where
   scWorld3 : ScWorld
   scWorld3 = record
     { Conf = C3
-    ; _≟Conf_ = _≟C3_
     ; _⊑_ = _≡_
     ; _⊑?_ = _≟C3_
     ; _⇉ = _⇉′

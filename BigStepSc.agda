@@ -69,17 +69,11 @@ record ScWorld : Set₁ where
     -- Configurations.
     Conf : Set
 
-    -- The equality of configurations is decidable.
-    _≟Conf_ : (c₁ c₂ : Conf) → Dec (c₁ ≡ c₂)
-
-    -- c ⊑ c′ means that c′ is more general than c.
+    -- c ⊑ c′ means that c is foldable to c′.
     _⊑_ : (c c′ : Conf) → Set
 
     -- ⊑ is decidable.
     _⊑?_ : (c c′ : Conf) → Dec (c ⊑ c′)
-
-    -- Contractions (currently they are not taken into account).
-    --Contr : Set
 
     -- Driving a configuration leads to a finite number of new ones.
     _⇉ : (c : Conf) → List Conf
@@ -93,12 +87,6 @@ record ScWorld : Set₁ where
     whistle : BarWhistle Conf
 
   open BarWhistle whistle public
-
-  conf-setoid : Setoid _ _
-  conf-setoid = P.setoid Conf
-
-  conf-decSetoid : DecSetoid _ _
-  conf-decSetoid = P.decSetoid _≟Conf_
 
   History : ℕ → Set
   History n = Vec Conf n

@@ -227,7 +227,6 @@ tooBig? l {k} c = vecAny (tooBig₁? l) c
 mkScWorld : ∀ (l : ℕ) (maxDepth : ℕ) {k} (cntWorld : CntWorld k) → ScWorld
 mkScWorld l maxDepth {k} ⟪ start , _⇉ω , unsafe ⟫ = record
   { Conf = ωConf k
-  ; _≟Conf_ = _≟ωConf_
   ; _⊑_ = _⊑_
   ; _⊑?_ = _⊑?_
   ; _⇉ = _⇉ω
