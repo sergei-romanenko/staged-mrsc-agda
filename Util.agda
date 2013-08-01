@@ -210,15 +210,6 @@ Lift⊥↔Any[] {P = P} =
 -- Cartesian product
 --
 
-infix 4 _∈×_
-
-data _∈×_ {A : Set} : (xs : List A) (yss : List (List A)) → Set where
-  [] : [] ∈× []
-  _∷_ : ∀ {x : A} {xs : List A} {ys : List A} {yss : List (List A)}
-    (x∈xs : x ∈ ys) (xs∈×yss : xs ∈× yss) →
-    x ∷ xs ∈× ys ∷ yss
-
-
 -- cartesian2
 
 cartesian2 : ∀ {a} {A : Set a} → List A → List (List A) → List (List A)
@@ -231,9 +222,11 @@ cartesian : ∀ {A : Set} (xss : List (List A)) → List (List A)
 cartesian [] = [ [] ]
 cartesian (xs ∷ xss) = cartesian2 xs (cartesian xss)
 
--- `cartesian` is correct with respect to `_∈×_`
+--
+-- Some "technical" theorems about cartesian products
+--
 
--- ∷cartesian↔∈∈
+-- ∈∈→∷cartesian
 
 ∈∈→∷cartesian :
   ∀ {A : Set} (x : A) (xs ys : List A) (yss : List (List A)) →
@@ -293,7 +286,6 @@ cartesian (xs ∷ xss) = cartesian2 xs (cartesian xss)
   helper x (y ∷ yss) (here ())
   helper x (y ∷ yss) (there []∈) = helper x yss []∈
 
-{-
 -- ∷cartesian→∈∈
 
 ∷cartesian→∈∈ :
@@ -319,57 +311,13 @@ cartesian (xs ∷ xss) = cartesian2 xs (cartesian xss)
   open ∼-Reasoning
   helper : ∀ x xs y yss → x ∷ xs ∈ map (_∷_ y) yss → x ≡ y × xs ∈ yss
   helper x xs y [] ()
-  helper x xs y yss x∷xs∈ = {!x∷xs∈!}
-{-
-  helper x xs [] ()
-  --helper x xs (ys ∷ yss) (here px) = {! px !}
-  helper x xs (ys ∷ yss) (here px) = {!!}
-  helper x xs (ys ∷ yss) (there x∷xs∈) = {!!}
--}
+  helper x xs y (ys ∷ yss) (here x∷xs≡y∷ys) = helper₂ (∷-injective x∷xs≡y∷ys)
+    where helper₂ : x ≡ y × xs ≡ ys → x ≡ y × xs ∈ ys ∷ yss
+          helper₂ (x≡y , xs≡ys) = x≡y , here xs≡ys
+  helper x xs y (ys ∷ yss) (there x∷xs∈) = helper₂ (helper x xs y yss x∷xs∈)
+    where helper₂ : x ≡ y × xs ∈ yss → x ≡ y × xs ∈ ys ∷ yss
+          helper₂ (x≡y , xs∈yss) = x≡y , there xs∈yss
 
--- cartesian↔∈×
-
-cartesian↔∈× : ∀ {A : Set} (xs : List A) (yss : List (List A)) →
-  xs ∈ cartesian yss ↔ xs ∈× yss
-
-cartesian↔∈× {A} xs yss = record
-  { to = →-to-⟶ (to xs yss)
-  ; from = →-to-⟶ (from xs yss)
-  ; inverse-of = record
-    { left-inverse-of = {!!} --from∘to xs yss
-    ; right-inverse-of = {!to∘from!}
-    }
-  }
-  where
-  to : ∀ xs yss → xs ∈ cartesian yss → xs ∈× yss
-  to .[] [] (here refl) = []
-  to xs [] (there ())
-  to [] (ys ∷ yss) xs∈ = ⊥-elim ([]cartesian→⊥ ys (cartesian yss) xs∈)
-  to (x ∷ xs) (ys ∷ yss) xs∈
-    with ∷cartesian→∈∈ x xs ys (cartesian yss) xs∈
-  ... | x∈ys , xs∈c-yss = x∈ys ∷ to xs yss xs∈c-yss
-
-  from : ∀ xs yss → xs ∈× yss → xs ∈ cartesian yss
-  from .[] .[] [] = here refl
-  from (x ∷ xs) (ys ∷ yss) (x∈ys ∷ xs∈×yss) =
-    ∈∈→∷cartesian x xs ys (cartesian yss) (x∈ys , from xs yss xs∈×yss)
-
-  from∘to : ∀ xs yss → (p : Any (_≡_ xs) (cartesian yss)) →
-    from xs yss (to xs yss p) ≡ p
-  from∘to [] [] (here refl) = refl
-  from∘to [] [] (there ())
-  from∘to [] (ys ∷ yss) p = ⊥-elim ([]cartesian→⊥ ys (cartesian yss) p)
-  from∘to (x ∷ xs) [] (here ())
-  from∘to (x ∷ xs₁) [] (there ())
-  from∘to (x ∷ xs) (ys ∷ yss) p
-    with ∷cartesian→∈∈ x xs ys (cartesian yss) p
-  ... | x∈ys , xs∈c-yss with from∘to xs yss xs∈c-yss
-  ... | rrr rewrite rrr = {!!}
--}
-
---
--- Some "technical" theorems about cartesian products
---
 
 -- ⊥↔[]∈cartesian2
 

@@ -82,11 +82,12 @@ module MRSC→NDSC′ where
 -- `naive-mrsc` is correct with respect to `_⊢MRSC_↪_`
 --
 
-{-
 module MRSC-correctness where
 
   open Membership-≡
   open BigStepMRSC scWorld
+
+  -- naive-mrsc-sound′
 
   naive-mrsc-sound′ :
     ∀ {n} (h : History n) (b : Bar ↯ h) (c : Conf) (g : Graph Conf n) →
@@ -107,9 +108,6 @@ module MRSC-correctness where
 
     gss₀ : List (List (Graph Conf _))
     gss₀ = cartesian (map step (c ⇉))
--- cartesian (map f xs) ≡ foldr (cartesian2 ∘ f) [ [] ]  xs
--- foldr (cartesian2 ∘ step) [ [] ] (c ⇉)
-
 
     gs₁ gs₂ : List (Graph Conf _)
     gs₁ = map (case c) gss₀
@@ -157,8 +155,6 @@ module MRSC-correctness where
     ... | gs′ , gs′∈gss₀ , g≡ rewrite g≡ =
       mrsc-drive ¬f ¬w pw
       where
--- gs′ ∈ foldr (cartesian2 ∘ step) [ [] ] (c ⇉)
-      
 
       pw′ : ∀ cs′′ gs′′ → gs′′ ∈ cartesian (map step cs′′) →
               Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) cs′′ gs′′
@@ -166,20 +162,27 @@ module MRSC-correctness where
       pw′ [] gs′′ (there ())
       pw′ (c′′ ∷ cs′′) [] gs′′∈ =
         ⊥-elim ([]∉cartesian2 (step c′′) (cartesian (map step cs′′)) gs′′∈)
-      pw′ (c′′ ∷ cs′′) (g′′ ∷ gs′′) gs′′∈ =
-        naive-mrsc-sound′ (c ∷ h) (bs c) c′′ g′′ {!!} ∷
-        pw′ cs′′ gs′′ {!!}
-
+      pw′ (c′′ ∷ cs′′) (g′′ ∷ gs′′) gs′′∈
+        with ∷cartesian→∈∈ g′′ gs′′ (step c′′) (cartesian (map step cs′′)) gs′′∈
+      ... | g′′∈ , gs′′∈′  =
+        naive-mrsc-sound′ (c ∷ h) (bs c) c′′ g′′ g′′∈ ∷
+        pw′ cs′′ gs′′ gs′′∈′
 
       pw : Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) (c ⇉) gs′
-      pw = {!!}
+      pw = pw′ (c ⇉) gs′ gs′∈gss₀
 
     helper (inj₂ g∈gs₂) with Inverse.from rebuild-helper ⟨$⟩ g∈gs₂
     ... | c′ , c′∈c↴ , g′ , g′∈step-c′ , g≡ rewrite g≡ =
       mrsc-rebuild ¬f ¬w c′∈c↴ (naive-mrsc-sound′ (c ∷ h) (bs c) c′ g′ g′∈step-c′)
--}
+
+  naive-mrsc-sound :
+    (c : Conf) (g : Graph Conf 0) →
+      g ∈ naive-mrsc c → [] ⊢MRSC c ↪ g
+
+  naive-mrsc-sound c g = naive-mrsc-sound′ [] bar[] c g
 
 --
+-- The main theorem:
 -- `naive-mrsc` and `lazy-mrsc` produce the same bag of graphs!
 --
 
