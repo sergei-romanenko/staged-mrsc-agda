@@ -22,7 +22,7 @@ open import Function
 open import Relation.Nullary
 
 open import Relation.Binary.PropositionalEquality as P
-  renaming ([_] to [_]ⁱ)
+  renaming ([_] to P[_])
 
 open import Util
 
@@ -44,15 +44,20 @@ open import Util
 -- (Hence, this information is supposed to be encoded inside
 -- "configurations".)
 -- 
--- back-nodes are produced by folding,
--- case-nodes represent the results of driving,
--- rebuild nodes are produced by generalization and/or decomposition.
+-- * Back-nodes are produced by folding a configuration to another
+--   configuration in the history.
+-- * Split-nodes are produced by decomposing a configuration into
+--   a number of other configurations (e.g. by driving or taking apart
+--   a let-expression).
+-- * Rebuild nodes are produced by rewriting a configuration by another
+--   one (e.g. by generalization, introducing a let-expression or
+--   applying a lemma during two-level supercompilation).
 
 -- Graph
 
 data Graph (C : Set) : (n : ℕ) → Set where
   back    : ∀ {n} (c : C) (b : Fin n) → Graph C n
-  case    : ∀ {n} (c : C) (gs : List (Graph C (suc n))) → Graph C n
+  split   : ∀ {n} (c : C) (gs : List (Graph C (suc n))) → Graph C n
   rebuild : ∀ {n} (c : C) (g : Graph C (suc n)) → Graph C n
 
 --
@@ -73,7 +78,7 @@ data LazyGraph (C : Set) : (n : ℕ) → Set where
   Ø       : ∀ {n} → LazyGraph C n
   alt     : ∀ {n} (gs₁ gs₂ : LazyGraph C n) → LazyGraph C n
   back    : ∀ {n} (c : C) (b : Fin n) → LazyGraph C n
-  case    : ∀ {n} (c : C) (gss : List (LazyGraph C (suc n))) →
+  split   : ∀ {n} (c : C) (gss : List (LazyGraph C (suc n))) →
               LazyGraph C n
   rebuild : ∀ {n} (c : C) (gss : List (LazyGraph C (suc n))) →
               LazyGraph C n
@@ -96,8 +101,8 @@ mutual
     get-graphs gs₁ ++ get-graphs gs₂
   get-graphs (back c b) =
     [ back c b ]
-  get-graphs (case c gss) =
-    map (case c) (cartesian (get-graphs* gss))
+  get-graphs (split c gss) =
+    map (split c) (cartesian (get-graphs* gss))
   get-graphs (rebuild c gss) =
     map (rebuild c) (concat (get-graphs* gss))
 
@@ -186,9 +191,9 @@ cl-empty′ (alt gs₁ gs₂) with cl-empty′ gs₁ | cl-empty′ gs₂
 ... | just gs₁′ | just gs₂′ = just (alt gs₁′ gs₂′)
 cl-empty′ (back c b) =
   just (back c b)
-cl-empty′ (case c gss) with cl-empty-∧ gss
+cl-empty′ (split c gss) with cl-empty-∧ gss
 ... | nothing = nothing
-... | just gss′ = just (case c gss′)
+... | just gss′ = just (split c gss′)
 cl-empty′ (rebuild c gss) with cl-empty-∨ gss
 ... | [] = nothing
 ... | gss′ = just (rebuild c gss′)
@@ -253,8 +258,8 @@ cl-bad-config bad (alt gs₁ gs₂) =
   alt (cl-bad-config bad gs₁) (cl-bad-config bad gs₂)
 cl-bad-config bad (back c b) =
   if bad c then Ø else (back c b)
-cl-bad-config bad (case c gss) =
-  if bad c then Ø else (case c (cl-bad-config* bad gss))
+cl-bad-config bad (split c gss) =
+  if bad c then Ø else (split c (cl-bad-config* bad gss))
 cl-bad-config bad (rebuild c gss) =
   if bad c then Ø else (rebuild c (cl-bad-config* bad gss))
 
@@ -281,7 +286,7 @@ graph-size  : ∀ {C : Set} {n} (g : Graph C n) → ℕ
 graph-size* : ∀ {C : Set} {n} (g : List (Graph C n)) → ℕ
 
 graph-size (back c b) = 1
-graph-size (case c gs) = suc (graph-size* gs)
+graph-size (split c gs) = suc (graph-size* gs)
 graph-size (rebuild c g) = suc (graph-size g)
 
 -- graph-size*
@@ -327,9 +332,9 @@ cl-min-size (alt gs₁ gs₂) =
   select-min₂ (cl-min-size gs₁) (cl-min-size gs₂)
 cl-min-size (back c b) =
   1 , back c b
-cl-min-size (case c gss) with cl-min-size-∧ gss
+cl-min-size (split c gss) with cl-min-size-∧ gss
 ... | 0 , _ = 0 , Ø
-... | k , gs = k , case c gs
+... | k , gs = k , split c gs
 cl-min-size (rebuild c gss) with select-min (cl-min-size* gss)
 ... | _ , Ø = 0 , Ø
 ... | k , gs = suc k , rebuild c [ gs ]

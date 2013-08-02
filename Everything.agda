@@ -1,6 +1,6 @@
 module Everything where
 
--- A model of small-step supercompilation
+-- A (very abstract) model of small-step supercompilation
 
 import AbstractSc
 

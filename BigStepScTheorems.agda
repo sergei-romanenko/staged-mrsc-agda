@@ -65,8 +65,8 @@ module MRSC→NDSC′ where
   MRSC→NDSC (mrsc-fold f) =
     ndsc-fold f
 
-  MRSC→NDSC (mrsc-drive {n} {h} {c} {gs} ¬f ¬w ∀i⊢ci↪g) =
-    ndsc-drive ¬f (pw-map ∀i⊢ci↪g)
+  MRSC→NDSC (mrsc-split {n} {h} {c} {gs} ¬f ¬w ∀i⊢ci↪g) =
+    ndsc-split ¬f (pw-map ∀i⊢ci↪g)
     where
     pw-map : ∀ {cs : List Conf} {gs : List (Graph Conf (suc n))}
                (qs : Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) cs gs) →
@@ -110,18 +110,18 @@ module MRSC-correctness where
     gss₀ = cartesian (map step (c ⇉))
 
     gs₁ gs₂ : List (Graph Conf _)
-    gs₁ = map (case c) gss₀
+    gs₁ = map (split c) gss₀
     gs₂ = map (rebuild c) (concat (map step (c ↴)))
 
-    drive-helper : ∃ (λ gs′ → gs′ ∈ gss₀ × g ≡ case c gs′) ↔ g ∈ gs₁
-    drive-helper =
-      ∃ (λ gs′ → gs′ ∈ gss₀ × g ≡ case c gs′)
+    split-helper : ∃ (λ gs′ → gs′ ∈ gss₀ × g ≡ split c gs′) ↔ g ∈ gs₁
+    split-helper =
+      ∃ (λ gs′ → gs′ ∈ gss₀ × g ≡ split c gs′)
         ∼⟨ Any↔ ⟩
-      Any (_≡_ g ∘ case c) (cartesian (map step (c ⇉)))
+      Any (_≡_ g ∘ split c) (cartesian (map step (c ⇉)))
         ∼⟨ map↔ ⟩
-      Any (_≡_ g) (map (case c) (cartesian (map step (c ⇉))))
+      Any (_≡_ g) (map (split c) (cartesian (map step (c ⇉))))
         ∼⟨ _ ∎ ⟩
-      g ∈ map (case c) (cartesian (map step (c ⇉)))
+      g ∈ map (split c) (cartesian (map step (c ⇉)))
       ∎
       where open ∼-Reasoning
 
@@ -151,9 +151,9 @@ module MRSC-correctness where
 
     helper : ∀ (q′ : g ∈ gs₁ ⊎ g ∈ gs₂) → h ⊢MRSC c ↪ g
 
-    helper (inj₁ g∈gs₁) with Inverse.from drive-helper ⟨$⟩ g∈gs₁
+    helper (inj₁ g∈gs₁) with Inverse.from split-helper ⟨$⟩ g∈gs₁
     ... | gs′ , gs′∈gss₀ , g≡ rewrite g≡ =
-      mrsc-drive ¬f ¬w pw
+      mrsc-split ¬f ¬w pw
       where
 
       pw′ : ∀ cs′′ gs′′ → gs′′ ∈ cartesian (map step cs′′) →
@@ -204,7 +204,8 @@ module MRSC-naive≡lazy where
     ... | no ¬w with b
     ... | now bz = refl
     ... | later bs =
-      cong₂ (λ u v → map (case c) (cartesian u) ++ map (rebuild c) (concat v))
+      cong₂ (λ u v → map (split c) (cartesian u) ++
+                      map (rebuild c) (concat v))
         (map∘naive-mrsc′ (c ∷ h) (bs c) (c ⇉))
         (map∘naive-mrsc′ (c ∷ h) (bs c) (c ↴))
 

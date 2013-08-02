@@ -17,7 +17,7 @@ open import Data.Empty
 
 open import Relation.Nullary
 open import Relation.Binary.PropositionalEquality as P
-  renaming ([_] to [_]ⁱ)
+  renaming ([_] to P[_])
 
 open import Graphs
 open import BarWhistles
@@ -76,16 +76,16 @@ module NDSC-test3 where
   open BigStepNDSC scWorld3
 
   w3graph1 : [] ⊢NDSC c0 ↪
-    case c0
-      (case c1 (back c0 (suc zero) ∷ []) ∷
-        case c2
-          (case c1 (back c0 (suc (suc zero)) ∷ []) ∷ []) ∷ [])
+    split c0
+      (split c1 (back c0 (suc zero) ∷ []) ∷
+        split c2
+          (split c1 (back c0 (suc (suc zero)) ∷ []) ∷ []) ∷ [])
   w3graph1 =
-    ndsc-drive ¬f1
-      ((ndsc-drive ¬f2
+    ndsc-split ¬f1
+      ((ndsc-split ¬f2
         ((ndsc-fold (suc zero , refl)) ∷ [])) ∷
-      (ndsc-drive ¬f3
-        ((ndsc-drive ¬f4
+      (ndsc-split ¬f3
+        ((ndsc-split ¬f4
           ((ndsc-fold (suc (suc zero) , refl)) ∷ []))
         ∷ [])) ∷ [])
     where
@@ -103,10 +103,10 @@ module NDSC-test3 where
     ¬f4 (suc (suc ()) , _)
 
   w3graph2 : [] ⊢NDSC c0 ↪
-    rebuild c0 (case c1 (back c0 (suc zero) ∷ []))
+    rebuild c0 (split c1 (back c0 (suc zero) ∷ []))
   w3graph2 =
     ndsc-rebuild ¬f1 (here refl)
-      (ndsc-drive ¬f2 ((ndsc-fold (suc zero , refl)) ∷ []))
+      (ndsc-split ¬f2 ((ndsc-fold (suc zero , refl)) ∷ []))
     where
     ¬f1 : Σ (Fin zero) (λ z → c0 ≡ lookup z []) → ⊥
     ¬f1 (() , _)

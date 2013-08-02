@@ -46,7 +46,7 @@ open import Relation.Unary
 open import Relation.Binary
   using (Setoid; DecSetoid)
 open import Relation.Binary.PropositionalEquality as P
-  renaming ([_] to [_]ⁱ)
+  renaming ([_] to P[_])
 
 {-
 open import Algebra
@@ -111,11 +111,11 @@ module BigStepNDSC (scWorld : ScWorld) where
     ndsc-fold  : ∀ {n} {h : History n} {c}
       (f : Foldable h c) →
       h ⊢NDSC c ↪ back c (proj₁ f)
-    ndsc-drive : ∀ {n h c}
+    ndsc-split : ∀ {n h c}
       {gs : List (Graph Conf (suc n))}
       (¬f : ¬ Foldable h c) →
       (s  : Pointwise (_⊢NDSC_↪_ (c ∷ h)) (c ⇉) gs) →
-      h ⊢NDSC c ↪ (case c gs)
+      h ⊢NDSC c ↪ (split c gs)
     ndsc-rebuild : ∀ {n h c c′}
       {g  : Graph Conf (suc n)}
       (¬f : ¬ Foldable h c)
@@ -142,12 +142,12 @@ module BigStepMRSC (scWorld : ScWorld) where
     mrsc-fold  : ∀ {n} {h : History n} {c}
       (f : Foldable h c) →
       h ⊢MRSC c ↪ back c (proj₁ f)
-    mrsc-drive : ∀ {n h c}
+    mrsc-split : ∀ {n h c}
       {gs : List (Graph Conf (suc n))}
       (¬f : ¬ Foldable h c)
       (¬w : ¬ ↯ h) →
       (s  : Pointwise (_⊢MRSC_↪_ (c ∷ h)) (c ⇉) gs) →
-      h ⊢MRSC c ↪ (case c gs)
+      h ⊢MRSC c ↪ (split c gs)
     mrsc-rebuild : ∀ {n h c c′}
       {g  : Graph Conf (suc n)}
       (¬f : ¬ Foldable h c)
@@ -169,10 +169,10 @@ module BigStepMRSC (scWorld : ScWorld) where
   ... | yes w = []
   ... | no ¬w with b
   ... | now bz = ⊥-elim (¬w bz)
-  ... | later bs = drive! ++ rebuild!
+  ... | later bs = split! ++ rebuild!
     where
-    drive! =
-      map (case c)
+    split! =
+      map (split c)
           (cartesian (map (naive-mrsc′ (c ∷ h) (bs c)) (c ⇉)))
     rebuild! =
       map (rebuild c)
@@ -200,9 +200,9 @@ module BigStepMRSC (scWorld : ScWorld) where
   ... | yes w = Ø
   ... | no ¬w with b
   ... | now bz = ⁇ (¬w bz)
-  ... | later bs = alt drive! rebuild!
+  ... | later bs = alt split! rebuild!
     where
-    drive!   = case c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ⇉))
+    split!   = split   c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ⇉))
     rebuild! = rebuild c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ↴))
 
 
@@ -225,7 +225,7 @@ module GraphExtraction (scWorld : ScWorld) where
     (p : h ⊢NDSC c ↪ g) → Graph Conf n
 
   extractGraph (ndsc-fold {c = c} (i , c⊑c′)) = back c i
-  extractGraph (ndsc-drive {c = c} {gs = gs} ¬f ps) = case c gs
+  extractGraph (ndsc-split {c = c} {gs = gs} ¬f ps) = split c gs
   extractGraph (ndsc-rebuild {c = c} {g = g} ¬f i p) = rebuild c g
 
   -- extractGraph-sound
@@ -234,6 +234,6 @@ module GraphExtraction (scWorld : ScWorld) where
     (p : h ⊢NDSC c ↪ g) → extractGraph p ≡ g
 
   extractGraph-sound (ndsc-fold f) = refl
-  extractGraph-sound (ndsc-drive ¬f ps) = refl
+  extractGraph-sound (ndsc-split ¬f ps) = refl
   extractGraph-sound (ndsc-rebuild ¬f i p) = refl
 

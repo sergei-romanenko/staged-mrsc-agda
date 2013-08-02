@@ -36,7 +36,7 @@ open import Relation.Unary
 open import Relation.Binary
   using (Rel) renaming (Decidable to Decidable₂)
 open import Relation.Binary.PropositionalEquality
-  renaming ([_] to [_]ⁱ)
+  renaming ([_] to P[_])
 
 open import Util
 open import Graphs
