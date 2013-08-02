@@ -54,10 +54,10 @@ scwMOSI = mkScWorld 3 10 MOSI
 
 open BigStepMRSC scwMOSI
 
-graph : LazyGraph (ωConf 4) 0
+graph : LazyGraph (ωConf 4)
 graph = lazy-mrsc (CntWorld.start MOSI)
 
-graph-cl-unsafe : LazyGraph (ωConf 4) 0
+graph-cl-unsafe : LazyGraph (ωConf 4)
 graph-cl-unsafe = CntWorld.cl-unsafe MOSI graph
 
 graph-cl-min-size = cl-min-size graph-cl-unsafe

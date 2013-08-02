@@ -48,10 +48,10 @@ scwMOESI = mkScWorld 2 10 MOESI
 
 open BigStepMRSC scwMOESI
 
-graph : LazyGraph (ωConf 5) zero
+graph : LazyGraph (ωConf 5)
 graph = lazy-mrsc (CntWorld.start MOESI)
 
-graph-cl-unsafe : LazyGraph (ωConf 5) 0
+graph-cl-unsafe : LazyGraph (ωConf 5)
 graph-cl-unsafe = CntWorld.cl-unsafe MOESI graph
 
 graph-cl-min-size = cl-min-size graph-cl-unsafe

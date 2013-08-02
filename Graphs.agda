@@ -30,12 +30,9 @@ open import Util
 -- Graphs of configurations
 --
 
--- A `Graph C n` is supposed to represent a residual program.
--- Technically, a `Graph C n` is a tree,
--- with `back` nodes being references to parent nodes.
--- A back reference, in a sense, is a `De Bruijn index`.
--- Typing rules ensure that back references cannot be
--- "out of range".
+-- A `Graph C` is supposed to represent a residual program.
+-- Technically, a `Graph C` is a tree, with `back` nodes being
+-- references to parent nodes.
 -- 
 -- A graph's nodes contain configurations. Here we abstract away
 -- from the concrete structure of configurations.
@@ -43,6 +40,11 @@ open import Util
 -- because, this information can be kept in nodes.
 -- (Hence, this information is supposed to be encoded inside
 -- "configurations".)
+--
+-- To simplify the machinery, back-nodes in this model of
+-- supercompilation do not contain explicit references
+-- to parent nodes. Hence, `back c` means that `c` is foldable
+-- to a parent configuration (perhaps, to several ones).
 -- 
 -- * Back-nodes are produced by folding a configuration to another
 --   configuration in the history.
@@ -55,10 +57,10 @@ open import Util
 
 -- Graph
 
-data Graph (C : Set) : (n : ℕ) → Set where
-  back    : ∀ {n} (c : C) (b : Fin n) → Graph C n
-  split   : ∀ {n} (c : C) (gs : List (Graph C (suc n))) → Graph C n
-  rebuild : ∀ {n} (c : C) (g : Graph C (suc n)) → Graph C n
+data Graph (C : Set) : Set where
+  back    : ∀ (c : C) → Graph C
+  split   : ∀ (c : C) (gs : List (Graph C)) → Graph C
+  rebuild : ∀ (c : C) (g : Graph C) → Graph C
 
 --
 -- Lazy graphs of configuration
@@ -73,15 +75,15 @@ data Graph (C : Set) : (n : ℕ) → Set where
 
 -- LazyGraph
 
-data LazyGraph (C : Set) : (n : ℕ) → Set where
-  ⁇       : ∀ {n} → ⊥ → LazyGraph C n
-  Ø       : ∀ {n} → LazyGraph C n
-  alt     : ∀ {n} (gs₁ gs₂ : LazyGraph C n) → LazyGraph C n
-  back    : ∀ {n} (c : C) (b : Fin n) → LazyGraph C n
-  split   : ∀ {n} (c : C) (gss : List (LazyGraph C (suc n))) →
-              LazyGraph C n
-  rebuild : ∀ {n} (c : C) (gss : List (LazyGraph C (suc n))) →
-              LazyGraph C n
+data LazyGraph (C : Set) : Set where
+  ⁇      : ⊥ → LazyGraph C
+  Ø       : LazyGraph C
+  alt     : (gs₁ gs₂ : LazyGraph C) → LazyGraph C
+  back    : ∀ (c : C) → LazyGraph C
+  split   : ∀ (c : C) (gss : List (LazyGraph C)) →
+              LazyGraph C
+  rebuild : ∀ (c : C) (gss : List (LazyGraph C)) →
+              LazyGraph C
 
 -- The semantics of `LazyGraph C n` is formally defined by
 -- the function `get-graphs` that generates a list of `Graph C n`
@@ -91,7 +93,7 @@ mutual
 
   -- get-graphs
 
-  get-graphs : ∀ {C : Set} {n} (gs : LazyGraph C n) → List (Graph C n)
+  get-graphs : {C : Set} (gs : LazyGraph C) → List (Graph C)
 
   get-graphs (⁇ a⊥) =
     ⊥-elim a⊥
@@ -99,8 +101,8 @@ mutual
     []
   get-graphs (alt gs₁ gs₂) =
     get-graphs gs₁ ++ get-graphs gs₂
-  get-graphs (back c b) =
-    [ back c b ]
+  get-graphs (back c) =
+    [ back c ]
   get-graphs (split c gss) =
     map (split c) (cartesian (get-graphs* gss))
   get-graphs (rebuild c gss) =
@@ -108,8 +110,8 @@ mutual
 
   -- get-graphs*
 
-  get-graphs* : ∀ {C : Set} {n} (gss : List (LazyGraph C n)) →
-              List (List (Graph C n))
+  get-graphs* : {C : Set} (gss : List (LazyGraph C)) →
+              List (List (Graph C))
   get-graphs* [] = []
   get-graphs* (gs ∷ gss) = get-graphs gs ∷ get-graphs* gss
 
@@ -118,7 +120,7 @@ mutual
 
 -- get-graphs*-is-map
 
-get-graphs*-is-map : ∀ {C : Set} {n} (gss : List (LazyGraph C n)) →
+get-graphs*-is-map : {C : Set} (gss : List (LazyGraph C)) →
   get-graphs* gss ≡ map get-graphs gss
 get-graphs*-is-map [] = refl
 get-graphs*-is-map (x ∷ gss) =
@@ -172,12 +174,12 @@ get-graphs*-is-map (x ∷ gss) =
 -- A cleaner that removes subtrees that represent empty sets of graphs.
 --
 
-cl-empty′ : ∀ {C : Set} {n} (gs : LazyGraph C n) →
-  Maybe (LazyGraph C n)
-cl-empty-∨ : ∀ {C : Set} {n} (gss : List (LazyGraph C n)) →
-  List (LazyGraph C n)
-cl-empty-∧ : ∀ {C : Set} {n} (gss : List (LazyGraph C n)) →
-  Maybe (List (LazyGraph C n))
+cl-empty′ : {C : Set} (gs : LazyGraph C) →
+  Maybe (LazyGraph C)
+cl-empty-∨ : {C : Set} (gss : List (LazyGraph C)) →
+  List (LazyGraph C)
+cl-empty-∧ : {C : Set} (gss : List (LazyGraph C)) →
+  Maybe (List (LazyGraph C))
 
 -- cl-empty
 
@@ -189,8 +191,8 @@ cl-empty′ (alt gs₁ gs₂) with cl-empty′ gs₁ | cl-empty′ gs₂
 ... | nothing | gs₂′ = gs₂′
 ... | gs₁′ | nothing = gs₁′
 ... | just gs₁′ | just gs₂′ = just (alt gs₁′ gs₂′)
-cl-empty′ (back c b) =
-  just (back c b)
+cl-empty′ (back c) =
+  just (back c)
 cl-empty′ (split c gss) with cl-empty-∧ gss
 ... | nothing = nothing
 ... | just gss′ = just (split c gss′)
@@ -214,7 +216,7 @@ cl-empty-∧ (gs ∷ gss) with cl-empty′ gs
 ... | nothing = nothing
 ... | just gss′ = just (gs′ ∷ gss′)
 
-cl-empty : ∀ {C : Set} {n} (gs : LazyGraph C n) → LazyGraph C n
+cl-empty : {C : Set} (gs : LazyGraph C) → LazyGraph C
 
 cl-empty gs with cl-empty′ gs
 ... | nothing = Ø
@@ -243,10 +245,10 @@ cl-empty-correct : ∀ {C : Set} {n} (gs : LazyGraph C n) →
 -- The graph returned by `cl-bad-config` may be cleaned by `cl-empty`.
 --
 
-cl-bad-config : ∀ {C : Set} {n} (bad : C → Bool) (gs : LazyGraph C n) →
-  LazyGraph C n
-cl-bad-config* : ∀ {C : Set} {n} (bad : C → Bool)
-  (gss : List (LazyGraph C n)) → List (LazyGraph C n)
+cl-bad-config : {C : Set} (bad : C → Bool) (gs : LazyGraph C) →
+  LazyGraph C
+cl-bad-config* : {C : Set} (bad : C → Bool)
+  (gss : List (LazyGraph C)) → List (LazyGraph C)
 
 -- cl-bad-config
 
@@ -256,8 +258,8 @@ cl-bad-config bad Ø =
   Ø
 cl-bad-config bad (alt gs₁ gs₂) =
   alt (cl-bad-config bad gs₁) (cl-bad-config bad gs₂)
-cl-bad-config bad (back c b) =
-  if bad c then Ø else (back c b)
+cl-bad-config bad (back c) =
+  if bad c then Ø else (back c)
 cl-bad-config bad (split c gss) =
   if bad c then Ø else (split c (cl-bad-config* bad gss))
 cl-bad-config bad (rebuild c gss) =
@@ -271,8 +273,8 @@ cl-bad-config* bad (gs ∷ gss) =
 
 -- cl-empty-bad
 
-cl-empty-bad : ∀ {C : Set} {n} (bad : C → Bool) (gs : LazyGraph C n) →
-  LazyGraph C n
+cl-empty-bad : {C : Set} (bad : C → Bool) (gs : LazyGraph C) →
+  LazyGraph C
 
 cl-empty-bad bad = cl-empty ∘ cl-bad-config bad
 
@@ -282,10 +284,10 @@ cl-empty-bad bad = cl-empty ∘ cl-bad-config bad
 
 -- graph-size
 
-graph-size  : ∀ {C : Set} {n} (g : Graph C n) → ℕ
-graph-size* : ∀ {C : Set} {n} (g : List (Graph C n)) → ℕ
+graph-size  : ∀ {C : Set} (g : Graph C) → ℕ
+graph-size* : ∀ {C : Set} (g : List (Graph C)) → ℕ
 
-graph-size (back c b) = 1
+graph-size (back c) = 1
 graph-size (split c gs) = suc (graph-size* gs)
 graph-size (rebuild c g) = suc (graph-size g)
 
@@ -302,8 +304,8 @@ graph-size* (g ∷ gs) = graph-size g + graph-size* gs
 
 -- select-min₂
 
-select-min₂ : ∀ {C : Set} {n} (kgs₁ kgs₂ : ℕ × LazyGraph C n) →
-  ℕ × LazyGraph C n
+select-min₂ : ∀ {C : Set} (kgs₁ kgs₂ : ℕ × LazyGraph C) →
+  ℕ × LazyGraph C
 
 select-min₂ (_ , Ø) (k₂ , gs₂) = k₂ , gs₂
 select-min₂ (k₁ , gs₁) (_ , Ø) = k₁ , gs₁
@@ -311,18 +313,18 @@ select-min₂ (k₁ , gs₁) (k₂ , gs₂) with k₁ ≤? k₂
 ... | yes _ = k₁ , gs₁
 ... | no  _ = k₂ , gs₂
 
-select-min : ∀ {C : Set} {n} (kgss : List (ℕ × LazyGraph C n)) →
-  ℕ × LazyGraph C n
+select-min : ∀ {C : Set} (kgss : List (ℕ × LazyGraph C)) →
+  ℕ × LazyGraph C
 select-min [] = 0 , Ø
 select-min (kgs ∷ kgss) = foldl select-min₂ kgs kgss
 
 -- cl-min-size
 
-cl-min-size : ∀ {C : Set} {n} (gs : LazyGraph C n) → ℕ × LazyGraph C n
-cl-min-size* : ∀ {C : Set} {n} (gss : List(LazyGraph C n)) →
-  List (ℕ × LazyGraph C n)
-cl-min-size-∧ : ∀ {C : Set} {n} (gss : List (LazyGraph C n)) →
-  ℕ × List (LazyGraph C n)
+cl-min-size : ∀ {C : Set} (gs : LazyGraph C) → ℕ × LazyGraph C
+cl-min-size* : ∀ {C : Set} (gss : List(LazyGraph C)) →
+  List (ℕ × LazyGraph C)
+cl-min-size-∧ : ∀ {C : Set} (gss : List (LazyGraph C)) →
+  ℕ × List (LazyGraph C)
 
 cl-min-size (⁇ a⊥) =
   ⊥-elim a⊥
@@ -330,8 +332,8 @@ cl-min-size Ø =
   0 , Ø -- should be ∞ , Ø
 cl-min-size (alt gs₁ gs₂) =
   select-min₂ (cl-min-size gs₁) (cl-min-size gs₂)
-cl-min-size (back c b) =
-  1 , back c b
+cl-min-size (back c) =
+  1 , back c
 cl-min-size (split c gss) with cl-min-size-∧ gss
 ... | 0 , _ = 0 , Ø
 ... | k , gs = k , split c gs

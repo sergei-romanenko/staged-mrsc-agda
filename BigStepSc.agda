@@ -106,18 +106,18 @@ module BigStepNDSC (scWorld : ScWorld) where
 
   infix 4 _⊢NDSC_↪_
 
-  data _⊢NDSC_↪_ : ∀ {n} (h : History n) (c : Conf) (g : Graph Conf n)
-                                                               → Set where
+  data _⊢NDSC_↪_ : ∀ {n}(h : History n) (c : Conf) (g : Graph Conf) →
+                                                              Set where
     ndsc-fold  : ∀ {n} {h : History n} {c}
       (f : Foldable h c) →
-      h ⊢NDSC c ↪ back c (proj₁ f)
-    ndsc-split : ∀ {n h c}
-      {gs : List (Graph Conf (suc n))}
+      h ⊢NDSC c ↪ back c
+    ndsc-split : ∀ {n} {h : History n} {c}
+      {gs : List (Graph Conf)}
       (¬f : ¬ Foldable h c) →
       (s  : Pointwise (_⊢NDSC_↪_ (c ∷ h)) (c ⇉) gs) →
       h ⊢NDSC c ↪ (split c gs)
-    ndsc-rebuild : ∀ {n h c c′}
-      {g  : Graph Conf (suc n)}
+    ndsc-rebuild : ∀ {n} {h : History n} {c c′}
+      {g  : Graph Conf}
       (¬f : ¬ Foldable h c)
       (i  : Any (_≡_ c′) (c ↴)) →
       (s  : c ∷ h ⊢NDSC c′ ↪ g) →
@@ -137,19 +137,19 @@ module BigStepMRSC (scWorld : ScWorld) where
 
   infix 4 _⊢MRSC_↪_
 
-  data _⊢MRSC_↪_ : ∀ {n} (h : History n) (c : Conf) (g : Graph Conf n)
+  data _⊢MRSC_↪_ : ∀ {n} (h : History n) (c : Conf) (g : Graph Conf)
                                                                → Set where
     mrsc-fold  : ∀ {n} {h : History n} {c}
       (f : Foldable h c) →
-      h ⊢MRSC c ↪ back c (proj₁ f)
-    mrsc-split : ∀ {n h c}
-      {gs : List (Graph Conf (suc n))}
+      h ⊢MRSC c ↪ back c
+    mrsc-split : ∀ {n} {h : History n} {c}
+      {gs : List (Graph Conf)}
       (¬f : ¬ Foldable h c)
       (¬w : ¬ ↯ h) →
       (s  : Pointwise (_⊢MRSC_↪_ (c ∷ h)) (c ⇉) gs) →
       h ⊢MRSC c ↪ (split c gs)
-    mrsc-rebuild : ∀ {n h c c′}
-      {g  : Graph Conf (suc n)}
+    mrsc-rebuild : ∀ {n} {h : History n} {c c′}
+      {g  : Graph Conf}
       (¬f : ¬ Foldable h c)
       (¬w : ¬ ↯ h) →
       (i  : Any (_≡_ c′) (c ↴)) →
@@ -162,9 +162,9 @@ module BigStepMRSC (scWorld : ScWorld) where
   -- naive-mrsc′
 
   naive-mrsc′ : ∀ {n} (h : History n) (b : Bar ↯ h) (c : Conf) →
-                  List (Graph Conf n)
+                  List (Graph Conf)
   naive-mrsc′ {n} h b c with foldable? h c
-  ... | yes (i , c⊑hi) = [ back c i ]
+  ... | yes (i , c⊑hi) = [ back c ]
   ... | no ¬f with ↯? h
   ... | yes w = []
   ... | no ¬w with b
@@ -180,7 +180,7 @@ module BigStepMRSC (scWorld : ScWorld) where
   
   -- naive-mrsc
 
-  naive-mrsc : (c : Conf) → List(Graph Conf 0)
+  naive-mrsc : (c : Conf) → List (Graph Conf)
   naive-mrsc c = naive-mrsc′ [] bar[] c
 
   -- "Lazy" multi-result supercompilation.
@@ -193,9 +193,9 @@ module BigStepMRSC (scWorld : ScWorld) where
   -- lazy-mrsc′
 
   lazy-mrsc′ : ∀ {n} (h : History n) (b : Bar ↯ h) (c : Conf) →
-                  LazyGraph Conf n
+                  LazyGraph Conf
   lazy-mrsc′ {n} h b c with foldable? h c
-  ... | yes (i , c⊑hi) = back c i
+  ... | yes (i , c⊑hi) = back c
   ... | no ¬f with ↯? h
   ... | yes w = Ø
   ... | no ¬w with b
@@ -208,7 +208,7 @@ module BigStepMRSC (scWorld : ScWorld) where
 
   -- lazy-mrsc
 
-  lazy-mrsc : (c : Conf) → LazyGraph Conf 0
+  lazy-mrsc : (c : Conf) → LazyGraph Conf
   lazy-mrsc c = lazy-mrsc′ [] bar[] c
 
 --
@@ -221,16 +221,16 @@ module GraphExtraction (scWorld : ScWorld) where
 
   -- extractGraph
 
-  extractGraph : ∀ {n} {h : History n} {c : Conf} {g : Graph Conf n}
-    (p : h ⊢NDSC c ↪ g) → Graph Conf n
+  extractGraph : ∀ {n} {h : History n} {c : Conf} {g : Graph Conf}
+    (p : h ⊢NDSC c ↪ g) → Graph Conf
 
-  extractGraph (ndsc-fold {c = c} (i , c⊑c′)) = back c i
+  extractGraph (ndsc-fold {c = c} (i , c⊑c′)) = back c
   extractGraph (ndsc-split {c = c} {gs = gs} ¬f ps) = split c gs
   extractGraph (ndsc-rebuild {c = c} {g = g} ¬f i p) = rebuild c g
 
   -- extractGraph-sound
 
-  extractGraph-sound : ∀ {n} {h : History n} {c : Conf} {g : Graph Conf n}
+  extractGraph-sound : ∀ {n} {h : History n} {c : Conf} {g : Graph Conf}
     (p : h ⊢NDSC c ↪ g) → extractGraph p ≡ g
 
   extractGraph-sound (ndsc-fold f) = refl

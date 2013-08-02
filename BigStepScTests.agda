@@ -77,17 +77,15 @@ module NDSC-test3 where
 
   w3graph1 : [] ⊢NDSC c0 ↪
     split c0
-      (split c1 (back c0 (suc zero) ∷ []) ∷
-        split c2
-          (split c1 (back c0 (suc (suc zero)) ∷ []) ∷ []) ∷ [])
+      (split c1 [ back c0 ] ∷
+       split c2 [ split c1 [ back c0 ] ] ∷ [])
   w3graph1 =
     ndsc-split ¬f1
-      ((ndsc-split ¬f2
-        ((ndsc-fold (suc zero , refl)) ∷ [])) ∷
+      (ndsc-split ¬f2
+        (ndsc-fold (suc zero , refl) ∷ []) ∷
       (ndsc-split ¬f3
-        ((ndsc-split ¬f4
-          ((ndsc-fold (suc (suc zero) , refl)) ∷ []))
-        ∷ [])) ∷ [])
+        (ndsc-split ¬f4
+          (ndsc-fold (suc (suc zero) , refl) ∷ []) ∷ [])) ∷ [])
     where
     ¬f1 : ¬ Σ (Fin zero) (λ z → c0 ≡ lookup z [])
     ¬f1 (() , _)
@@ -103,10 +101,11 @@ module NDSC-test3 where
     ¬f4 (suc (suc ()) , _)
 
   w3graph2 : [] ⊢NDSC c0 ↪
-    rebuild c0 (split c1 (back c0 (suc zero) ∷ []))
+    rebuild c0 (split c1 (back c0 ∷ []))
   w3graph2 =
     ndsc-rebuild ¬f1 (here refl)
-      (ndsc-split ¬f2 ((ndsc-fold (suc zero , refl)) ∷ []))
+      (ndsc-split ¬f2
+        ((ndsc-fold (suc zero , refl)) ∷ []))
     where
     ¬f1 : Σ (Fin zero) (λ z → c0 ≡ lookup z []) → ⊥
     ¬f1 (() , _)

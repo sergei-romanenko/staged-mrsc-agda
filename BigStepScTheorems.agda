@@ -60,7 +60,8 @@ module MRSC→NDSC′ where
   open BigStepNDSC scWorld
   open BigStepMRSC scWorld
 
-  MRSC→NDSC : ∀ {n h c g} → _⊢MRSC_↪_ {n} h c g → h ⊢NDSC c ↪ g
+  MRSC→NDSC : ∀ {n} {h : History n} {c g} →
+    h ⊢MRSC c ↪ g → h ⊢NDSC c ↪ g
 
   MRSC→NDSC (mrsc-fold f) =
     ndsc-fold f
@@ -68,7 +69,7 @@ module MRSC→NDSC′ where
   MRSC→NDSC (mrsc-split {n} {h} {c} {gs} ¬f ¬w ∀i⊢ci↪g) =
     ndsc-split ¬f (pw-map ∀i⊢ci↪g)
     where
-    pw-map : ∀ {cs : List Conf} {gs : List (Graph Conf (suc n))}
+    pw-map : ∀ {cs : List Conf} {gs : List (Graph Conf)}
                (qs : Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) cs gs) →
              Pointwise.Rel (_⊢NDSC_↪_ (c ∷ h)) cs gs
     pw-map [] = []
@@ -90,7 +91,7 @@ module MRSC-correctness where
   -- naive-mrsc-sound′
 
   naive-mrsc-sound′ :
-    ∀ {n} (h : History n) (b : Bar ↯ h) (c : Conf) (g : Graph Conf n) →
+    ∀ {n} (h : History n) (b : Bar ↯ h) (c : Conf) (g : Graph Conf) →
     g ∈ naive-mrsc′ h b c → h ⊢MRSC c ↪ g
 
   naive-mrsc-sound′ h b c g q with foldable? h c
@@ -103,13 +104,13 @@ module MRSC-correctness where
   ... | now bz = ⊥-elim (¬w bz)
   ... | later bs = helper (Inverse.from ++↔ ⟨$⟩ q)
     where
-    step : ∀ c → List (Graph Conf _)
+    step : ∀ c → List (Graph Conf)
     step = naive-mrsc′ (c ∷ h) (bs c)
 
-    gss₀ : List (List (Graph Conf _))
+    gss₀ : List (List (Graph Conf))
     gss₀ = cartesian (map step (c ⇉))
 
-    gs₁ gs₂ : List (Graph Conf _)
+    gs₁ gs₂ : List (Graph Conf)
     gs₁ = map (split c) gss₀
     gs₂ = map (rebuild c) (concat (map step (c ↴)))
 
@@ -176,7 +177,7 @@ module MRSC-correctness where
       mrsc-rebuild ¬f ¬w c′∈c↴ (naive-mrsc-sound′ (c ∷ h) (bs c) c′ g′ g′∈step-c′)
 
   naive-mrsc-sound :
-    (c : Conf) (g : Graph Conf 0) →
+    (c : Conf) (g : Graph Conf) →
       g ∈ naive-mrsc c → [] ⊢MRSC c ↪ g
 
   naive-mrsc-sound c g = naive-mrsc-sound′ [] bar[] c g
