@@ -13,7 +13,7 @@ open import Data.List.Properties
 open import Data.List.Any
   using (Any; here; there; module Membership-≡)
 open import Data.List.Any.Properties
-  using (++↔; ∷↔; ⊥↔Any[])
+  using (⊥↔Any[]; Any↔; ++↔; ∷↔; return↔; map↔; concat↔; ⊎↔)
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.Vec as Vec
@@ -35,6 +35,13 @@ open import Function.Inverse as Inv
 open import Function.Related as Related
   using ()
   renaming (module EquationalReasoning to ∼-Reasoning)
+
+import Relation.Binary.Sigma.Pointwise as Σ
+open import Relation.Binary.Product.Pointwise
+  using (_×-cong_)
+
+open import Relation.Binary.List.Pointwise as Pointwise
+  using ([]; _∷_)
 
 open import Relation.Nullary
 open import Relation.Unary
@@ -206,6 +213,48 @@ Lift⊥↔Any[] {P = P} =
   to∘from x (ys ∷ yss) (here ())
   to∘from x (ys ∷ yss) (there p) = cong there (to∘from x yss p)
 
+
+-- map↔∘Any↔
+
+map↔∘Any↔ : {A : Set}
+  (x : A) (f : List A → A) (xss : List (List A)) →
+  ∃ (λ xs → xs ∈ xss × x ≡ f xs) ↔ x ∈ map f xss
+map↔∘Any↔ x f xss =
+  ∃ (λ xs → xs ∈ xss × x ≡ f xs)
+    ∼⟨ Any↔ ⟩
+  Any (_≡_ x ∘ f) xss
+    ∼⟨ map↔ ⟩
+  Any (_≡_ x) (map f xss)
+    ∼⟨ _ ∎ ⟩
+  x ∈ map f xss
+  ∎
+  where open ∼-Reasoning
+
+concat↔∘Any↔ : {A B : Set}
+  (z : B) (g : B → B) (f : A → List B) (xs : List A) →
+  ∃ (λ x → x ∈ xs × ∃ (λ y → y ∈ f x × z ≡ g y)) ↔
+  z ∈ map g (concat (map f xs))
+concat↔∘Any↔ z g f xs =
+  ∃ (λ x → x ∈ xs × ∃ (λ y → y ∈ f x × z ≡ g y))
+    ∼⟨ Σ.cong Inv.id (Inv.id ×-cong Any↔) ⟩
+  ∃ (λ x → x ∈ xs × (Any (λ y → z ≡ g y) (f x)))
+    ∼⟨ _ ∎ ⟩
+  ∃ (λ x → x ∈ xs × (Any (λ y → z ≡ g y) ∘ f) x)
+    ∼⟨ _ ∎ ⟩
+  ∃ (λ x → x ∈ xs × (Any (_≡_ z ∘ g) ∘ f) x)
+    ∼⟨ Any↔ ⟩
+  Any (Any (_≡_ z ∘ g) ∘ f) xs
+    ∼⟨ map↔ ⟩
+  Any (Any (_≡_ z ∘ g)) (map f xs)
+    ∼⟨ concat↔ ⟩
+  Any (_≡_ z ∘ g) (concat (map f xs))
+    ∼⟨ map↔ ⟩
+  Any (_≡_ z) (map g (concat (map f xs)))
+    ∼⟨ _ ∎ ⟩
+  z ∈ map g (concat (map f xs))
+  ∎
+  where open ∼-Reasoning
+
 --
 -- Cartesian product
 --
@@ -362,6 +411,16 @@ cartesian∘map f xs = begin
   foldr (cartesian2 ∘ f) [ [] ] xs
   ∎
   where open ≡-Reasoning
+
+-- The main property of `cartesian`
+
+∈*→∈cartesian :
+  ∀ {A : Set} (xs : List A) (yss : List (List A)) →
+    Pointwise.Rel _∈_ xs yss → xs ∈ cartesian yss
+
+∈*→∈cartesian .[] .[] [] = here refl
+∈*→∈cartesian .(x ∷ xs) .(ys ∷ yss) (_∷_ {x} {xs} {ys} {yss} r rs) =
+  ∈∈→∷cartesian x xs ys (cartesian yss) (r , (∈*→∈cartesian xs yss rs))
 
 --
 -- Cartesian product for vectors

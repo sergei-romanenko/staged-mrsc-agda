@@ -26,7 +26,7 @@ open import Function
 open import Function.Equality
   using (_⟨$⟩_)
 open import Function.Equivalence as Eq
-  using (_⇔_; module Equivalence)
+  using (_⇔_; equivalence; module Equivalence)
 open import Function.Inverse as Inv
   using (_↔_; module Inverse)
 open import Function.Related as Related
@@ -42,6 +42,7 @@ open import Relation.Binary.List.Pointwise as Pointwise
 
 open import Relation.Nullary
 open import Relation.Binary.PropositionalEquality as P
+  hiding (sym)
   renaming ([_] to P[_])
 
 
@@ -91,16 +92,16 @@ module MRSC-correctness where
   -- naive-mrsc-sound′
 
   naive-mrsc-sound′ :
-    ∀ {n} (h : History n) (b : Bar ↯ h) (c : Conf) (g : Graph Conf) →
+    ∀ {n} (h : History n) (b : Bar ↯ h) (c : Conf) {g : Graph Conf} →
     g ∈ naive-mrsc′ h b c → h ⊢MRSC c ↪ g
 
-  naive-mrsc-sound′ h b c g q with foldable? h c
-  naive-mrsc-sound′ h b c g (here g≡) | yes (i , c⊑hi) rewrite g≡ =
+  naive-mrsc-sound′ h b c q with foldable? h c
+  naive-mrsc-sound′ h b c (here g≡) | yes (i , c⊑hi) rewrite g≡ =
     mrsc-fold (i , c⊑hi)
-  naive-mrsc-sound′ h b c g (there ()) | yes (i , c⊑hi)
+  naive-mrsc-sound′ h b c (there ()) | yes (i , c⊑hi)
   ... | no ¬f with ↯? h
-  naive-mrsc-sound′ {n} h b c g () | no ¬f | yes w
-  ... | no ¬w with b
+  naive-mrsc-sound′ {n} h b c () | no ¬f | yes w
+  naive-mrsc-sound′ {n} h b c {g} q | no ¬f | no ¬w with b
   ... | now bz = ⊥-elim (¬w bz)
   ... | later bs = helper (Inverse.from ++↔ ⟨$⟩ q)
     where
@@ -114,45 +115,22 @@ module MRSC-correctness where
     gs₁ = map (split c) gss₀
     gs₂ = map (rebuild c) (concat (map step (c ↴)))
 
-    split-helper : ∃ (λ gs′ → gs′ ∈ gss₀ × g ≡ split c gs′) ↔ g ∈ gs₁
+    split-helper :
+       g ∈ gs₁ → ∃ (λ gs′ → gs′ ∈ gss₀ × g ≡ split c gs′)
     split-helper =
-      ∃ (λ gs′ → gs′ ∈ gss₀ × g ≡ split c gs′)
-        ∼⟨ Any↔ ⟩
-      Any (_≡_ g ∘ split c) (cartesian (map step (c ⇉)))
-        ∼⟨ map↔ ⟩
-      Any (_≡_ g) (map (split c) (cartesian (map step (c ⇉))))
-        ∼⟨ _ ∎ ⟩
-      g ∈ map (split c) (cartesian (map step (c ⇉)))
-      ∎
+      _ ↔⟨ sym $ map↔∘Any↔ g (split c) gss₀ ⟩ _ ∎
       where open ∼-Reasoning
 
     rebuild-helper :
-      ∃ (λ c′ → c′ ∈ c ↴ × ∃ (λ g′ → g′ ∈ step c′ × g ≡ rebuild c g′)) ↔
-      g ∈ gs₂
+      g ∈ map (rebuild c) (concat (map step (c ↴))) →
+      ∃ (λ c′ → c′ ∈ c ↴ × ∃ (λ g′ → g′ ∈ step c′ × g ≡ rebuild c g′))
     rebuild-helper =
-      ∃ (λ c′ → c′ ∈ (c ↴) × ∃ (λ g′ → g′ ∈ step c′ × g ≡ rebuild c g′))
-        ∼⟨ Σ.cong Inv.id (Inv.id ×-cong Any↔) ⟩
-      ∃ (λ c′ → c′ ∈ (c ↴) × (Any (λ g′ → g ≡ rebuild c g′) (step c′)))
-        ∼⟨ _ ∎ ⟩
-      ∃ (λ c′ → c′ ∈ (c ↴) × (Any (λ g′ → g ≡ rebuild c g′) ∘ step) c′)
-        ∼⟨ _ ∎ ⟩
-      ∃ (λ c′ → c′ ∈ (c ↴) × (Any (_≡_ g ∘ rebuild c) ∘ step) c′)
-        ∼⟨ Any↔ ⟩
-      Any (Any (_≡_ g ∘ rebuild c) ∘ step) (c ↴)
-        ∼⟨ map↔ ⟩
-      Any (Any (_≡_ g ∘ rebuild c)) (map step (c ↴))
-        ∼⟨ concat↔ ⟩
-      Any (_≡_ g ∘ rebuild c) (concat (map step (c ↴)))
-        ∼⟨ map↔ ⟩
-      Any (_≡_ g) (map (rebuild c) (concat (map step (c ↴))))
-        ∼⟨ _ ∎ ⟩
-      g ∈ map (rebuild c) (concat (map step (c ↴)))
-      ∎
+      _ ↔⟨ sym $ concat↔∘Any↔ g (rebuild c) step (c ↴) ⟩ _ ∎
       where open ∼-Reasoning
 
     helper : ∀ (q′ : g ∈ gs₁ ⊎ g ∈ gs₂) → h ⊢MRSC c ↪ g
 
-    helper (inj₁ g∈gs₁) with Inverse.from split-helper ⟨$⟩ g∈gs₁
+    helper (inj₁ g∈gs₁) with split-helper g∈gs₁
     ... | gs′ , gs′∈gss₀ , g≡ rewrite g≡ =
       mrsc-split ¬f ¬w pw
       where
@@ -166,21 +144,139 @@ module MRSC-correctness where
       pw′ (c′′ ∷ cs′′) (g′′ ∷ gs′′) gs′′∈
         with ∷cartesian→∈∈ g′′ gs′′ (step c′′) (cartesian (map step cs′′)) gs′′∈
       ... | g′′∈ , gs′′∈′  =
-        naive-mrsc-sound′ (c ∷ h) (bs c) c′′ g′′ g′′∈ ∷
+        naive-mrsc-sound′ (c ∷ h) (bs c) c′′ g′′∈ ∷
         pw′ cs′′ gs′′ gs′′∈′
 
       pw : Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) (c ⇉) gs′
       pw = pw′ (c ⇉) gs′ gs′∈gss₀
 
-    helper (inj₂ g∈gs₂) with Inverse.from rebuild-helper ⟨$⟩ g∈gs₂
+    helper (inj₂ g∈gs₂) with rebuild-helper g∈gs₂
     ... | c′ , c′∈c↴ , g′ , g′∈step-c′ , g≡ rewrite g≡ =
-      mrsc-rebuild ¬f ¬w c′∈c↴ (naive-mrsc-sound′ (c ∷ h) (bs c) c′ g′ g′∈step-c′)
+      mrsc-rebuild ¬f ¬w c′∈c↴ (naive-mrsc-sound′ (c ∷ h) (bs c) c′ g′∈step-c′)
+
+  -- naive-mrsc-sound
 
   naive-mrsc-sound :
-    (c : Conf) (g : Graph Conf) →
+    (c : Conf) {g : Graph Conf} →
       g ∈ naive-mrsc c → [] ⊢MRSC c ↪ g
 
-  naive-mrsc-sound c g = naive-mrsc-sound′ [] bar[] c g
+  naive-mrsc-sound c =
+    naive-mrsc-sound′ [] bar[] c
+
+  -- naive-mrsc-complete′
+
+  naive-mrsc-complete′ :
+    ∀ {n} (h : History n) (b : Bar ↯ h) (c : Conf) {g : Graph Conf} →
+     h ⊢MRSC c ↪ g → g ∈ naive-mrsc′ h b c
+
+  naive-mrsc-complete′ h b c q with foldable? h c
+  naive-mrsc-complete′ h b c (mrsc-fold f) | yes (i , c⊑hi) =
+    here refl
+  naive-mrsc-complete′ h b c (mrsc-split ¬f ¬w s) | yes f =
+    ⊥-elim (¬f f)
+  naive-mrsc-complete′ h b c (mrsc-rebuild ¬f ¬w i q) | yes f =
+    ⊥-elim (¬f f)
+  ... | no  ¬f  with ↯? h
+  naive-mrsc-complete′ h b c (mrsc-fold f) | no ¬f | yes w =
+    ⊥-elim (¬f f)
+  naive-mrsc-complete′ h b c (mrsc-split _ ¬w s) | no ¬f | yes w =
+    ⊥-elim (¬w w)
+  naive-mrsc-complete′ h b c (mrsc-rebuild {g = g} _ ¬w i q) | no ¬f | yes w =
+    ⊥-elim (¬w w)
+  ... | no ¬w with b
+  ... | now w = ⊥-elim (¬w w)
+  naive-mrsc-complete′ h b c (mrsc-fold f) | no ¬f | no ¬w | later bs =
+    ⊥-elim (¬f f)
+  naive-mrsc-complete′ h b c (mrsc-split {gs = gs} _ _ s)
+    | no ¬f | no ¬w | later bs =
+    helper (gs , gs∈gss₀ , refl)
+    where
+    open ∼-Reasoning
+
+    step = naive-mrsc′ (c ∷ h) (bs c)
+    gss₀ = cartesian (map step (c ⇉))
+
+    gs₁ gs₂ : List (Graph Conf)
+    gs₁ = map (split c) gss₀
+    gs₂ = map (rebuild c) (concat (map step (c ↴)))
+
+    pw : ∀ {cs gs} →
+           Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) cs gs →
+           Pointwise.Rel _∈_ gs (map step cs)
+    --pw rs = Pointwise.map {!!} {!!}
+    pw [] = []
+    pw (_∷_ {c′} r rs) = naive-mrsc-complete′ (c ∷ h) (bs c) c′ r ∷ pw rs
+
+    s→gs∈gss₀ : _ → gs ∈ gss₀
+    s→gs∈gss₀ =
+      Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) (c ⇉) gs
+        ∼⟨ pw ⟩
+      Pointwise.Rel _∈_ gs (map step (c ⇉))
+        ∼⟨ ∈*→∈cartesian gs (map step (c ⇉)) ⟩
+      gs ∈ cartesian (map step (c ⇉))
+        ↔⟨ _ ∎ ⟩
+      gs ∈ gss₀
+      ∎
+
+    gs∈gss₀ : gs ∈ gss₀
+    gs∈gss₀ = s→gs∈gss₀ s
+
+    helper :
+      _ → _
+    helper =
+      ∃ (λ gs′ → gs′ ∈ gss₀ × split c gs ≡ split c gs′)
+        ↔⟨ map↔∘Any↔ (split c gs) (split c) gss₀ ⟩
+      split c gs ∈ map (split c) gss₀
+        ↔⟨ _ ∎ ⟩
+      split c gs ∈ gs₁
+        ∼⟨ inj₁ ⟩
+      (split c gs ∈ gs₁ ⊎ split c gs ∈ gs₂)
+        ↔⟨ ++↔ ⟩
+      split c gs ∈ gs₁ ++ gs₂
+      ∎
+
+  naive-mrsc-complete′ .h b .c (mrsc-rebuild {n} {h} {c} {c′} {g} _ _ i q)
+    | no ¬f | no ¬w | later bs =
+    helper (c′ , i , g , g∈ , refl)
+    where
+    open ∼-Reasoning
+
+    step = naive-mrsc′ (c ∷ h) (bs c)
+    gs₁ = map (split c) (cartesian (map step (c ⇉)))
+    gs₂ = map (rebuild c) (concat (map step (c ↴)))
+
+    g∈ : g ∈ step c′
+    g∈ = naive-mrsc-complete′ (c ∷ h) (bs c) c′ q
+
+    helper =
+      ∃ (λ c′ → c′ ∈ c ↴ × ∃ (λ g′ → g′ ∈ step c′ × rebuild c g ≡ rebuild c g′))
+        ↔⟨ concat↔∘Any↔ (rebuild c g) (rebuild c) step (c ↴) ⟩
+      rebuild c g ∈ gs₂
+        ∼⟨ inj₂ ⟩
+      (rebuild c g ∈ gs₁ ⊎ rebuild c g ∈ gs₂)
+        ↔⟨ ++↔ ⟩
+      rebuild c g ∈ gs₁ ++ gs₂
+      ∎
+
+  -- naive-mrsc-complete
+
+  naive-mrsc-complete :
+    (c : Conf) {g : Graph Conf} →
+     [] ⊢MRSC c ↪ g → g ∈ naive-mrsc c
+
+  naive-mrsc-complete c r =
+    naive-mrsc-complete′ [] bar[] c r
+
+  --
+  -- ⊢MRSC↪⇔naive-mrsc
+  --
+
+  ⊢MRSC↪⇔naive-mrsc :
+    (c : Conf) {g : Graph Conf} →
+     [] ⊢MRSC c ↪ g ⇔ g ∈ naive-mrsc c
+
+  ⊢MRSC↪⇔naive-mrsc c =
+    equivalence (naive-mrsc-complete c) (naive-mrsc-sound c)
 
 --
 -- The main theorem:
@@ -222,7 +318,7 @@ module MRSC-naive≡lazy where
       map (get-graphs ∘ lazy-mrsc′ h b) cs
         ≡⟨ map-compose cs ⟩
       map get-graphs (map (lazy-mrsc′ h b) cs)
-        ≡⟨ sym $ get-graphs*-is-map (map (lazy-mrsc′ h b) cs) ⟩
+        ≡⟨ P.sym $ get-graphs*-is-map (map (lazy-mrsc′ h b) cs) ⟩
       get-graphs* (map (lazy-mrsc′ h b) cs)
       ∎
       where open ≡-Reasoning

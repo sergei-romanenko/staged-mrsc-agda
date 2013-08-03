@@ -29,9 +29,8 @@ open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.Vec as Vec
   using (Vec; []; _∷_; lookup)
-open import Relation.Binary.List.Pointwise
-  using ([]; _∷_)
-  renaming (Rel to Pointwise)
+open import Relation.Binary.List.Pointwise as Pointwise
+  using (Rel; []; _∷_)
 open import Data.Product
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃)
 open import Data.Sum
@@ -114,7 +113,7 @@ module BigStepNDSC (scWorld : ScWorld) where
     ndsc-split : ∀ {n} {h : History n} {c}
       {gs : List (Graph Conf)}
       (¬f : ¬ Foldable h c) →
-      (s  : Pointwise (_⊢NDSC_↪_ (c ∷ h)) (c ⇉) gs) →
+      (s  : Pointwise.Rel (_⊢NDSC_↪_ (c ∷ h)) (c ⇉) gs) →
       h ⊢NDSC c ↪ (split c gs)
     ndsc-rebuild : ∀ {n} {h : History n} {c c′}
       {g  : Graph Conf}
@@ -146,7 +145,7 @@ module BigStepMRSC (scWorld : ScWorld) where
       {gs : List (Graph Conf)}
       (¬f : ¬ Foldable h c)
       (¬w : ¬ ↯ h) →
-      (s  : Pointwise (_⊢MRSC_↪_ (c ∷ h)) (c ⇉) gs) →
+      (s  : Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) (c ⇉) gs) →
       h ⊢MRSC c ↪ (split c gs)
     mrsc-rebuild : ∀ {n} {h : History n} {c c′}
       {g  : Graph Conf}
