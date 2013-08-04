@@ -538,6 +538,125 @@ map∷→≡×∈ {yss = ys ∷ yss} (there x∷xs∈) =
   ∎
   where open ∼-Reasoning
 
+-- ⊥↔[]∈*
+
+⊥↔[]∈* : ∀ {A : Set} (ys : List A) yss →
+  ⊥ ↔ Pointwise.Rel _∈_ [] (ys ∷ yss)
+⊥↔[]∈* {A} ys yss = record
+  { to = →-to-⟶ (λ a⊥ → ⊥-elim a⊥)
+  ; from = →-to-⟶ (from ys yss)
+  ; inverse-of = record
+    { left-inverse-of = (λ ())
+    ; right-inverse-of = (from∘to ys yss)
+    }
+  }
+  where
+  from : ∀ (ys : List A) (yss : List (List A)) →
+    Pointwise.Rel _∈_ [] (ys ∷ yss) → ⊥
+  from y yss ()
+  from∘to : ∀ (ys : List A) (yss : List (List A)) →
+    (p : Pointwise.Rel _∈_ [] (ys ∷ yss)) → ⊥-elim (from ys yss p) ≡ p
+  from∘to ys yss ()
+
+
+
+×∈*↔∈* : ∀ {A : Set} (x : A) xs ys yss →
+  (x ∈ ys × Pointwise.Rel _∈_ xs yss) ↔ Pointwise.Rel _∈_ (x ∷ xs) (ys ∷ yss)
+
+×∈*↔∈* x xs ys yss = record
+  { to = →-to-⟶ to
+  ; from = →-to-⟶ from
+  ; inverse-of = record
+    { left-inverse-of = to∘from
+    ; right-inverse-of = from∘to
+    }
+  }
+  where
+  to : x ∈ ys × Pointwise.Rel _∈_ xs yss →
+          Pointwise.Rel _∈_ (x ∷ xs) (ys ∷ yss)
+  to (x∈ys , xs∈*yss) = x∈ys ∷ xs∈*yss
+  from : Pointwise.Rel _∈_ (x ∷ xs) (ys ∷ yss) →
+           x ∈ ys × Pointwise.Rel _∈_ xs yss
+  from (x∈ys ∷ xs∈*yss) = x∈ys , xs∈*yss
+  to∘from : (p : x ∈ ys × Pointwise.Rel _∈_ xs yss) → from (to p) ≡ p
+  to∘from (x∈ys , xs∈*yss) = refl
+  from∘to : (p : Pointwise.Rel _∈_ (x ∷ xs) (ys ∷ yss)) → to (from p) ≡ p
+  from∘to (x∈ys ∷ xs∈*yss) = refl
+
+-- 
+-- A proof of correctness of `cartesian`
+-- with respect to `Pointwise.Rel _∈_`
+
+-- ∈*↔∈cartesian
+
+∈*↔∈cartesian :
+  ∀ {A : Set} {xs : List A} {yss : List (List A)} →
+    Pointwise.Rel _∈_ xs yss ↔ xs ∈ cartesian yss
+
+∈*↔∈cartesian {A} {[]} {[]} = record
+  { to = →-to-⟶ from
+  ; from = →-to-⟶ to
+  ; inverse-of = record
+    { left-inverse-of = to∘from
+    ; right-inverse-of = from∘to
+    }
+  }
+  where
+  from : _ → _
+  from p = here refl
+  to : _ → _
+  to p = []
+  to∘from : (p : Pointwise.Rel _∈_ [] []) → [] ≡ p
+  to∘from [] = refl
+  from∘to : (p : [] ∈ [] ∷ []) → here refl ≡ p
+  from∘to (here refl) = refl
+  from∘to (there ())
+
+∈*↔∈cartesian {A} {[]} {ys ∷ yss} =
+  Pointwise.Rel _∈_ [] (ys ∷ yss)
+    ↔⟨ sym $ ⊥↔[]∈* ys yss ⟩
+  ⊥
+    ↔⟨ ⊥↔[]∈cartesian2 ys (cartesian yss) ⟩
+  [] ∈ cartesian2 ys (cartesian yss)
+    ≡⟨ refl ⟩
+  [] ∈ cartesian (ys ∷ yss)
+  ∎
+  where open ∼-Reasoning
+
+∈*↔∈cartesian {A} {x ∷ xs} {[]} = record
+  { to = →-to-⟶ from
+  ; from = →-to-⟶ to
+  ; inverse-of = record
+    { left-inverse-of = to∘from
+    ; right-inverse-of = from∘to
+    }
+  }
+  where
+  from : (p : Pointwise.Rel _∈_ (x ∷ xs) []) → x ∷ xs ∈ [] ∷ []
+  from ()
+  to : (p : x ∷ xs ∈ [] ∷ []) → Pointwise.Rel _∈_ (x ∷ xs) []
+  to (here ())
+  to (there ())
+  to∘from : (p : Pointwise.Rel _∈_ (x ∷ xs) []) → to (from p) ≡ p
+  to∘from ()
+  from∘to : (p : x ∷ xs ∈ [] ∷ []) → from (to p) ≡ p
+  from∘to (here ())
+  from∘to (there ())
+
+∈*↔∈cartesian {A} {x ∷ xs} {ys ∷ yss} =
+  Pointwise.Rel _∈_ (x ∷ xs) (ys ∷ yss)
+    ↔⟨ sym $ ×∈*↔∈* x xs ys yss ⟩
+  (x ∈ ys × Pointwise.Rel _∈_ xs yss)
+    ↔⟨ (_ ∎) ×-cong ∈*↔∈cartesian ⟩
+  (x ∈ ys × xs ∈ cartesian yss)
+    ↔⟨ ∈∈↔∷cartesian x xs ys (cartesian yss) ⟩
+  x ∷ xs ∈ cartesian2 ys (cartesian yss)
+    ≡⟨ refl ⟩
+  x ∷ xs ∈ cartesian (ys ∷ yss)
+  ∎
+  where open ∼-Reasoning
+
+
 --
 -- Cartesian product for vectors
 --
