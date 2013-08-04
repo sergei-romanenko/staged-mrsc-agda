@@ -19,7 +19,7 @@ open import Data.Fin as F
 open import Data.Vec as Vec
   using (Vec; []; _∷_; lookup)
 open import Data.Product as Prod
-  using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃; <_,_>)
+  using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃; <_,_>; uncurry)
 open import Data.Sum as Sum
   using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Empty
@@ -37,6 +37,8 @@ open import Function.Related as Related
   renaming (module EquationalReasoning to ∼-Reasoning)
 
 import Relation.Binary.Sigma.Pointwise as Σ
+open import Relation.Binary.Sum
+  using (_⊎-cong_)
 open import Relation.Binary.Product.Pointwise
   using (_×-cong_)
 
@@ -148,7 +150,7 @@ foldr∘map f g n =
 ⊥⊎ : ∀ {A : Set} → A ↔ (⊥ ⊎ A)
 
 ⊥⊎ {A} = record
-  { to = →-to-⟶ from
+  { to = →-to-⟶ inj₂
   ; from = →-to-⟶ to
   ; inverse-of = record
     { left-inverse-of = λ x → refl
@@ -156,13 +158,24 @@ foldr∘map f g n =
     }
   }
   where
-  from = inj₂
   to : (⊥ ⊎ A) → A
-  to (inj₁ ())
-  to (inj₂ x) = x
+  to = [ ⊥-elim , id ]′
   from∘to : (x : ⊥ ⊎ A) → inj₂ (to x) ≡ x
   from∘to (inj₁ ())
   from∘to (inj₂ x) = refl
+
+-- ⊥×
+
+⊥× : ∀ {A : Set} → ⊥ ↔ (⊥ × A)
+
+⊥× {A} = record
+  { to = →-to-⟶ (λ ())
+  ; from = →-to-⟶ (uncurry (λ a⊥ x → a⊥))
+  ; inverse-of = record
+    { left-inverse-of = λ a⊥ → ⊥-elim a⊥
+    ; right-inverse-of = uncurry (λ a⊥ x → ⊥-elim a⊥)
+    }
+  }
 
 -- Lift⊥↔⊥
 
@@ -275,6 +288,27 @@ cartesian (xs ∷ xss) = cartesian2 xs (cartesian xss)
 -- Some "technical" theorems about cartesian products
 --
 
+-- cartesian-is-foldr
+
+cartesian-is-foldr : ∀  {A : Set} (xss : List (List A)) →
+  cartesian xss ≡ foldr cartesian2 [ [] ] xss
+
+cartesian-is-foldr [] = refl
+cartesian-is-foldr (xs ∷ xss) = cong (cartesian2 xs) (cartesian-is-foldr xss)
+
+-- cartesian∘map
+
+cartesian∘map : ∀ {A B : Set} (f : A → List B) (xs : List A) →
+  cartesian (map f xs) ≡ foldr (cartesian2 ∘ f) [ [] ]  xs
+cartesian∘map f xs = begin
+  cartesian (map f xs)
+    ≡⟨ cartesian-is-foldr (map f xs) ⟩
+  foldr cartesian2 [ [] ] (map f xs)
+    ≡⟨ foldr∘map f cartesian2 [ [] ] xs ⟩
+  foldr (cartesian2 ∘ f) [ [] ] xs
+  ∎
+  where open ≡-Reasoning
+
 -- ∈∈→∷cartesian
 
 ∈∈→∷cartesian :
@@ -294,7 +328,7 @@ cartesian (xs ∷ xss) = cartesian2 xs (cartesian xss)
 
 ∈∈→∷cartesian x xs (y ∷ ys) yss =
   (x ∈ y ∷ ys × xs ∈ yss)
-    ↔⟨ sym (∷↔ (_≡_ x)) ⟨ ×⊎.*-cong ⟩ _ ∎ ⟩
+    ↔⟨ sym (∷↔ (_≡_ x)) ×-cong (_ ∎) ⟩
   ((x ≡ y ⊎ x ∈ ys) × xs ∈ yss)
     ↔⟨ proj₂ ×⊎.distrib (xs ∈ yss) (x ≡ y) (x ∈ ys) ⟩
   (x ≡ y × xs ∈ yss ⊎ x ∈ ys × xs ∈ yss)
@@ -335,6 +369,7 @@ cartesian (xs ∷ xss) = cartesian2 xs (cartesian xss)
   helper x (y ∷ yss) (here ())
   helper x (y ∷ yss) (there []∈) = helper x yss []∈
 
+
 -- ∷cartesian→∈∈
 
 ∷cartesian→∈∈ :
@@ -353,7 +388,7 @@ cartesian (xs ∷ xss) = cartesian2 xs (cartesian xss)
   ((x ≡ y × xs ∈ yss) ⊎ (x ∈ ys × xs ∈ yss))
     ∼⟨ [ < inj₁ ∘ proj₁ , proj₂ > , < inj₂ ∘ proj₁ , proj₂ > ]′ ⟩
   ((x ≡ y ⊎ x ∈ ys) × xs ∈ yss)
-    ↔⟨ ∷↔ (_≡_ x) ⟨ ×⊎.*-cong ⟩ _ ∎ ⟩
+    ↔⟨ ∷↔ (_≡_ x) ×-cong (_ ∎) ⟩
   (x ∈ y ∷ ys × xs ∈ yss)
   ∎
   where
@@ -378,7 +413,7 @@ cartesian (xs ∷ xss) = cartesian2 xs (cartesian xss)
   ⊥
     ↔⟨ ⊥⊎ ⟩
   (⊥ ⊎ ⊥)
-    ↔⟨ ⊥↔[]∈map∷ x yss ⟨ ×⊎.+-cong ⟩ ⊥↔[]∈cartesian2 xs yss ⟩
+    ↔⟨ ⊥↔[]∈map∷ x yss ⊎-cong ⊥↔[]∈cartesian2 xs yss ⟩
   ([] ∈ map (_∷_ x) yss ⊎ [] ∈ cartesian2 xs yss)
     ↔⟨ ++↔ ⟩
   [] ∈ (map (_∷_ x) yss ++ cartesian2 xs yss)
@@ -389,38 +424,119 @@ cartesian (xs ∷ xss) = cartesian2 xs (cartesian xss)
 
 []∉cartesian2 : ∀ {A : Set} (xs : List A) (yss : List (List A)) →
   [] ∈ cartesian2 xs yss → ⊥
-[]∉cartesian2 x yss []∈ = Inverse.from (⊥↔[]∈cartesian2 x yss) ⟨$⟩ []∈
-
--- cartesian-is-foldr
-
-cartesian-is-foldr : ∀  {A : Set} (xss : List (List A)) →
-  cartesian xss ≡ foldr cartesian2 [ [] ] xss
-
-cartesian-is-foldr [] = refl
-cartesian-is-foldr (xs ∷ xss) = cong (cartesian2 xs) (cartesian-is-foldr xss)
-
--- cartesian∘map
-
-cartesian∘map : ∀ {A B : Set} (f : A → List B) (xs : List A) →
-  cartesian (map f xs) ≡ foldr (cartesian2 ∘ f) [ [] ]  xs
-cartesian∘map f xs = begin
-  cartesian (map f xs)
-    ≡⟨ cartesian-is-foldr (map f xs) ⟩
-  foldr cartesian2 [ [] ] (map f xs)
-    ≡⟨ foldr∘map f cartesian2 [ [] ] xs ⟩
-  foldr (cartesian2 ∘ f) [ [] ] xs
-  ∎
-  where open ≡-Reasoning
+[]∉cartesian2 xs yss []∈ = Inverse.from (⊥↔[]∈cartesian2 xs yss) ⟨$⟩ []∈
 
 -- The main property of `cartesian`
 
+-- ∈*→∈cartesian
+
 ∈*→∈cartesian :
-  ∀ {A : Set} (xs : List A) (yss : List (List A)) →
+  ∀ {A : Set} {xs : List A} {yss : List (List A)} →
     Pointwise.Rel _∈_ xs yss → xs ∈ cartesian yss
 
-∈*→∈cartesian .[] .[] [] = here refl
-∈*→∈cartesian .(x ∷ xs) .(ys ∷ yss) (_∷_ {x} {xs} {ys} {yss} r rs) =
-  ∈∈→∷cartesian x xs ys (cartesian yss) (r , (∈*→∈cartesian xs yss rs))
+∈*→∈cartesian [] = here refl
+∈*→∈cartesian (_∷_ {x} {xs} {ys} {yss} r rs) =
+  ∈∈→∷cartesian x xs ys (cartesian yss) (r , (∈*→∈cartesian rs))
+
+-- ∈cartesian→∈*
+
+∈cartesian→∈* :
+  ∀ {A : Set} {xs : List A} {yss : List (List A)} →
+    xs ∈ cartesian yss → Pointwise.Rel _∈_ xs yss
+
+∈cartesian→∈* {A} {.[]} {[]} (here refl) = []
+∈cartesian→∈* {A} {_} {[]} (there ())
+∈cartesian→∈* {A} {[]} {ys ∷ yss} []∈ =
+  ⊥-elim ([]∉cartesian2 ys (cartesian yss) []∈)
+∈cartesian→∈* {A} {x ∷ xs} {ys ∷ yss} x∷xs∈
+  with ∷cartesian→∈∈ x xs ys (cartesian yss) x∷xs∈
+... | x∈ , xs∈ = x∈ ∷ ∈cartesian→∈* xs∈
+
+
+-- ≡×∈→map∷
+
+≡×∈→map∷ : ∀ {A : Set} {x : A} {xs : List A} {y : A} {yss : List (List A)} →
+  (x ≡ y × xs ∈ yss) → x ∷ xs ∈ map {B = List A} (_∷_ y) yss
+
+≡×∈→map∷ (refl , here refl) = here refl
+≡×∈→map∷ (refl , there xs∈yss) = there (≡×∈→map∷ (refl , xs∈yss))
+
+-- map∷→≡×∈
+
+map∷→≡×∈ : ∀ {A : Set} {x : A} {xs : List A} {y : A} {yss : List (List A)} →
+  x ∷ xs ∈ map {B = List A} (_∷_ y) yss → (x ≡ y × xs ∈ yss)
+
+map∷→≡×∈ {yss = []} ()
+map∷→≡×∈ {yss = ys ∷ yss} (here x∷xs≡y∷ys) =
+  helper (∷-injective x∷xs≡y∷ys)
+  where helper : _ → _
+        helper (x≡y , xs≡ys) = x≡y , here xs≡ys
+map∷→≡×∈ {yss = ys ∷ yss} (there x∷xs∈) =
+  helper (map∷→≡×∈ x∷xs∈)
+  where helper : _ → _
+        helper (x≡y , xs∈yss) = x≡y , there xs∈yss
+
+-- ≡×∈↔map∷
+
+≡×∈↔map∷ : ∀ {A : Set} (x : A) (xs : List A) (y : A) (yss : List (List A)) →
+  (x ≡ y × xs ∈ yss) ↔ x ∷ xs ∈ map {B = List A} (_∷_ y) yss
+
+≡×∈↔map∷ {A} x xs y yss = record
+  { to = →-to-⟶ ≡×∈→map∷
+  ; from = →-to-⟶ map∷→≡×∈
+  ; inverse-of = record
+    { left-inverse-of = to∘from
+    ; right-inverse-of = from∘to
+    }
+  }
+  where
+  open ∼-Reasoning
+
+  to∘from : ∀ {A : Set} {x : A} {xs : List A} {y : A} {yss : List (List A)} →
+    (p : x ≡ y × xs ∈ yss) → map∷→≡×∈ (≡×∈→map∷ p) ≡ p
+  to∘from (refl , here refl) = refl
+  to∘from {y = y} {yss = ys ∷ yss} (refl , there xs∈yss)
+    rewrite to∘from {y = y} (refl {x = y} , xs∈yss)
+    = refl
+
+  from∘to : ∀ {A : Set} {x : A} {xs : List A} {y : A} {yss : List (List A)} →
+    (p : x ∷ xs ∈ map (_∷_ y) yss) → ≡×∈→map∷ (map∷→≡×∈ p) ≡ p
+  from∘to {yss = []} ()
+  from∘to {yss = ys ∷ yss} (here refl) = refl
+  from∘to {yss = ys ∷ yss} (there x∷xs∈) with map∷→≡×∈ x∷xs∈ | from∘to x∷xs∈
+  ... | refl , xs∈yss | ft rewrite ft = refl
+
+-- ∈∈↔∷cartesian
+
+∈∈↔∷cartesian :
+  ∀ {A : Set} (x : A) (xs ys : List A) (yss : List (List A)) →
+    (x ∈ ys × xs ∈ yss) ↔ x ∷ xs ∈ cartesian2 ys yss
+
+∈∈↔∷cartesian x xs [] yss =
+  (x ∈ [] × xs ∈ yss)
+    ↔⟨ (sym $ ⊥↔Any[]) ×-cong (_ ∎) ⟩
+  (⊥ × xs ∈ yss)
+    ↔⟨ sym $ ⊥× ⟩
+  ⊥
+    ↔⟨ ⊥↔Any[] ⟩
+  x ∷ xs ∈ []
+  ∎
+  where open ∼-Reasoning
+
+∈∈↔∷cartesian x xs (y ∷ ys) yss =
+  (x ∈ y ∷ ys × xs ∈ yss)
+    ↔⟨ sym (∷↔ (_≡_ x)) ×-cong (_ ∎) ⟩
+  ((x ≡ y ⊎ x ∈ ys) × xs ∈ yss)
+    ↔⟨ proj₂ ×⊎.distrib (xs ∈ yss) (x ≡ y) (x ∈ ys) ⟩
+  (x ≡ y × xs ∈ yss ⊎ x ∈ ys × xs ∈ yss)
+    ↔⟨ ≡×∈↔map∷ x xs y yss ⊎-cong ∈∈↔∷cartesian x xs ys yss ⟩
+  (x ∷ xs ∈ map (_∷_ y) yss ⊎ x ∷ xs ∈ cartesian2 ys yss)
+    ↔⟨ ++↔ ⟩
+  x ∷ xs ∈ (map (_∷_ y) yss ++ cartesian2 ys yss)
+    ≡⟨ refl ⟩
+  x ∷ xs ∈ cartesian2 (y ∷ ys) yss
+  ∎
+  where open ∼-Reasoning
 
 --
 -- Cartesian product for vectors
