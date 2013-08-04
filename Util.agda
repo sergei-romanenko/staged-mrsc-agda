@@ -177,26 +177,6 @@ foldr∘map f g n =
     }
   }
 
--- Lift⊥↔⊥
-
-Lift⊥↔⊥ : ∀ {ℓ} → Lift {Level.zero} {ℓ} ⊥ ↔ ⊥
-Lift⊥↔⊥ {ℓ} = record
-  { to = →-to-⟶ lower
-  ; from = →-to-⟶ lift
-  ; inverse-of = record
-    { left-inverse-of = λ _ → refl
-    ; right-inverse-of = λ ()
-    }
-  }
-
--- Lift⊥↔Any[]
-
-Lift⊥↔Any[] : ∀ {a} {A : Set a} {P : A → Set} → Lift {ℓ = a} ⊥ ↔ Any P []
-
-Lift⊥↔Any[] {P = P} =
-  Lift ⊥ ↔⟨ Lift⊥↔⊥ ⟩ ⊥ ↔⟨ ⊥↔Any[] ⟩ Any P [] ∎
-  where open ∼-Reasoning
-
 -- ⊥↔[]∈map∷
 
 ⊥↔[]∈map∷ : ∀ {A : Set} (x : A) (yss : List (List A)) →
@@ -309,100 +289,6 @@ cartesian∘map f xs = begin
   ∎
   where open ≡-Reasoning
 
--- ∈∈→∷cartesian
-
-∈∈→∷cartesian :
-  ∀ {A : Set} (x : A) (xs ys : List A) (yss : List (List A)) →
-    (x ∈ ys × xs ∈ yss) → x ∷ xs ∈ cartesian2 ys yss
-
-∈∈→∷cartesian x xs [] yss =
-  (x ∈ [] × xs ∈ yss)
-    ∼⟨ proj₁ ⟩
-  x ∈ []
-    ↔⟨ sym $ ⊥↔Any[] ⟩
-  ⊥
-    ∼⟨ ⊥-elim ⟩
-  x ∷ xs ∈ []
-  ∎
-  where open ∼-Reasoning
-
-∈∈→∷cartesian x xs (y ∷ ys) yss =
-  (x ∈ y ∷ ys × xs ∈ yss)
-    ↔⟨ sym (∷↔ (_≡_ x)) ×-cong (_ ∎) ⟩
-  ((x ≡ y ⊎ x ∈ ys) × xs ∈ yss)
-    ↔⟨ proj₂ ×⊎.distrib (xs ∈ yss) (x ≡ y) (x ∈ ys) ⟩
-  (x ≡ y × xs ∈ yss ⊎ x ∈ ys × xs ∈ yss)
-    ∼⟨ Sum.map helper (∈∈→∷cartesian x xs ys yss) ⟩
-  (x ∷ xs ∈ map (_∷_ y) yss ⊎ x ∷ xs ∈ cartesian2 ys yss)
-    ↔⟨ ++↔ ⟩
-  x ∷ xs ∈ (map (_∷_ y) yss ++ cartesian2 ys yss)
-    ≡⟨ refl ⟩
-  x ∷ xs ∈ cartesian2 (y ∷ ys) yss
-  ∎
-  where
-  open ∼-Reasoning
-  helper : ∀ {x y xs yss} → x ≡ y × xs ∈ yss → x ∷ xs ∈ map (_∷_ y) yss
-  helper (refl , here refl) = here refl
-  helper (x≡y , there xs∈yss) = there (helper (x≡y , xs∈yss))
-
--- []cartesian→⊥
-
-[]cartesian→⊥ :
-  ∀ {A : Set} (ys : List A) (yss : List (List A)) →
-     [] ∈ cartesian2 ys yss → ⊥
-
-[]cartesian→⊥ [] yss =
-  λ ()
-[]cartesian→⊥ (x ∷ ys) yss =
-  [] ∈ map (_∷_ x) yss ++ cartesian2 ys yss
-    ↔⟨ sym ++↔ ⟩
-  ([] ∈ map (_∷_ x) yss ⊎ [] ∈ cartesian2 ys yss)
-    ∼⟨ Sum.map (helper x yss) ([]cartesian→⊥ ys yss) ⟩
-  (⊥ ⊎ ⊥)
-     ↔⟨ sym $ ⊥⊎ ⟩
-  ⊥
-  ∎
-  where
-  open ∼-Reasoning
-  helper : ∀ x yss → [] ∈ map (_∷_ x) yss → ⊥
-  helper x [] ()
-  helper x (y ∷ yss) (here ())
-  helper x (y ∷ yss) (there []∈) = helper x yss []∈
-
-
--- ∷cartesian→∈∈
-
-∷cartesian→∈∈ :
-  ∀ {A : Set} (x : A) (xs ys : List A) (yss : List (List A)) →
-     x ∷ xs ∈ cartesian2 ys yss → (x ∈ ys × xs ∈ yss)
-
-∷cartesian→∈∈ x xs [] yss =
-  λ ()
-∷cartesian→∈∈ x xs (y ∷ ys) yss =
-  x ∷ xs ∈ cartesian2 (y ∷ ys) yss
-    ≡⟨ refl ⟩
-  x ∷ xs ∈ map (_∷_ y) yss ++ cartesian2 ys yss
-    ↔⟨ sym ++↔ ⟩
-  (x ∷ xs ∈ map (_∷_ y) yss ⊎ x ∷ xs ∈ cartesian2 ys yss)
-    ∼⟨ Sum.map (helper x xs y yss) (∷cartesian→∈∈ x xs ys yss) ⟩
-  ((x ≡ y × xs ∈ yss) ⊎ (x ∈ ys × xs ∈ yss))
-    ∼⟨ [ < inj₁ ∘ proj₁ , proj₂ > , < inj₂ ∘ proj₁ , proj₂ > ]′ ⟩
-  ((x ≡ y ⊎ x ∈ ys) × xs ∈ yss)
-    ↔⟨ ∷↔ (_≡_ x) ×-cong (_ ∎) ⟩
-  (x ∈ y ∷ ys × xs ∈ yss)
-  ∎
-  where
-  open ∼-Reasoning
-  helper : ∀ x xs y yss → x ∷ xs ∈ map (_∷_ y) yss → x ≡ y × xs ∈ yss
-  helper x xs y [] ()
-  helper x xs y (ys ∷ yss) (here x∷xs≡y∷ys) = helper₂ (∷-injective x∷xs≡y∷ys)
-    where helper₂ : x ≡ y × xs ≡ ys → x ≡ y × xs ∈ ys ∷ yss
-          helper₂ (x≡y , xs≡ys) = x≡y , here xs≡ys
-  helper x xs y (ys ∷ yss) (there x∷xs∈) = helper₂ (helper x xs y yss x∷xs∈)
-    where helper₂ : x ≡ y × xs ∈ yss → x ≡ y × xs ∈ ys ∷ yss
-          helper₂ (x≡y , xs∈yss) = x≡y , there xs∈yss
-
-
 -- ⊥↔[]∈cartesian2
 
 ⊥↔[]∈cartesian2 : ∀ {A : Set} (xs : List A) (yss : List (List A)) →
@@ -420,38 +306,7 @@ cartesian∘map f xs = begin
   ∎
   where open ∼-Reasoning
 
--- []∉cartesian2
-
-[]∉cartesian2 : ∀ {A : Set} (xs : List A) (yss : List (List A)) →
-  [] ∈ cartesian2 xs yss → ⊥
-[]∉cartesian2 xs yss []∈ = Inverse.from (⊥↔[]∈cartesian2 xs yss) ⟨$⟩ []∈
-
--- The main property of `cartesian`
-
--- ∈*→∈cartesian
-
-∈*→∈cartesian :
-  ∀ {A : Set} {xs : List A} {yss : List (List A)} →
-    Pointwise.Rel _∈_ xs yss → xs ∈ cartesian yss
-
-∈*→∈cartesian [] = here refl
-∈*→∈cartesian (_∷_ {x} {xs} {ys} {yss} r rs) =
-  ∈∈→∷cartesian x xs ys (cartesian yss) (r , (∈*→∈cartesian rs))
-
--- ∈cartesian→∈*
-
-∈cartesian→∈* :
-  ∀ {A : Set} {xs : List A} {yss : List (List A)} →
-    xs ∈ cartesian yss → Pointwise.Rel _∈_ xs yss
-
-∈cartesian→∈* {A} {.[]} {[]} (here refl) = []
-∈cartesian→∈* {A} {_} {[]} (there ())
-∈cartesian→∈* {A} {[]} {ys ∷ yss} []∈ =
-  ⊥-elim ([]∉cartesian2 ys (cartesian yss) []∈)
-∈cartesian→∈* {A} {x ∷ xs} {ys ∷ yss} x∷xs∈
-  with ∷cartesian→∈∈ x xs ys (cartesian yss) x∷xs∈
-... | x∈ , xs∈ = x∈ ∷ ∈cartesian→∈* xs∈
-
+-- Some important properties of `cartesian`
 
 -- ≡×∈→map∷
 
@@ -656,6 +511,26 @@ map∷→≡×∈ {yss = ys ∷ yss} (there x∷xs∈) =
   ∎
   where open ∼-Reasoning
 
+--
+-- Shortcuts
+--
+
+-- []∉cartesian2
+
+[]∉cartesian2 : ∀ {A : Set} (xs : List A) (yss : List (List A)) →
+  [] ∈ cartesian2 xs yss → ⊥
+[]∉cartesian2 xs yss []∈ =
+  Inverse.from (⊥↔[]∈cartesian2 xs yss) ⟨$⟩ []∈
+
+-- ∷cartesian→∈∈
+
+∷cartesian→∈∈ :
+  ∀ {A : Set} (x : A) (xs ys : List A) (yss : List (List A)) →
+     x ∷ xs ∈ cartesian2 ys yss → (x ∈ ys × xs ∈ yss)
+
+∷cartesian→∈∈ x xs ys yss =
+  _ ↔⟨ sym $ ∈∈↔∷cartesian x xs ys yss ⟩ _ ∎
+  where open ∼-Reasoning
 
 --
 -- Cartesian product for vectors
