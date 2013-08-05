@@ -34,6 +34,8 @@ open import Function.Related as Related
   renaming (module EquationalReasoning to ∼-Reasoning)
 
 import Relation.Binary.Sigma.Pointwise as Σ
+open import Relation.Binary.Sum
+  using (_⊎-cong_)
 open import Relation.Binary.Product.Pointwise
   using (_×-cong_)
 
@@ -92,16 +94,16 @@ module MRSC-correctness where
   -- naive-mrsc-sound′
 
   naive-mrsc-sound′ :
-    ∀ {n} (h : History n) (b : Bar ↯ h) (c : Conf) {g : Graph Conf} →
+    ∀ {n} (h : History n) (b : Bar ↯ h) {c : Conf} {g : Graph Conf} →
     g ∈ naive-mrsc′ h b c → h ⊢MRSC c ↪ g
 
-  naive-mrsc-sound′ h b c q with foldable? h c
-  naive-mrsc-sound′ h b c (here g≡) | yes (i , c⊑hi) rewrite g≡ =
+  naive-mrsc-sound′ h b {c} q with foldable? h c
+  naive-mrsc-sound′ h b (here g≡) | yes (i , c⊑hi) rewrite g≡ =
     mrsc-fold (i , c⊑hi)
-  naive-mrsc-sound′ h b c (there ()) | yes (i , c⊑hi)
+  naive-mrsc-sound′ h b (there ()) | yes (i , c⊑hi)
   ... | no ¬f with ↯? h
-  naive-mrsc-sound′ {n} h b c () | no ¬f | yes w
-  naive-mrsc-sound′ {n} h b c {g} q | no ¬f | no ¬w with b
+  naive-mrsc-sound′ {n} h b () | no ¬f | yes w
+  naive-mrsc-sound′ {n} h b {c} {g} q | no ¬f | no ¬w with b
   ... | now bz = ⊥-elim (¬w bz)
   ... | later bs = helper (Inverse.from ++↔ ⟨$⟩ q)
     where
@@ -128,66 +130,69 @@ module MRSC-correctness where
       _ ↔⟨ sym $ concat↔∘Any↔ g (rebuild c) step (c ↴) ⟩ _ ∎
       where open ∼-Reasoning
 
-    helper : ∀ (q′ : g ∈ gs₁ ⊎ g ∈ gs₂) → h ⊢MRSC c ↪ g
+    helper : (g ∈ gs₁ ⊎ g ∈ gs₂) → h ⊢MRSC c ↪ g
 
     helper (inj₁ g∈gs₁) with split-helper g∈gs₁
     ... | gs′ , gs′∈gss₀ , g≡ rewrite g≡ =
       mrsc-split ¬f ¬w pw
       where
+      open ∼-Reasoning
 
-      pw′ : ∀ cs′′ gs′′ → gs′′ ∈ cartesian (map step cs′′) →
-              Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) cs′′ gs′′
-      pw′ [] .[] (here refl) = []
-      pw′ [] gs′′ (there ())
-      pw′ (c′′ ∷ cs′′) [] gs′′∈ =
-        ⊥-elim ([]∉cartesian2 (step c′′) (cartesian (map step cs′′)) gs′′∈)
-      pw′ (c′′ ∷ cs′′) (g′′ ∷ gs′′) gs′′∈
-        with ∷cartesian→∈∈ g′′ gs′′ (step c′′) (cartesian (map step cs′′)) gs′′∈
-      ... | g′′∈ , gs′′∈′  =
-        naive-mrsc-sound′ (c ∷ h) (bs c) c′′ g′′∈ ∷
-        pw′ cs′′ gs′′ gs′′∈′
+      pw₀ : ∀ {cs gs} → gs ∈ cartesian (map step cs) →
+        Pointwise.Rel _∈_ gs (map step cs)
+      pw₀ = _ ↔⟨ sym $ ∈*↔∈cartesian ⟩ _ ∎
+
+      pw₁ : ∀ {cs gs} → Pointwise.Rel _∈_ gs (map step cs) →
+              Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) cs gs
+      pw₁ {cs} gs∈* =
+        Pointwise.map (naive-mrsc-sound′ (c ∷ h) (bs c)) (∈*∘map→ step cs gs∈*)
+
+      pw₂ : ∀ {cs gs} → gs ∈ cartesian (map step cs) →
+              Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) cs gs
+
+      pw₂ = pw₁ ∘ pw₀
 
       pw : Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) (c ⇉) gs′
-      pw = pw′ (c ⇉) gs′ gs′∈gss₀
+      pw = pw₂ gs′∈gss₀
 
     helper (inj₂ g∈gs₂) with rebuild-helper g∈gs₂
     ... | c′ , c′∈c↴ , g′ , g′∈step-c′ , g≡ rewrite g≡ =
-      mrsc-rebuild ¬f ¬w c′∈c↴ (naive-mrsc-sound′ (c ∷ h) (bs c) c′ g′∈step-c′)
+      mrsc-rebuild ¬f ¬w c′∈c↴ (naive-mrsc-sound′ (c ∷ h) (bs c) g′∈step-c′)
 
   -- naive-mrsc-sound
 
   naive-mrsc-sound :
-    (c : Conf) {g : Graph Conf} →
+    {c : Conf} {g : Graph Conf} →
       g ∈ naive-mrsc c → [] ⊢MRSC c ↪ g
 
-  naive-mrsc-sound c =
-    naive-mrsc-sound′ [] bar[] c
+  naive-mrsc-sound =
+    naive-mrsc-sound′ [] bar[]
 
   -- naive-mrsc-complete′
 
   naive-mrsc-complete′ :
-    ∀ {n} (h : History n) (b : Bar ↯ h) (c : Conf) {g : Graph Conf} →
+    ∀ {n} (h : History n) (b : Bar ↯ h) {c : Conf} {g : Graph Conf} →
      h ⊢MRSC c ↪ g → g ∈ naive-mrsc′ h b c
 
-  naive-mrsc-complete′ h b c q with foldable? h c
-  naive-mrsc-complete′ h b c (mrsc-fold f) | yes (i , c⊑hi) =
+  naive-mrsc-complete′ h b {c} q with foldable? h c
+  naive-mrsc-complete′ h b (mrsc-fold f) | yes (i , c⊑hi) =
     here refl
-  naive-mrsc-complete′ h b c (mrsc-split ¬f ¬w s) | yes f =
+  naive-mrsc-complete′ h b (mrsc-split ¬f ¬w s) | yes f =
     ⊥-elim (¬f f)
-  naive-mrsc-complete′ h b c (mrsc-rebuild ¬f ¬w i q) | yes f =
+  naive-mrsc-complete′ h b (mrsc-rebuild ¬f ¬w i q) | yes f =
     ⊥-elim (¬f f)
   ... | no  ¬f  with ↯? h
-  naive-mrsc-complete′ h b c (mrsc-fold f) | no ¬f | yes w =
+  naive-mrsc-complete′ h b (mrsc-fold f) | no ¬f | yes w =
     ⊥-elim (¬f f)
-  naive-mrsc-complete′ h b c (mrsc-split _ ¬w s) | no ¬f | yes w =
+  naive-mrsc-complete′ h b (mrsc-split _ ¬w s) | no ¬f | yes w =
     ⊥-elim (¬w w)
-  naive-mrsc-complete′ h b c (mrsc-rebuild {g = g} _ ¬w i q) | no ¬f | yes w =
+  naive-mrsc-complete′ h b (mrsc-rebuild _ ¬w i q) | no ¬f | yes w =
     ⊥-elim (¬w w)
   ... | no ¬w with b
   ... | now w = ⊥-elim (¬w w)
-  naive-mrsc-complete′ h b c (mrsc-fold f) | no ¬f | no ¬w | later bs =
+  naive-mrsc-complete′ h b (mrsc-fold f) | no ¬f | no ¬w | later bs =
     ⊥-elim (¬f f)
-  naive-mrsc-complete′ h b c (mrsc-split {gs = gs} _ _ s)
+  naive-mrsc-complete′ h b {c} (mrsc-split {gs = gs} _ _ s)
     | no ¬f | no ¬w | later bs =
     helper (gs , gs∈gss₀ , refl)
     where
@@ -203,16 +208,15 @@ module MRSC-correctness where
     pw : ∀ {cs gs} →
            Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) cs gs →
            Pointwise.Rel _∈_ gs (map step cs)
-    --pw rs = Pointwise.map {!!} {!!}
     pw [] = []
-    pw (_∷_ {c′} r rs) = naive-mrsc-complete′ (c ∷ h) (bs c) c′ r ∷ pw rs
+    pw (r ∷ rs) = naive-mrsc-complete′ (c ∷ h) (bs c) r ∷ pw rs
 
     s→gs∈gss₀ : _ → gs ∈ gss₀
     s→gs∈gss₀ =
       Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) (c ⇉) gs
         ∼⟨ pw ⟩
       Pointwise.Rel _∈_ gs (map step (c ⇉))
-        ∼⟨ ∈*→∈cartesian gs (map step (c ⇉)) ⟩
+        ↔⟨ ∈*↔∈cartesian ⟩
       gs ∈ cartesian (map step (c ⇉))
         ↔⟨ _ ∎ ⟩
       gs ∈ gss₀
@@ -235,7 +239,7 @@ module MRSC-correctness where
       split c gs ∈ gs₁ ++ gs₂
       ∎
 
-  naive-mrsc-complete′ .h b .c (mrsc-rebuild {n} {h} {c} {c′} {g} _ _ i q)
+  naive-mrsc-complete′ .h b (mrsc-rebuild {n} {h} {c} {c′} {g} _ _ i q)
     | no ¬f | no ¬w | later bs =
     helper (c′ , i , g , g∈ , refl)
     where
@@ -246,7 +250,7 @@ module MRSC-correctness where
     gs₂ = map (rebuild c) (concat (map step (c ↴)))
 
     g∈ : g ∈ step c′
-    g∈ = naive-mrsc-complete′ (c ∷ h) (bs c) c′ q
+    g∈ = naive-mrsc-complete′ (c ∷ h) (bs c) q
 
     helper =
       ∃ (λ c′ → c′ ∈ c ↴ × ∃ (λ g′ → g′ ∈ step c′ × rebuild c g ≡ rebuild c g′))
@@ -261,22 +265,22 @@ module MRSC-correctness where
   -- naive-mrsc-complete
 
   naive-mrsc-complete :
-    (c : Conf) {g : Graph Conf} →
+    {c : Conf} {g : Graph Conf} →
      [] ⊢MRSC c ↪ g → g ∈ naive-mrsc c
 
-  naive-mrsc-complete c r =
-    naive-mrsc-complete′ [] bar[] c r
+  naive-mrsc-complete r =
+    naive-mrsc-complete′ [] bar[] r
 
   --
   -- ⊢MRSC↪⇔naive-mrsc
   --
 
   ⊢MRSC↪⇔naive-mrsc :
-    (c : Conf) {g : Graph Conf} →
+    {c : Conf} {g : Graph Conf} →
      [] ⊢MRSC c ↪ g ⇔ g ∈ naive-mrsc c
 
-  ⊢MRSC↪⇔naive-mrsc c =
-    equivalence (naive-mrsc-complete c) (naive-mrsc-sound c)
+  ⊢MRSC↪⇔naive-mrsc =
+    equivalence naive-mrsc-complete naive-mrsc-sound
 
 --
 -- The main theorem:

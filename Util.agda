@@ -248,6 +248,27 @@ concat↔∘Any↔ z g f xs =
   ∎
   where open ∼-Reasoning
 
+-- ∈*∘map
+
+∈*∘map→ :
+  ∀ {A B : Set} (f : A → List B) (xs : List A) {ys : List B} →
+  Pointwise.Rel _∈_ ys (map f xs) → Pointwise.Rel (λ x y → y ∈ f x) xs ys
+
+∈*∘map→ f [] {[]} _ = []
+∈*∘map→ f [] {_ ∷ _} ()
+∈*∘map→ f (x ∷ xs) (y∈fx ∷ ys∈*) =
+  y∈fx ∷ ∈*∘map→ f xs ys∈*
+
+-- ∈*∘map←
+
+∈*∘map← :
+  ∀ {A B : Set} (f : A → List B) (xs : List A) {ys : List B} →
+  Pointwise.Rel (λ x y → y ∈ f x) xs ys → Pointwise.Rel _∈_ ys (map f xs)
+
+∈*∘map← f [] [] = []
+∈*∘map← f (x ∷ xs) (y∈fx ∷ xs∈*) = y∈fx ∷ ∈*∘map← f xs xs∈*
+
+
 --
 -- Cartesian product
 --
@@ -293,8 +314,10 @@ cartesian∘map f xs = begin
 
 ⊥↔[]∈cartesian2 : ∀ {A : Set} (xs : List A) (yss : List (List A)) →
   ⊥ ↔ [] ∈ cartesian2 xs yss
+
 ⊥↔[]∈cartesian2 [] yss =
   ⊥↔Any[]
+
 ⊥↔[]∈cartesian2 {A} (x ∷ xs) yss =
   ⊥
     ↔⟨ ⊥⊎ ⟩
@@ -511,26 +534,6 @@ map∷→≡×∈ {yss = ys ∷ yss} (there x∷xs∈) =
   ∎
   where open ∼-Reasoning
 
---
--- Shortcuts
---
-
--- []∉cartesian2
-
-[]∉cartesian2 : ∀ {A : Set} (xs : List A) (yss : List (List A)) →
-  [] ∈ cartesian2 xs yss → ⊥
-[]∉cartesian2 xs yss []∈ =
-  Inverse.from (⊥↔[]∈cartesian2 xs yss) ⟨$⟩ []∈
-
--- ∷cartesian→∈∈
-
-∷cartesian→∈∈ :
-  ∀ {A : Set} (x : A) (xs ys : List A) (yss : List (List A)) →
-     x ∷ xs ∈ cartesian2 ys yss → (x ∈ ys × xs ∈ yss)
-
-∷cartesian→∈∈ x xs ys yss =
-  _ ↔⟨ sym $ ∈∈↔∷cartesian x xs ys yss ⟩ _ ∎
-  where open ∼-Reasoning
 
 --
 -- Cartesian product for vectors
