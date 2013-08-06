@@ -92,9 +92,9 @@ data LazyGraph (C : Set) : Set where
   rebuild : ∀ (c : C) (gss : List (LazyGraph C)) →
               LazyGraph C
 
--- The semantics of `LazyGraph C n` is formally defined by
+-- The semantics of `LazyGraph C` is formally defined by
 -- the function `get-graphs` that generates a list of `Graph C n`
--- from  a `LazyGraph C n`.
+-- from  a `LazyGraph C`.
 
 mutual
 
@@ -129,6 +129,7 @@ mutual
 
 get-graphs*-is-map : {C : Set} (gss : List (LazyGraph C)) →
   get-graphs* gss ≡ map get-graphs gss
+
 get-graphs*-is-map [] = refl
 get-graphs*-is-map (x ∷ gss) =
   cong (_∷_ (get-graphs x)) (get-graphs*-is-map gss)
@@ -355,35 +356,39 @@ mutual
 -- The cleaner `cl-bad-config` assumes "badness" to be monotonic,
 -- in the sense that a single "bad" configuration spoils the whole
 -- graph it appears in.
+
+mutual
+
+  -- cl-bad-config
+
+  cl-bad-config : {C : Set} (bad : C → Bool) (gs : LazyGraph C) →
+    LazyGraph C
+
+  cl-bad-config bad (⁇ a⊥) =
+    ⁇ a⊥
+  cl-bad-config bad Ø =
+    Ø
+  cl-bad-config bad (alt gs₁ gs₂) =
+    alt (cl-bad-config bad gs₁) (cl-bad-config bad gs₂)
+  cl-bad-config bad (back c) =
+    if bad c then Ø else (back c)
+  cl-bad-config bad (split c gss) =
+    if bad c then Ø else (split c (cl-bad-config* bad gss))
+  cl-bad-config bad (rebuild c gss) =
+    if bad c then Ø else (rebuild c (cl-bad-config* bad gss))
+
+  -- cl-bad-config*
+
+  cl-bad-config* : {C : Set} (bad : C → Bool)
+    (gss : List (LazyGraph C)) → List (LazyGraph C)
+
+  cl-bad-config* bad [] = []
+  cl-bad-config* bad (gs ∷ gss) =
+    (cl-bad-config bad gs) ∷ cl-bad-config* bad gss
+
 --
 -- The graph returned by `cl-bad-config` may be cleaned by `cl-empty`.
 --
-
-cl-bad-config : {C : Set} (bad : C → Bool) (gs : LazyGraph C) →
-  LazyGraph C
-cl-bad-config* : {C : Set} (bad : C → Bool)
-  (gss : List (LazyGraph C)) → List (LazyGraph C)
-
--- cl-bad-config
-
-cl-bad-config bad (⁇ a⊥) =
-  ⁇ a⊥
-cl-bad-config bad Ø =
-  Ø
-cl-bad-config bad (alt gs₁ gs₂) =
-  alt (cl-bad-config bad gs₁) (cl-bad-config bad gs₂)
-cl-bad-config bad (back c) =
-  if bad c then Ø else (back c)
-cl-bad-config bad (split c gss) =
-  if bad c then Ø else (split c (cl-bad-config* bad gss))
-cl-bad-config bad (rebuild c gss) =
-  if bad c then Ø else (rebuild c (cl-bad-config* bad gss))
-
--- cl-bad-config*
-
-cl-bad-config* bad [] = []
-cl-bad-config* bad (gs ∷ gss) =
-  (cl-bad-config bad gs) ∷ cl-bad-config* bad gss
 
 -- cl-empty&bad
 
@@ -396,19 +401,22 @@ cl-empty&bad bad = cl-empty ∘ cl-bad-config bad
 -- Extracting a graph of minimal size (if any).
 --
 
--- graph-size
+mutual
 
-graph-size  : ∀ {C : Set} (g : Graph C) → ℕ
-graph-size* : ∀ {C : Set} (g : List (Graph C)) → ℕ
+  -- graph-size
 
-graph-size (back c) = 1
-graph-size (split c gs) = suc (graph-size* gs)
-graph-size (rebuild c g) = suc (graph-size g)
+  graph-size  : ∀ {C : Set} (g : Graph C) → ℕ
 
--- graph-size*
+  graph-size (back c) = 1
+  graph-size (split c gs) = suc (graph-size* gs)
+  graph-size (rebuild c g) = suc (graph-size g)
 
-graph-size* [] = 0
-graph-size* (g ∷ gs) = graph-size g + graph-size* gs
+  -- graph-size*
+
+  graph-size* : ∀ {C : Set} (g : List (Graph C)) → ℕ
+
+  graph-size* [] = 0
+  graph-size* (g ∷ gs) = graph-size g + graph-size* gs
 
 
 -- Now we define a cleaner that produces a lazy graph
@@ -427,46 +435,53 @@ select-min₂ (k₁ , gs₁) (k₂ , gs₂) with k₁ ≤? k₂
 ... | yes _ = k₁ , gs₁
 ... | no  _ = k₂ , gs₂
 
+-- select-min
+
 select-min : ∀ {C : Set} (kgss : List (ℕ × LazyGraph C)) →
   ℕ × LazyGraph C
+
 select-min [] = 0 , Ø
 select-min (kgs ∷ kgss) = foldl select-min₂ kgs kgss
 
--- cl-min-size
+mutual
 
-cl-min-size : ∀ {C : Set} (gs : LazyGraph C) → ℕ × LazyGraph C
-cl-min-size* : ∀ {C : Set} (gss : List(LazyGraph C)) →
-  List (ℕ × LazyGraph C)
-cl-min-size-∧ : ∀ {C : Set} (gss : List (LazyGraph C)) →
-  ℕ × List (LazyGraph C)
+  -- cl-min-size
 
-cl-min-size (⁇ a⊥) =
-  ⊥-elim a⊥
-cl-min-size Ø =
-  0 , Ø -- should be ∞ , Ø
-cl-min-size (alt gs₁ gs₂) =
-  select-min₂ (cl-min-size gs₁) (cl-min-size gs₂)
-cl-min-size (back c) =
-  1 , back c
-cl-min-size (split c gss) with cl-min-size-∧ gss
-... | 0 , _ = 0 , Ø
-... | k , gs = k , split c gs
-cl-min-size (rebuild c gss) with select-min (cl-min-size* gss)
-... | _ , Ø = 0 , Ø
-... | k , gs = suc k , rebuild c [ gs ]
+  cl-min-size : ∀ {C : Set} (gs : LazyGraph C) → ℕ × LazyGraph C
 
--- cl-min-size*
+  cl-min-size (⁇ a⊥) =
+    ⊥-elim a⊥
+  cl-min-size Ø =
+    0 , Ø -- should be ∞ , Ø
+  cl-min-size (alt gs₁ gs₂) =
+    select-min₂ (cl-min-size gs₁) (cl-min-size gs₂)
+  cl-min-size (back c) =
+    1 , back c
+  cl-min-size (split c gss) with cl-min-size-∧ gss
+  ... | 0 , _ = 0 , Ø
+  ... | k , gs = k , split c gs
+  cl-min-size (rebuild c gss) with select-min (cl-min-size* gss)
+  ... | _ , Ø = 0 , Ø
+  ... | k , gs = suc k , rebuild c [ gs ]
 
-cl-min-size* [] = []
-cl-min-size* (gs ∷ gss) = cl-min-size gs ∷ cl-min-size* gss
+  -- cl-min-size*
 
--- cl-min-size-∧
+  cl-min-size* : ∀ {C : Set} (gss : List(LazyGraph C)) →
+    List (ℕ × LazyGraph C)
 
-cl-min-size-∧ [] = 1 , []
-cl-min-size-∧ (gs ∷ gss) with cl-min-size gs | cl-min-size-∧ gss
-... | 0 , gs′ | _ , gss′ = 0 , gs′ ∷ gss′
-... | _ , gs′ | 0 , gss′ = 0 , gs′ ∷ gss′
-... | i , gs′ | j , gss′ = i + j , gs′ ∷ gss′
+  cl-min-size* [] = []
+  cl-min-size* (gs ∷ gss) = cl-min-size gs ∷ cl-min-size* gss
+
+  -- cl-min-size-∧
+
+  cl-min-size-∧ : ∀ {C : Set} (gss : List (LazyGraph C)) →
+    ℕ × List (LazyGraph C)
+
+  cl-min-size-∧ [] = 1 , []
+  cl-min-size-∧ (gs ∷ gss) with cl-min-size gs | cl-min-size-∧ gss
+  ... | 0 , gs′ | _ , gss′ = 0 , gs′ ∷ gss′
+  ... | _ , gs′ | 0 , gss′ = 0 , gs′ ∷ gss′
+  ... | i , gs′ | j , gss′ = i + j , gs′ ∷ gss′
 
 --
 -- `cl-min-size` is sound:
