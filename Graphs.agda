@@ -4,12 +4,16 @@
 
 module Graphs where
 
+open import Algebra
+  using (module Monoid)
 open import Data.Bool
   using (Bool; true; false; if_then_else_)
 open import Data.Nat
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.List as List
+open import Data.List.Properties
+  using (∷-injective)
 open import Data.Product
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃; ∃₂)
 open import Data.Empty
@@ -17,12 +21,15 @@ open import Data.Maybe
   using (Maybe; nothing; just)
 
 open import Function
-  using (_∘_)
+  using (_∋_; _∘_; _$_)
 
 open import Relation.Nullary
 
 open import Relation.Binary.PropositionalEquality as P
   renaming ([_] to P[_])
+
+private
+  module LM {a} {A : Set a} = Monoid (List.monoid A)
 
 open import Util
 
@@ -66,8 +73,8 @@ data Graph (C : Set) : Set where
 -- Lazy graphs of configuration
 --
 
--- A `LazyGraph C n` represents a finite set of graphs
--- of configurations (whose type is `Graph C n`).
+-- A `LazyGraph C` represents a finite set of graphs
+-- of configurations (whose type is `Graph C`).
 --
 -- "Lazy" graphs of configurations will be produced
 -- by the "lazy" (staged) version of multi-result
@@ -174,63 +181,170 @@ get-graphs*-is-map (x ∷ gss) =
 -- A cleaner that removes subtrees that represent empty sets of graphs.
 --
 
-cl-empty′ : {C : Set} (gs : LazyGraph C) →
-  Maybe (LazyGraph C)
-cl-empty-∨ : {C : Set} (gss : List (LazyGraph C)) →
-  List (LazyGraph C)
-cl-empty-∧ : {C : Set} (gss : List (LazyGraph C)) →
-  Maybe (List (LazyGraph C))
+mutual
 
--- cl-empty
+  -- cl-empty′
 
-cl-empty′ (⁇ a⊥) =
-  nothing
-cl-empty′ Ø =
-  nothing
-cl-empty′ (alt gs₁ gs₂) with cl-empty′ gs₁ | cl-empty′ gs₂
-... | nothing | gs₂′ = gs₂′
-... | gs₁′ | nothing = gs₁′
-... | just gs₁′ | just gs₂′ = just (alt gs₁′ gs₂′)
-cl-empty′ (back c) =
-  just (back c)
-cl-empty′ (split c gss) with cl-empty-∧ gss
-... | nothing = nothing
-... | just gss′ = just (split c gss′)
-cl-empty′ (rebuild c gss) with cl-empty-∨ gss
-... | [] = nothing
-... | gss′ = just (rebuild c gss′)
+  cl-empty′ : {C : Set} (gs : LazyGraph C) →
+    Maybe (LazyGraph C)
 
--- cl-empty-∨
+  cl-empty′ (⁇ a⊥) =
+    nothing
+  cl-empty′ Ø =
+    nothing
+  cl-empty′ (alt gs₁ gs₂) with cl-empty′ gs₁ | cl-empty′ gs₂
+  ... | nothing | gs₂′ = gs₂′
+  ... | gs₁′ | nothing = gs₁′
+  ... | just gs₁′ | just gs₂′ = just (alt gs₁′ gs₂′)
+  cl-empty′ (back c) =
+    just (back c)
+  cl-empty′ (split c gss) with cl-empty-∧ gss
+  ... | nothing = nothing
+  ... | just gss′ = just (split c gss′)
+  cl-empty′ (rebuild c gss) with cl-empty-∨ gss
+  ... | [] = nothing
+  ... | gss′ = just (rebuild c gss′)
 
-cl-empty-∨ [] = []
-cl-empty-∨ (gs ∷ gss) with cl-empty′ gs | cl-empty-∨ gss
-... | nothing | gss′ = gss′
-... | just gs′ | gss′ = gs′ ∷ gss′
+  -- cl-empty-∨
 
--- cl-empty-∧
+  cl-empty-∨ : {C : Set} (gss : List (LazyGraph C)) →
+    List (LazyGraph C)
 
-cl-empty-∧ [] = just []
-cl-empty-∧ (gs ∷ gss) with cl-empty′ gs
-... | nothing = nothing
-... | just gs′ with cl-empty-∧ gss
-... | nothing = nothing
-... | just gss′ = just (gs′ ∷ gss′)
+  cl-empty-∨ [] = []
+  cl-empty-∨ (gs ∷ gss) with cl-empty′ gs | cl-empty-∨ gss
+  ... | nothing | gss′ = gss′
+  ... | just gs′ | gss′ = gs′ ∷ gss′
 
-cl-empty : {C : Set} (gs : LazyGraph C) → LazyGraph C
+  -- cl-empty-∧
 
-cl-empty gs with cl-empty′ gs
-... | nothing = Ø
-... | just gs′ = gs′
+  cl-empty-∧ : {C : Set} (gss : List (LazyGraph C)) →
+    Maybe (List (LazyGraph C))
 
-{-
--- TODO:
---`cl-empty` is correct
+  cl-empty-∧ [] = just []
+  cl-empty-∧ (gs ∷ gss) with cl-empty′ gs
+  ... | nothing = nothing
+  ... | just gs′ with cl-empty-∧ gss
+  ... | nothing = nothing
+  ... | just gss′ = just (gs′ ∷ gss′)
 
--- cl-empty-correct
+  -- cl-empty
 
-cl-empty-correct : ∀ {C : Set} {n} (gs : LazyGraph C n) →
-  get-graphs (cl-empty gs) ≡ get-graphs gs
--}
+  cl-empty : {C : Set} (gs : LazyGraph C) → LazyGraph C
+
+  cl-empty gs with cl-empty′ gs
+  ... | nothing = Ø
+  ... | just gs′ = gs′
+
+--
+-- `cl-empty` is correct
+--
+
+mutual
+
+  -- cl-empty-correct
+
+  cl-empty-correct : ∀ {C : Set} (gs : LazyGraph C) →
+    get-graphs (cl-empty gs) ≡ get-graphs gs
+
+  cl-empty-correct (⁇ a⊥) =
+    ⊥-elim a⊥
+  cl-empty-correct Ø =
+    refl
+  cl-empty-correct (alt gs₁ gs₂)
+    rewrite P.sym $ cl-empty-correct gs₁
+          | P.sym $ cl-empty-correct gs₂
+    with cl-empty′ gs₁ | cl-empty′ gs₂
+  ... | nothing | nothing = refl
+  ... | nothing | just gs′₂ = refl
+  ... | just gs′₁ | nothing = begin
+    get-graphs gs′₁
+      ≡⟨ P.sym $ proj₂ LM.identity (get-graphs gs′₁) ⟩
+    get-graphs gs′₁ ++ []
+    ∎ where open ≡-Reasoning
+  ... | just gs′₁ | just gs′₂ = refl
+  cl-empty-correct (back c) =
+    refl
+  cl-empty-correct (split c gss) with cl-empty-∧ gss | inspect cl-empty-∧ gss
+  ... | nothing | P[ ≡nothing ]
+    rewrite cl-empty-∧-nothing gss ≡nothing = refl
+  ... | just gss′ | P[ ≡just ]
+    rewrite cl-empty-∧-just gss gss′ ≡just = refl
+  cl-empty-correct (rebuild c gss)
+    with cl-empty-∨ gss | inspect cl-empty-∨ gss
+  ... | [] | P[ ≡[] ] rewrite cl-empty-∨-correct gss [] ≡[] = refl
+  ... | gs′ ∷ gss′ | P[ ≡gs′∷gss′ ]
+    rewrite cl-empty-∨-correct gss (gs′ ∷ gss′) ≡gs′∷gss′ = refl
+
+  -- cl-empty-∧-nothing
+
+  cl-empty-∧-nothing : ∀ {C : Set} (gss : List (LazyGraph C)) →
+    cl-empty-∧ gss ≡ nothing → cartesian (get-graphs* gss) ≡ []
+
+  cl-empty-∧-nothing [] ()
+  cl-empty-∧-nothing (gs ∷ gss) eq  with cl-empty′ gs | inspect cl-empty′ gs
+  cl-empty-∧-nothing (gs ∷ gss) eq | nothing | P[ ≡nothing ]
+    rewrite P.sym $ cl-empty-nothing gs ≡nothing = refl
+  cl-empty-∧-nothing (gs ∷ gss) eq | just gs′ | P[ ≡gs′ ]
+    with cl-empty-∧ gss | inspect cl-empty-∧ gss
+  cl-empty-∧-nothing (gs ∷ gss) eq | just gs′ | P[ ≡gs′ ] | nothing | P[ ≡gss′ ]
+    rewrite cl-empty-∧-nothing gss ≡gss′ | cartesian2[] (get-graphs gs)
+    = refl
+  cl-empty-∧-nothing (gs ∷ gss) () | just gs′ | P[ ≡gs′ ] | just gss′ | _
+
+  -- cl-empty-∧-just
+
+  cl-empty-∧-just : ∀ {C : Set} (gss gss′ : List (LazyGraph C)) →
+    cl-empty-∧ gss ≡ just gss′ → get-graphs* gss ≡ get-graphs* gss′
+
+  cl-empty-∧-just [] [] eq = refl
+  cl-empty-∧-just [] (gs′ ∷ gss′) ()
+  cl-empty-∧-just (gs ∷ gss) gss′ eq with cl-empty′ gs | inspect cl-empty′ gs
+  cl-empty-∧-just (gs ∷ gss) gss′ () | nothing | _
+  ... | just gs₁ | ≡just-gs₁
+    with cl-empty-∧ gss | inspect cl-empty-∧ gss
+  cl-empty-∧-just (gs ∷ gss) gss′ ()
+    | just gs₁ | ≡just-gs₁ | nothing | _ 
+  cl-empty-∧-just (gs ∷ gss) .(gs₁ ∷ gss₁) refl
+    | just gs₁ | P[ ≡gs₁ ] | just gss₁ | P[ ≡gss₁ ]
+    rewrite cl-empty-just gs gs₁ ≡gs₁ | cl-empty-∧-just gss gss₁ ≡gss₁ = refl
+
+  -- cl-empty-∨-correct
+
+  cl-empty-∨-correct :
+    ∀ {C : Set} (gss : List (LazyGraph C)) (gss′ : List (LazyGraph C)) →
+    cl-empty-∨ gss ≡ gss′ →
+      concat (get-graphs* gss) ≡ concat (get-graphs* gss′)
+
+  cl-empty-∨-correct [] [] ≡gss′ = refl
+  cl-empty-∨-correct [] (x ∷ gss′) ()
+  cl-empty-∨-correct (gs ∷ gss) gss′ ≡gss′
+    with cl-empty′ gs | inspect cl-empty′ gs
+  ... | nothing | P[ ≡nothing ]
+    rewrite P.sym $ cl-empty-nothing gs ≡nothing
+          | cl-empty-∨-correct gss gss′ ≡gss′ = refl
+  cl-empty-∨-correct (gs ∷ gss) [] () | just gs₁ | P[ ≡just ]
+  cl-empty-∨-correct (gs ∷ gss) (gs′  ∷ gss′) ≡gs′∷gss′ | just gs₁ | P[ ≡just ]
+    with ∷-injective ≡gs′∷gss′
+  ... | gs₁≡gs′ , ≡gss′
+    rewrite gs₁≡gs′
+          | cl-empty-just gs gs′ ≡just | cl-empty-∨-correct gss gss′ ≡gss′
+    = refl
+
+  -- cl-empty-nothing
+
+  cl-empty-nothing : ∀ {C : Set} (gs : LazyGraph C) →
+    cl-empty′ gs ≡ nothing → [] ≡ get-graphs gs
+
+  cl-empty-nothing gs ≡nothing with cl-empty-correct gs
+  ... | []≡ rewrite ≡nothing = []≡
+
+  -- cl-empty-just
+
+  cl-empty-just : ∀ {C : Set} (gs gs′ : LazyGraph C) →
+    cl-empty′ gs ≡ just gs′ → get-graphs gs′ ≡ get-graphs gs
+
+  cl-empty-just gs gs′ ≡just with cl-empty-correct gs
+  ... | cl≡ rewrite ≡just  = cl≡
 
 --
 -- Removing graphs that contain "bad" configurations.
@@ -271,12 +385,12 @@ cl-bad-config* bad [] = []
 cl-bad-config* bad (gs ∷ gss) =
   (cl-bad-config bad gs) ∷ cl-bad-config* bad gss
 
--- cl-empty-bad
+-- cl-empty&bad
 
-cl-empty-bad : {C : Set} (bad : C → Bool) (gs : LazyGraph C) →
+cl-empty&bad : {C : Set} (bad : C → Bool) (gs : LazyGraph C) →
   LazyGraph C
 
-cl-empty-bad bad = cl-empty ∘ cl-bad-config bad
+cl-empty&bad bad = cl-empty ∘ cl-bad-config bad
 
 --
 -- Extracting a graph of minimal size (if any).
@@ -357,7 +471,7 @@ cl-min-size-∧ (gs ∷ gss) with cl-min-size gs | cl-min-size-∧ gss
 --
 -- `cl-min-size` is sound:
 --
---  Let cl-min-size gs ≡ (k , gs′) where k ≡ 0. Then
+--  Let cl-min-size gs ≡ (k , gs′). Then
 --     get-graphs gs′ ⊆ get-graphs gs
 --     k ≡ graph-size (hd (get-graphs gs′))
 --

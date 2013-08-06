@@ -310,6 +310,15 @@ cartesian∘map f xs = begin
   ∎
   where open ≡-Reasoning
 
+-- cartesian2[]
+
+cartesian2[] : ∀ {A : Set} (xs : List A) →
+  cartesian2 xs [] ≡ []
+
+cartesian2[] [] = refl
+cartesian2[] (x ∷ xs) = cartesian2[] xs
+
+
 -- ⊥↔[]∈cartesian2
 
 ⊥↔[]∈cartesian2 : ∀ {A : Set} (xs : List A) (yss : List (List A)) →

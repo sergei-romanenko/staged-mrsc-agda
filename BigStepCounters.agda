@@ -201,7 +201,7 @@ record CntWorld (k : ℕ) : Set₁ where
     unsafe : (c : ωConf k) → Bool
 
   cl-unsafe : ∀ (gs : LazyGraph (ωConf k)) → LazyGraph (ωConf k)
-  cl-unsafe = cl-empty-bad unsafe
+  cl-unsafe = cl-empty&bad unsafe
 
 -- TooBig₁
 
