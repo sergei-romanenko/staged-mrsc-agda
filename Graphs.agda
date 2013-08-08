@@ -93,82 +93,82 @@ data LazyGraph (C : Set) : Set where
               LazyGraph C
 
 -- The semantics of `LazyGraph C` is formally defined by
--- the function `get-graphs` that generates a list of `Graph C n`
+-- the function `⟪_⟫` that generates a list of `Graph C n`
 -- from  a `LazyGraph C`.
 
 mutual
 
-  -- get-graphs
+  -- ⟪_⟫
 
-  get-graphs : {C : Set} (gs : LazyGraph C) → List (Graph C)
+  ⟪_⟫ : {C : Set} (gs : LazyGraph C) → List (Graph C)
 
-  get-graphs (⁇ a⊥) =
+  ⟪ ⁇ a⊥ ⟫ =
     ⊥-elim a⊥
-  get-graphs Ø =
+  ⟪ Ø ⟫ =
     []
-  get-graphs (alt gs₁ gs₂) =
-    get-graphs gs₁ ++ get-graphs gs₂
-  get-graphs (back c) =
+  ⟪ alt gs₁ gs₂ ⟫ =
+    ⟪ gs₁ ⟫ ++ ⟪ gs₂ ⟫
+  ⟪ back c ⟫ =
     [ back c ]
-  get-graphs (split c gss) =
-    map (split c) (cartesian (get-graphs* gss))
-  get-graphs (rebuild c gss) =
-    map (rebuild c) (concat (get-graphs* gss))
+  ⟪ split c gss ⟫ =
+    map (split c) (cartesian ⟪ gss ⟫*)
+  ⟪ rebuild c gss ⟫ =
+    map (rebuild c) (concat ⟪ gss ⟫*)
 
-  -- get-graphs*
+  -- ⟪_⟫*
 
-  get-graphs* : {C : Set} (gss : List (LazyGraph C)) →
+  ⟪_⟫* : {C : Set} (gss : List (LazyGraph C)) →
               List (List (Graph C))
-  get-graphs* [] = []
-  get-graphs* (gs ∷ gss) = get-graphs gs ∷ get-graphs* gss
+  ⟪ [] ⟫* = []
+  ⟪ gs ∷ gss ⟫* = ⟪ gs ⟫ ∷ ⟪ gss ⟫*
 
--- `get-graphs*` has only been introduced to make the termination
--- checker happy. Actually, it is equivalent to `map get-graphs`.
+-- `⟪_⟫*` has only been introduced to make the termination
+-- checker happy. Actually, it is equivalent to `map ⟪_⟫`.
 
--- get-graphs*-is-map
+-- ⟪⟫*-is-map
 
-get-graphs*-is-map : {C : Set} (gss : List (LazyGraph C)) →
-  get-graphs* gss ≡ map get-graphs gss
+⟪⟫*-is-map : {C : Set} (gss : List (LazyGraph C)) →
+  ⟪ gss ⟫* ≡ map ⟪_⟫ gss
 
-get-graphs*-is-map [] = refl
-get-graphs*-is-map (x ∷ gss) =
-  cong (_∷_ (get-graphs x)) (get-graphs*-is-map gss)
+⟪⟫*-is-map [] = refl
+⟪⟫*-is-map (gs ∷ gss) =
+  cong (_∷_ ⟪ gs ⟫) (⟪⟫*-is-map gss)
 
 
 --
--- Usually, we are not interested in the whole bag `get-graphs gs`.
+-- Usually, we are not interested in the whole bag `⟪ gs ⟫`.
 -- The goal is to find "the best" or "most interesting" graphs.
 -- Hence, there should be developed some techniques of extracting
 -- useful information from a `LazyGraph C n` without evaluating
--- `get-graphs gs` directly.
+-- `⟪ gs ⟫` directly.
 
 -- This can be formulated in the following form.
 -- Suppose that a function `select` filters bags of graphs,
 -- removing "bad" graphs, so that
 --
---     select (get-graphs gs)
+--     select ⟪ gs ⟫
 --
 -- generates the bag of "good" graphs.
 -- Let us find a function `extract` such that
 --
---     extract gs ≡ select (get-graphs gs)
+--     extract gs ≡ select ⟪ gs ⟫
 --
 -- In many cases, `extract` may be more efficient (by several orders
--- of magnityde) than the composition `select ∘ get-graphs`.
+-- of magnityde) than the composition `select ∘ ⟪_⟫`.
 
 -- Sometimes, `extract` can be formulated in terms of "cleaners" of
 -- lazy graphs. Let `clean` be a function that transforms lazy graphs,
 -- such that
 --
---     get-graphs (clean gs) ⊆ get-graphs gs
+--     ⟪ clean gs ⟫ ⊆ ⟪ gs ⟫
 --
 -- Then `extract` can be constructed in the following way:
 --
---     extract gs = get-graphs (clean gs)
+--     extract gs = ⟪ clean gs ⟫
 --
 -- Theoretically speaking, `clean` is the result of "promoting" `select`:
 --
---     select ∘ get-graphs ≡ get-graphs ∘ clean
+--     select ∘ ⟪_⟫ ≡ ⟪_⟫ ∘ clean
 --
 -- The nice property of cleaners is that they are composable:
 -- given `cleaner₁` and `cleaner₂`, `cleaner₂ ∘ cleaner₁` is also a cleaner.
@@ -245,7 +245,7 @@ mutual
   -- cl-empty-correct
 
   cl-empty-correct : ∀ {C : Set} (gs : LazyGraph C) →
-    get-graphs (cl-empty gs) ≡ get-graphs gs
+    ⟪ cl-empty gs ⟫ ≡ ⟪ gs ⟫
 
   cl-empty-correct (⁇ a⊥) =
     ⊥-elim a⊥
@@ -258,9 +258,9 @@ mutual
   ... | nothing | nothing = refl
   ... | nothing | just gs′₂ = refl
   ... | just gs′₁ | nothing = begin
-    get-graphs gs′₁
-      ≡⟨ P.sym $ proj₂ LM.identity (get-graphs gs′₁) ⟩
-    get-graphs gs′₁ ++ []
+    ⟪ gs′₁ ⟫
+      ≡⟨ P.sym $ proj₂ LM.identity ⟪ gs′₁ ⟫ ⟩
+    ⟪ gs′₁ ⟫ ++ []
     ∎ where open ≡-Reasoning
   ... | just gs′₁ | just gs′₂ = refl
   cl-empty-correct (back c) =
@@ -279,7 +279,7 @@ mutual
   -- cl-empty-∧-nothing
 
   cl-empty-∧-nothing : ∀ {C : Set} (gss : List (LazyGraph C)) →
-    cl-empty-∧ gss ≡ nothing → cartesian (get-graphs* gss) ≡ []
+    cl-empty-∧ gss ≡ nothing → cartesian ⟪ gss ⟫* ≡ []
 
   cl-empty-∧-nothing [] ()
   cl-empty-∧-nothing (gs ∷ gss) eq  with cl-empty′ gs | inspect cl-empty′ gs
@@ -288,14 +288,14 @@ mutual
   cl-empty-∧-nothing (gs ∷ gss) eq | just gs′ | P[ ≡gs′ ]
     with cl-empty-∧ gss | inspect cl-empty-∧ gss
   cl-empty-∧-nothing (gs ∷ gss) eq | just gs′ | P[ ≡gs′ ] | nothing | P[ ≡gss′ ]
-    rewrite cl-empty-∧-nothing gss ≡gss′ | cartesian2[] (get-graphs gs)
+    rewrite cl-empty-∧-nothing gss ≡gss′ | cartesian2[] (⟪ gs ⟫)
     = refl
   cl-empty-∧-nothing (gs ∷ gss) () | just gs′ | P[ ≡gs′ ] | just gss′ | _
 
   -- cl-empty-∧-just
 
   cl-empty-∧-just : ∀ {C : Set} (gss gss′ : List (LazyGraph C)) →
-    cl-empty-∧ gss ≡ just gss′ → get-graphs* gss ≡ get-graphs* gss′
+    cl-empty-∧ gss ≡ just gss′ → ⟪ gss ⟫* ≡ ⟪ gss′ ⟫*
 
   cl-empty-∧-just [] [] eq = refl
   cl-empty-∧-just [] (gs′ ∷ gss′) ()
@@ -314,7 +314,7 @@ mutual
   cl-empty-∨-correct :
     ∀ {C : Set} (gss : List (LazyGraph C)) (gss′ : List (LazyGraph C)) →
     cl-empty-∨ gss ≡ gss′ →
-      concat (get-graphs* gss) ≡ concat (get-graphs* gss′)
+      concat ⟪ gss ⟫* ≡ concat ⟪ gss′ ⟫*
 
   cl-empty-∨-correct [] [] ≡gss′ = refl
   cl-empty-∨-correct [] (x ∷ gss′) ()
@@ -334,7 +334,7 @@ mutual
   -- cl-empty-nothing
 
   cl-empty-nothing : ∀ {C : Set} (gs : LazyGraph C) →
-    cl-empty′ gs ≡ nothing → [] ≡ get-graphs gs
+    cl-empty′ gs ≡ nothing → [] ≡ ⟪ gs ⟫
 
   cl-empty-nothing gs ≡nothing with cl-empty-correct gs
   ... | []≡ rewrite ≡nothing = []≡
@@ -342,7 +342,7 @@ mutual
   -- cl-empty-just
 
   cl-empty-just : ∀ {C : Set} (gs gs′ : LazyGraph C) →
-    cl-empty′ gs ≡ just gs′ → get-graphs gs′ ≡ get-graphs gs
+    cl-empty′ gs ≡ just gs′ → ⟪ gs′ ⟫ ≡ ⟪ gs ⟫
 
   cl-empty-just gs gs′ ≡just with cl-empty-correct gs
   ... | cl≡ rewrite ≡just  = cl≡
@@ -487,7 +487,7 @@ mutual
 -- `cl-min-size` is sound:
 --
 --  Let cl-min-size gs ≡ (k , gs′). Then
---     get-graphs gs′ ⊆ get-graphs gs
---     k ≡ graph-size (hd (get-graphs gs′))
+--     ⟪ gs′ ⟫ ⊆ ⟪ gs ⟫
+--     k ≡ graph-size (hd ⟪ gs′ ⟫)
 --
 -- TODO: prove this formally

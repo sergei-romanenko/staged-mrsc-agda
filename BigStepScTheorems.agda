@@ -296,7 +296,7 @@ module MRSC-naive≡lazy where
     -- naive≡lazy′
 
     naive≡lazy′ : ∀ {n} (h : History n) (b : Bar ↯ h) (c : Conf) →
-      naive-mrsc′ h b c ≡ get-graphs (lazy-mrsc′ h b c)
+      naive-mrsc′ h b c ≡ ⟪ lazy-mrsc′ h b c ⟫
 
     naive≡lazy′ {n} h b c with foldable? h c
     ... | yes (i , c⊑hi) = refl
@@ -314,21 +314,21 @@ module MRSC-naive≡lazy where
 
     map∘naive-mrsc′ : ∀ {n} (h : History n) (b : Bar ↯ h)
                             (cs : List Conf) →
-      map (naive-mrsc′ h b) cs ≡ get-graphs* (map (lazy-mrsc′ h b) cs)
+      map (naive-mrsc′ h b) cs ≡ ⟪ map (lazy-mrsc′ h b) cs ⟫*
 
     map∘naive-mrsc′ h b cs = begin
       map (naive-mrsc′ h b) cs
         ≡⟨ map-cong (naive≡lazy′ h b) cs ⟩
-      map (get-graphs ∘ lazy-mrsc′ h b) cs
+      map (⟪_⟫ ∘ lazy-mrsc′ h b) cs
         ≡⟨ map-compose cs ⟩
-      map get-graphs (map (lazy-mrsc′ h b) cs)
-        ≡⟨ P.sym $ get-graphs*-is-map (map (lazy-mrsc′ h b) cs) ⟩
-      get-graphs* (map (lazy-mrsc′ h b) cs)
+      map ⟪_⟫ (map (lazy-mrsc′ h b) cs)
+        ≡⟨ P.sym $ ⟪⟫*-is-map (map (lazy-mrsc′ h b) cs) ⟩
+      ⟪ map (lazy-mrsc′ h b) cs ⟫*
       ∎
       where open ≡-Reasoning
 
   -- naive≡lazy
 
   naive≡lazy : ∀ (c : Conf) →
-    naive-mrsc c ≡ get-graphs (lazy-mrsc c)
+    naive-mrsc c ≡ ⟪ lazy-mrsc c ⟫
   naive≡lazy c = naive≡lazy′ [] bar[] c

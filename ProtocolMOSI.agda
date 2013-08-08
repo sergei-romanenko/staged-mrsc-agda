@@ -20,7 +20,7 @@ open import BigStepSc
 open import BigStepCounters
 
 MOSI : CntWorld 4
-MOSI = ⟪ start , rules , unsafe ⟫
+MOSI = ⟨⟨ start , rules , unsafe ⟩⟩
   where
 
   start = ω ∷ # 0 ∷ # 0 ∷ # 0 ∷ []
@@ -61,4 +61,4 @@ graph-cl-unsafe : LazyGraph (ωConf 4)
 graph-cl-unsafe = CntWorld.cl-unsafe MOSI graph
 
 graph-cl-min-size = cl-min-size graph-cl-unsafe
-graph-min-size = get-graphs (proj₂ graph-cl-min-size)
+graph-min-size = ⟪ proj₂ graph-cl-min-size ⟫

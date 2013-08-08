@@ -191,7 +191,7 @@ _↴ {k} c = remove-c (vec-cartesian (Vec.map _↴₁ c))
 
 record CntWorld (k : ℕ) : Set₁ where
   constructor
-    ⟪_,_,_⟫
+    ⟨⟨_,_,_⟩⟩
   field
 
     start : ωConf k
@@ -225,7 +225,7 @@ tooBig? l {k} c = vecAny (tooBig₁? l) c
 
 
 mkScWorld : ∀ (l : ℕ) (maxDepth : ℕ) {k} (cntWorld : CntWorld k) → ScWorld
-mkScWorld l maxDepth {k} ⟪ start , _⇉ω , unsafe ⟫ = record
+mkScWorld l maxDepth {k} ⟨⟨ start , _⇉ω , unsafe ⟩⟩ = record
   { Conf = ωConf k
   ; _⊑_ = _⊑_
   ; _⊑?_ = _⊑?_
