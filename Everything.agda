@@ -10,6 +10,7 @@ import Util
 import AlmostFullRel
 import BarWhistles
 import Graphs
+import GraphsTheorems
 import BigStepSc
 import BigStepScTheorems
 import BigStepScTests
