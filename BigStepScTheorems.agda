@@ -12,6 +12,8 @@ open import Data.List.Any
   using (Any; here; there; module Membership-≡)
 open import Data.List.Any.Properties
   using (Any↔; ++↔; return↔; map↔; concat↔; ⊎↔)
+open import Data.List.Any.Membership as MB
+  using (map-∈↔)
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.Vec as Vec
@@ -120,7 +122,7 @@ module MRSC-correctness where
     split-helper :
        g ∈ gs₁ → ∃ (λ gs′ → gs′ ∈ gss₀ × g ≡ split c gs′)
     split-helper =
-      _ ↔⟨ sym $ map↔∘Any↔ g (split c) gss₀ ⟩ _ ∎
+      _ ↔⟨ sym $ map-∈↔ ⟩ _ ∎
       where open ∼-Reasoning
 
     rebuild-helper :
@@ -229,7 +231,7 @@ module MRSC-correctness where
       _ → _
     helper =
       ∃ (λ gs′ → gs′ ∈ gss₀ × split c gs ≡ split c gs′)
-        ↔⟨ map↔∘Any↔ (split c gs) (split c) gss₀ ⟩
+        ↔⟨ map-∈↔ ⟩
       split c gs ∈ map (split c) gss₀
         ↔⟨ _ ∎ ⟩
       split c gs ∈ gs₁

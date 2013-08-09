@@ -13,7 +13,9 @@ open import Data.List.Properties
 open import Data.List.Any
   using (Any; here; there; module Membership-≡)
 open import Data.List.Any.Properties
-  using (⊥↔Any[]; Any↔; ++↔; ∷↔; return↔; map↔; concat↔; ⊎↔)
+  using (Any-cong; ⊥↔Any[]; Any↔; ++↔; ∷↔; return↔; map↔; concat↔; ⊎↔)
+open import Data.List.Any.Membership as MB
+  using (map-∈↔)
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.Vec as Vec
@@ -207,21 +209,7 @@ foldr∘map f g n =
   to∘from x (ys ∷ yss) (there p) = cong there (to∘from x yss p)
 
 
--- map↔∘Any↔
-
-map↔∘Any↔ : {A : Set}
-  (x : A) (f : List A → A) (xss : List (List A)) →
-  ∃ (λ xs → xs ∈ xss × x ≡ f xs) ↔ x ∈ map f xss
-map↔∘Any↔ x f xss =
-  ∃ (λ xs → xs ∈ xss × x ≡ f xs)
-    ∼⟨ Any↔ ⟩
-  Any (_≡_ x ∘ f) xss
-    ∼⟨ map↔ ⟩
-  Any (_≡_ x) (map f xss)
-    ∼⟨ _ ∎ ⟩
-  x ∈ map f xss
-  ∎
-  where open ∼-Reasoning
+-- concat↔∘Any↔
 
 concat↔∘Any↔ : {A B : Set}
   (z : B) (g : B → B) (f : A → List B) (xs : List A) →
@@ -395,11 +383,11 @@ map∷→≡×∈ {yss = ys ∷ yss} (there x∷xs∈) =
 
 -- ∈∈↔∷cartesian
 
-∈∈↔∷cartesian :
+∈∈↔∷cartesian2 :
   ∀ {A : Set} (x : A) (xs ys : List A) (yss : List (List A)) →
     (x ∈ ys × xs ∈ yss) ↔ x ∷ xs ∈ cartesian2 ys yss
 
-∈∈↔∷cartesian x xs [] yss =
+∈∈↔∷cartesian2 x xs [] yss =
   (x ∈ [] × xs ∈ yss)
     ↔⟨ (sym $ ⊥↔Any[]) ×-cong (_ ∎) ⟩
   (⊥ × xs ∈ yss)
@@ -410,13 +398,13 @@ map∷→≡×∈ {yss = ys ∷ yss} (there x∷xs∈) =
   ∎
   where open ∼-Reasoning
 
-∈∈↔∷cartesian x xs (y ∷ ys) yss =
+∈∈↔∷cartesian2 x xs (y ∷ ys) yss =
   (x ∈ y ∷ ys × xs ∈ yss)
     ↔⟨ sym (∷↔ (_≡_ x)) ×-cong (_ ∎) ⟩
   ((x ≡ y ⊎ x ∈ ys) × xs ∈ yss)
     ↔⟨ proj₂ ×⊎.distrib (xs ∈ yss) (x ≡ y) (x ∈ ys) ⟩
   (x ≡ y × xs ∈ yss ⊎ x ∈ ys × xs ∈ yss)
-    ↔⟨ ≡×∈↔map∷ x xs y yss ⊎-cong ∈∈↔∷cartesian x xs ys yss ⟩
+    ↔⟨ ≡×∈↔map∷ x xs y yss ⊎-cong ∈∈↔∷cartesian2 x xs ys yss ⟩
   (x ∷ xs ∈ map (_∷_ y) yss ⊎ x ∷ xs ∈ cartesian2 ys yss)
     ↔⟨ ++↔ ⟩
   x ∷ xs ∈ (map (_∷_ y) yss ++ cartesian2 ys yss)
@@ -536,13 +524,53 @@ map∷→≡×∈ {yss = ys ∷ yss} (there x∷xs∈) =
   (x ∈ ys × Pointwise.Rel _∈_ xs yss)
     ↔⟨ (_ ∎) ×-cong ∈*↔∈cartesian ⟩
   (x ∈ ys × xs ∈ cartesian yss)
-    ↔⟨ ∈∈↔∷cartesian x xs ys (cartesian yss) ⟩
+    ↔⟨ ∈∈↔∷cartesian2 x xs ys (cartesian yss) ⟩
   x ∷ xs ∈ cartesian2 ys (cartesian yss)
     ≡⟨ refl ⟩
   x ∷ xs ∈ cartesian (ys ∷ yss)
   ∎
   where open ∼-Reasoning
 
+--
+-- Monotonicity of `Pointwise.Rel _∈_` and `cartesian`.
+--
+
+-- ∈*-mono
+
+∈*-mono : {A : Set} {xs : List A} {yss₁ yss₂ : List (List A)} →
+  Pointwise.Rel _⊆_ yss₁ yss₂ →
+  Pointwise.Rel _∈_ xs yss₁ → Pointwise.Rel _∈_ xs yss₂
+
+∈*-mono [] [] = []
+∈*-mono (ys₁⊆ys₂ ∷ yss₁⊆*yss₂) (x∈ys₁ ∷ xs∈*yss₁) =
+  (ys₁⊆ys₂ x∈ys₁) ∷ ∈*-mono yss₁⊆*yss₂ xs∈*yss₁
+
+-- cartesian-mono
+
+cartesian-mono : ∀ {A : Set} (xss₁ xss₂ : List (List A)) →
+  Pointwise.Rel _⊆_ xss₁ xss₂ →
+  cartesian xss₁ ⊆ cartesian xss₂
+
+cartesian-mono xss₁ xss₂ xss₁⊆xss₂ {zs} =
+  zs ∈ cartesian xss₁
+    ↔⟨ sym $ ∈*↔∈cartesian ⟩
+  Pointwise.Rel _∈_ zs xss₁
+    ∼⟨ ∈*-mono xss₁⊆xss₂ ⟩
+  Pointwise.Rel _∈_ zs xss₂
+    ↔⟨ ∈*↔∈cartesian ⟩
+  zs ∈ cartesian xss₂
+  ∎
+  where open ∼-Reasoning
+
+-- ∈*∘map-mono
+
+∈*∘map-mono : {A B : Set} {⟪_⟫ : A → List B} (clean : A → A) →
+  (mono : ∀ x → ⟪ clean x ⟫ ⊆ ⟪ x ⟫) (xs : List A) →
+  Pointwise.Rel _⊆_ (map (⟪_⟫ ∘ clean) xs) (map ⟪_⟫ xs)
+
+∈*∘map-mono clean mono [] = []
+∈*∘map-mono clean mono (x ∷ xs) =
+  (mono x) ∷ ∈*∘map-mono clean mono xs
 
 --
 -- Cartesian product for vectors

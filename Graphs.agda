@@ -13,19 +13,43 @@ open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.List as List
 open import Data.List.Properties
-  using (∷-injective)
+  using (∷-injective; map-compose)
+open import Data.List.Any
+  using (Any; here; there; module Membership-≡)
+open import Data.List.Any.Properties
+  using (Any-cong; Any↔; ++↔; return↔; map↔; concat↔; ⊎↔)
+open import Data.List.Any.Membership as MB
+  using (map-∈↔)
 open import Data.Product
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃; ∃₂)
+open import Data.Sum
+  using (_⊎_; inj₁; inj₂)
 open import Data.Empty
 open import Data.Maybe
   using (Maybe; nothing; just)
+open import Data.Unit
+  using (⊤; tt)
 
 open import Function
-  using (_∋_; _∘_; _$_)
+open import Function.Inverse as Inv
+  using (_↔_; module Inverse)
+open import Function.Related as Related
+  using ()
+  renaming (module EquationalReasoning to ∼-Reasoning)
+
+import Relation.Binary.Sigma.Pointwise as Σ
+open import Relation.Binary.Sum
+  using (_⊎-cong_)
+open import Relation.Binary.Product.Pointwise
+  using (_×-cong_)
+
+open import Relation.Binary.List.Pointwise as Pointwise
+  using ([]; _∷_)
 
 open import Relation.Nullary
 
 open import Relation.Binary.PropositionalEquality as P
+  hiding (sym)
   renaming ([_] to P[_])
 
 private
@@ -353,41 +377,158 @@ mutual
 -- Some of these states may be "bad" with respect to the problem
 -- that is to be solved by means of supercompilation.
 --
--- The cleaner `cl-bad-config` assumes "badness" to be monotonic,
+-- The cleaner `cl-bad-conf` assumes "badness" to be monotonic,
 -- in the sense that a single "bad" configuration spoils the whole
 -- graph it appears in.
 
 mutual
 
-  -- cl-bad-config
+  -- cl-bad-conf
 
-  cl-bad-config : {C : Set} (bad : C → Bool) (gs : LazyGraph C) →
+  cl-bad-conf : {C : Set} (bad : C → Bool) (gs : LazyGraph C) →
     LazyGraph C
 
-  cl-bad-config bad (⁇ a⊥) =
+  cl-bad-conf bad (⁇ a⊥) =
     ⁇ a⊥
-  cl-bad-config bad Ø =
+  cl-bad-conf bad Ø =
     Ø
-  cl-bad-config bad (alt gs₁ gs₂) =
-    alt (cl-bad-config bad gs₁) (cl-bad-config bad gs₂)
-  cl-bad-config bad (back c) =
+  cl-bad-conf bad (alt gs₁ gs₂) =
+    alt (cl-bad-conf bad gs₁) (cl-bad-conf bad gs₂)
+  cl-bad-conf bad (back c) =
     if bad c then Ø else (back c)
-  cl-bad-config bad (split c gss) =
-    if bad c then Ø else (split c (cl-bad-config* bad gss))
-  cl-bad-config bad (rebuild c gss) =
-    if bad c then Ø else (rebuild c (cl-bad-config* bad gss))
+  cl-bad-conf bad (split c gss) =
+    if bad c then Ø else (split c (cl-bad-conf* bad gss))
+  cl-bad-conf bad (rebuild c gss) =
+    if bad c then Ø else (rebuild c (cl-bad-conf* bad gss))
 
-  -- cl-bad-config*
+  -- cl-bad-conf*
 
-  cl-bad-config* : {C : Set} (bad : C → Bool)
+  cl-bad-conf* : {C : Set} (bad : C → Bool)
     (gss : List (LazyGraph C)) → List (LazyGraph C)
 
-  cl-bad-config* bad [] = []
-  cl-bad-config* bad (gs ∷ gss) =
-    (cl-bad-config bad gs) ∷ cl-bad-config* bad gss
+  cl-bad-conf* bad [] = []
+  cl-bad-conf* bad (gs ∷ gss) =
+    (cl-bad-conf bad gs) ∷ cl-bad-conf* bad gss
 
 --
--- The graph returned by `cl-bad-config` may be cleaned by `cl-empty`.
+-- `cl-bad-conf` is sound
+--
+
+module ClBadConfig-Sound where
+
+  open Membership-≡
+
+  -- cl-bad-conf*-is-map
+
+  cl-bad-conf*-is-map :
+    {C : Set} (bad : C → Bool) (gss : List (LazyGraph C)) →
+    cl-bad-conf* bad gss ≡ map (cl-bad-conf bad) gss
+
+  cl-bad-conf*-is-map bad [] =
+    refl
+  cl-bad-conf*-is-map bad (gs ∷ gss) =
+    cong (_∷_ (cl-bad-conf bad gs)) (cl-bad-conf*-is-map bad gss)
+
+  mutual
+
+    cl-bad-conf-sound :
+      {C : Set} (bad : C → Bool) (gs : LazyGraph C) →
+      ⟪ cl-bad-conf bad gs ⟫ ⊆ ⟪ gs ⟫
+
+    cl-bad-conf-sound bad (⁇ a⊥) =
+      ⊥-elim a⊥
+    cl-bad-conf-sound bad Ø =
+      id
+    cl-bad-conf-sound bad (alt gs₁ gs₂) {g}
+      with cl-bad-conf-sound bad gs₁ | cl-bad-conf-sound bad gs₂
+    ... | cl-gs₁⊆gs₁ | cl-gs₂⊆gs₂ =
+      g ∈ (⟪ cl-bad-conf bad gs₁ ⟫ ++ ⟪ cl-bad-conf bad gs₂ ⟫)
+        ↔⟨ sym $ ++↔ ⟩
+      (g ∈ ⟪ cl-bad-conf bad gs₁ ⟫ ⊎ g ∈ ⟪ cl-bad-conf bad gs₂ ⟫)
+        ∼⟨ cl-bad-conf-sound bad gs₁ ⊎-cong cl-bad-conf-sound bad gs₂ ⟩
+      (g ∈ ⟪ gs₁ ⟫ ⊎ g ∈ ⟪ gs₂ ⟫)
+        ↔⟨ ++↔ ⟩
+      g ∈ (⟪ gs₁ ⟫ ++ ⟪ gs₂ ⟫)
+      ∎ where open ∼-Reasoning
+    cl-bad-conf-sound bad (back c) with bad c
+    ... | true = λ ()
+    ... | false = id
+    cl-bad-conf-sound bad (split c gss) {g} with bad c 
+    ... | true = λ ()
+    ... | false =
+      g ∈ map (split c) (cartesian ⟪ cl-bad-conf* bad gss ⟫*)
+        ↔⟨ sym $ map-∈↔ ⟩
+      (∃ λ g′ → g′ ∈ cartesian ⟪ cl-bad-conf* bad gss ⟫* × (g ≡ split c g′))
+        ∼⟨ Σ.cong Inv.id (cl-bad-conf-cartesian bad gss ×-cong id) ⟩
+      (∃ λ g′ → g′ ∈ cartesian ⟪ gss ⟫* × (g ≡ split c g′))
+        ↔⟨ map-∈↔ ⟩
+      g ∈ map (split c) (cartesian ⟪ gss ⟫*)
+      ∎ where open ∼-Reasoning
+    cl-bad-conf-sound bad (rebuild c gss) {g} with bad c
+    ... | true = λ ()
+    ... | false =
+      g ∈ map (rebuild c) (concat ⟪ cl-bad-conf* bad gss ⟫*)
+        ↔⟨ sym $ map-∈↔ ⟩
+      (∃ λ g′ → g′ ∈ concat ⟪ cl-bad-conf* bad gss ⟫* × (g ≡ rebuild c g′))
+        ∼⟨ Σ.cong Inv.id (cl-bad-conf-concat bad gss ×-cong id) ⟩
+      (∃ λ g′ → g′ ∈ concat ⟪ gss ⟫* × (g ≡ rebuild c g′))
+        ↔⟨ map-∈↔ ⟩
+      g ∈ map (rebuild c) (concat ⟪ gss ⟫*)
+      ∎ where open ∼-Reasoning
+
+    -- cl-bad-conf-concat
+
+    cl-bad-conf-concat :
+      {C : Set} (bad : C → Bool) (gss : List (LazyGraph C)) →
+      concat ⟪ cl-bad-conf* bad gss ⟫* ⊆ concat ⟪ gss ⟫*
+
+    cl-bad-conf-concat bad [] =
+      id
+    cl-bad-conf-concat bad (gs ∷ gss) {g} =
+      g ∈ (⟪ cl-bad-conf bad gs ⟫ ++ concat ⟪ cl-bad-conf* bad gss ⟫*)
+        ↔⟨ sym $ ++↔ ⟩
+      (g ∈ ⟪ cl-bad-conf bad gs ⟫ ⊎ g ∈ concat ⟪ cl-bad-conf* bad gss ⟫*)
+        ∼⟨ cl-bad-conf-sound bad gs ⊎-cong cl-bad-conf-concat bad gss ⟩
+      (g ∈ ⟪ gs ⟫ ⊎ g ∈ concat ⟪ gss ⟫*)
+        ↔⟨ ++↔ ⟩
+      g ∈ (⟪ gs ⟫ ++ concat ⟪ gss ⟫*)
+      ∎ where open ∼-Reasoning
+
+    -- cl-bad-conf-cartesian
+
+    cl-bad-conf-cartesian :
+      {C : Set} (bad : C → Bool) (gss : List (LazyGraph C)) →
+      cartesian ⟪ cl-bad-conf* bad gss ⟫* ⊆ cartesian ⟪ gss ⟫*
+
+    cl-bad-conf-cartesian {C} bad gss {gs} =
+      cartesian-mono ⟪ cl-bad-conf* bad gss ⟫* ⟪ gss ⟫* (helper tt)
+      where
+      open ∼-Reasoning
+
+      ∈*∘map : ∀ gss →
+        Pointwise.Rel _⊆_ (map (⟪_⟫ ∘ cl-bad-conf bad) gss) (map ⟪_⟫ gss)
+      ∈*∘map [] = []
+      ∈*∘map (gs ∷ gss) = cl-bad-conf-sound bad gs ∷ ∈*∘map gss
+
+      helper : ⊤ → Pointwise.Rel _⊆_ ⟪ cl-bad-conf* bad gss ⟫* ⟪ gss ⟫*
+      helper =
+        ⊤
+          ∼⟨ const (∈*∘map gss) ⟩
+        Pointwise.Rel _⊆_ (map (⟪_⟫ ∘ cl-bad-conf bad) gss) (map ⟪_⟫ gss)
+          ∼⟨ subst (λ u → Pointwise.Rel _⊆_ u (map ⟪_⟫ gss))
+                   (map-compose gss) ⟩
+        Pointwise.Rel _⊆_ (map ⟪_⟫ (map (cl-bad-conf bad) gss)) (map ⟪_⟫ gss)
+          ∼⟨ subst₂ (λ u v → Pointwise.Rel _⊆_ u v)
+                    (P.sym $ ⟪⟫*-is-map (map (cl-bad-conf bad) gss))
+                    (P.sym $ ⟪⟫*-is-map gss) ⟩
+        Pointwise.Rel _⊆_ ⟪ map (cl-bad-conf bad) gss ⟫* ⟪ gss ⟫*
+          ∼⟨ subst (λ u → Pointwise.Rel _⊆_ ⟪ u ⟫* ⟪ gss ⟫*)
+                   (P.sym $ cl-bad-conf*-is-map bad gss) ⟩
+        Pointwise.Rel _⊆_ ⟪ cl-bad-conf* bad gss ⟫* ⟪ gss ⟫*
+        ∎
+
+--
+-- The graph returned by `cl-bad-conf` may be cleaned by `cl-empty`.
 --
 
 -- cl-empty&bad
@@ -395,7 +536,7 @@ mutual
 cl-empty&bad : {C : Set} (bad : C → Bool) (gs : LazyGraph C) →
   LazyGraph C
 
-cl-empty&bad bad = cl-empty ∘ cl-bad-config bad
+cl-empty&bad bad = cl-empty ∘ cl-bad-conf bad
 
 --
 -- Extracting a graph of minimal size (if any).
