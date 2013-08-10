@@ -177,16 +177,16 @@ _⊑?_ = Pointwise.decidable _⊑₁?_
 
 -- Rebuildings
 
--- _↴₁
+-- _↷₁
 
-_↴₁ : ∀ (n : ℕω) → List ℕω
-ω ↴₁ = ω ∷ []
-(# i) ↴₁ = ω ∷ # i ∷ []
+_↷₁ : ∀ (n : ℕω) → List ℕω
+ω ↷₁ = ω ∷ []
+(# i) ↷₁ = ω ∷ # i ∷ []
 
--- _↴ 
+-- _↷ 
 
-_↴ : ∀ {k} (c : ωConf k) → List (ωConf k)
-_↴ {k} c = remove-c (vec-cartesian (Vec.map _↴₁ c))
+_↷ : ∀ {k} (c : ωConf k) → List (ωConf k)
+_↷ {k} c = remove-c (vec-cartesian (Vec.map _↷₁ c))
   where remove-c = List.filter (λ c′ → ⌊ ¬? (c ≟ωConf c′) ⌋)
 
 record CntWorld (k : ℕ) : Set₁ where
@@ -230,7 +230,7 @@ mkScWorld l maxDepth {k} ⟨⟨ start , _⇉ω , unsafe ⟩⟩ = record
   ; _⊑_ = _⊑_
   ; _⊑?_ = _⊑?_
   ; _⇉ = _⇉ω
-  ; _↴ = List.filter (not ∘ unsafe) ∘ _↴
+  ; _↷ = List.filter (not ∘ unsafe) ∘ _↷
   ; whistle = ⟨ (λ {n} h → (maxDepth N.≤ n) ⊎ (↯ h))
               , (λ {n} c h → [ inj₁ ∘ ≤-step , inj₂ ∘ inj₂ ]′)
               , (λ {n} h → (maxDepth N.≤? n) ⊎-dec (↯? h))

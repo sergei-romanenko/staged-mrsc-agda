@@ -117,7 +117,7 @@ module MRSC-correctness where
 
     gs₁ gs₂ : List (Graph Conf)
     gs₁ = map (split c) gss₀
-    gs₂ = map (rebuild c) (concat (map step (c ↴)))
+    gs₂ = map (rebuild c) (concat (map step (c ↷)))
 
     split-helper :
        g ∈ gs₁ → ∃ (λ gs′ → gs′ ∈ gss₀ × g ≡ split c gs′)
@@ -126,10 +126,10 @@ module MRSC-correctness where
       where open ∼-Reasoning
 
     rebuild-helper :
-      g ∈ map (rebuild c) (concat (map step (c ↴))) →
-      ∃ (λ c′ → c′ ∈ c ↴ × ∃ (λ g′ → g′ ∈ step c′ × g ≡ rebuild c g′))
+      g ∈ map (rebuild c) (concat (map step (c ↷))) →
+      ∃ (λ c′ → c′ ∈ c ↷ × ∃ (λ g′ → g′ ∈ step c′ × g ≡ rebuild c g′))
     rebuild-helper =
-      _ ↔⟨ sym $ concat↔∘Any↔ g (rebuild c) step (c ↴) ⟩ _ ∎
+      _ ↔⟨ sym $ concat↔∘Any↔ g (rebuild c) step (c ↷) ⟩ _ ∎
       where open ∼-Reasoning
 
     helper : (g ∈ gs₁ ⊎ g ∈ gs₂) → h ⊢MRSC c ↪ g
@@ -158,8 +158,8 @@ module MRSC-correctness where
       pw = pw₂ gs′∈gss₀
 
     helper (inj₂ g∈gs₂) with rebuild-helper g∈gs₂
-    ... | c′ , c′∈c↴ , g′ , g′∈step-c′ , g≡ rewrite g≡ =
-      mrsc-rebuild ¬f ¬w c′∈c↴ (naive-mrsc-sound′ (c ∷ h) (bs c) g′∈step-c′)
+    ... | c′ , c′∈c↷ , g′ , g′∈step-c′ , g≡ rewrite g≡ =
+      mrsc-rebuild ¬f ¬w c′∈c↷ (naive-mrsc-sound′ (c ∷ h) (bs c) g′∈step-c′)
 
   -- naive-mrsc-sound
 
@@ -205,7 +205,7 @@ module MRSC-correctness where
 
     gs₁ gs₂ : List (Graph Conf)
     gs₁ = map (split c) gss₀
-    gs₂ = map (rebuild c) (concat (map step (c ↴)))
+    gs₂ = map (rebuild c) (concat (map step (c ↷)))
 
     pw : ∀ {cs gs} →
            Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) cs gs →
@@ -249,14 +249,14 @@ module MRSC-correctness where
 
     step = naive-mrsc′ (c ∷ h) (bs c)
     gs₁ = map (split c) (cartesian (map step (c ⇉)))
-    gs₂ = map (rebuild c) (concat (map step (c ↴)))
+    gs₂ = map (rebuild c) (concat (map step (c ↷)))
 
     g∈ : g ∈ step c′
     g∈ = naive-mrsc-complete′ (c ∷ h) (bs c) q
 
     helper =
-      ∃ (λ c′ → c′ ∈ c ↴ × ∃ (λ g′ → g′ ∈ step c′ × rebuild c g ≡ rebuild c g′))
-        ↔⟨ concat↔∘Any↔ (rebuild c g) (rebuild c) step (c ↴) ⟩
+      ∃ (λ c′ → c′ ∈ c ↷ × ∃ (λ g′ → g′ ∈ step c′ × rebuild c g ≡ rebuild c g′))
+        ↔⟨ concat↔∘Any↔ (rebuild c g) (rebuild c) step (c ↷) ⟩
       rebuild c g ∈ gs₂
         ∼⟨ inj₂ ⟩
       (rebuild c g ∈ gs₁ ⊎ rebuild c g ∈ gs₂)
@@ -310,7 +310,7 @@ module MRSC-naive≡lazy where
       cong₂ (λ u v → map (split c) (cartesian u) ++
                       map (rebuild c) (concat v))
         (map∘naive-mrsc′ (c ∷ h) (bs c) (c ⇉))
-        (map∘naive-mrsc′ (c ∷ h) (bs c) (c ↴))
+        (map∘naive-mrsc′ (c ∷ h) (bs c) (c ↷))
 
     -- map∘naive-mrsc′
 

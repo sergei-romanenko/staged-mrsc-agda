@@ -51,9 +51,9 @@ module ScWorld3 where
   c1 ⇉′ = c0 ∷ []
   c2 ⇉′ = c1 ∷ []
 
-  _↴′ : (c : C3) → List C3
-  c0 ↴′ = c1 ∷ []
-  _ ↴′  = []
+  _↷′ : (c : C3) → List C3
+  c0 ↷′ = c1 ∷ []
+  _ ↷′  = []
 
 
   scWorld3 : ScWorld
@@ -62,7 +62,7 @@ module ScWorld3 where
     ; _⊑_ = _≡_
     ; _⊑?_ = _≟C3_
     ; _⇉ = _⇉′
-    ; _↴ = _↴′
+    ; _↷ = _↷′
     ; whistle = pathLengthWhistle C3 4
     }
 

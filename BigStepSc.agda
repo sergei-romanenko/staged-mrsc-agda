@@ -74,13 +74,13 @@ record ScWorld : Set₁ where
     -- ⊑ is decidable.
     _⊑?_ : (c c′ : Conf) → Dec (c ⊑ c′)
 
-    -- Driving a configuration leads to a finite number of new ones.
+    -- Driving/splitting a configuration leads to a finite number of new ones.
     _⇉ : (c : Conf) → List Conf
 
     -- Rebuilding a configuration replaces it with an equivalent
     -- or more general one.
     -- We suppose that the number of possible rebuildings is finite!
-    _↴ : (c : Conf) → List Conf
+    _↷ : (c : Conf) → List Conf
 
     -- A bar whistle.
     whistle : BarWhistle Conf
@@ -118,7 +118,7 @@ module BigStepNDSC (scWorld : ScWorld) where
     ndsc-rebuild : ∀ {n} {h : History n} {c c′}
       {g  : Graph Conf}
       (¬f : ¬ Foldable h c)
-      (i  : Any (_≡_ c′) (c ↴)) →
+      (i  : Any (_≡_ c′) (c ↷)) →
       (s  : c ∷ h ⊢NDSC c′ ↪ g) →
       h ⊢NDSC c ↪ rebuild c g
 
@@ -151,7 +151,7 @@ module BigStepMRSC (scWorld : ScWorld) where
       {g  : Graph Conf}
       (¬f : ¬ Foldable h c)
       (¬w : ¬ ↯ h) →
-      (i  : Any (_≡_ c′) (c ↴)) →
+      (i  : Any (_≡_ c′) (c ↷)) →
       (s  : c ∷ h ⊢MRSC c′ ↪ g) →
       h ⊢MRSC c ↪ rebuild c g
 
@@ -175,7 +175,7 @@ module BigStepMRSC (scWorld : ScWorld) where
           (cartesian (map (naive-mrsc′ (c ∷ h) (bs c)) (c ⇉)))
     rebuild! =
       map (rebuild c)
-          (concat (map (naive-mrsc′ (c ∷ h) (bs c)) (c ↴)))
+          (concat (map (naive-mrsc′ (c ∷ h) (bs c)) (c ↷)))
   
   -- naive-mrsc
 
@@ -202,7 +202,7 @@ module BigStepMRSC (scWorld : ScWorld) where
   ... | later bs = alt split! rebuild!
     where
     split!   = split   c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ⇉))
-    rebuild! = rebuild c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ↴))
+    rebuild! = rebuild c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ↷))
 
 
   -- lazy-mrsc
