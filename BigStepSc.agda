@@ -96,6 +96,61 @@ record ScWorld : Set₁ where
   foldable? : ∀ {n} (h : History n) (c : Conf) → Dec (Foldable h c)
   foldable? h c = anyV (_⊑?_ c) h
 
+-- If we need labeled edges in the graph of configurations,
+-- the labels can be hidden inside configurations.
+-- ("Configurations" do not have to be just symbolic expressions, as
+-- they can contain any additional information.)
+
+-- ScWorldWithLabels
+
+record ScWorldWithLabels : Set₁ where
+
+  field
+
+    -- Configurations.
+    Conf : Set
+    -- Edge labels
+    Label : Set
+
+    -- c ⊑ c′ means that c is foldable to c′.
+    _⊑_ : (c c′ : Conf) → Set
+
+    -- ⊑ is decidable.
+    _⊑?_ : (c c′ : Conf) → Dec (c ⊑ c′)
+
+    -- Driving/splitting a configuration leads to a finite number of new ones.
+    _⇉ : (c : Conf) → List (Label × Conf)
+
+    -- Rebuilding a configuration replaces it with an equivalent
+    -- or more general one.
+    -- We suppose that the number of possible rebuildings is finite!
+    _↷ : (c : Conf) → List (Label × Conf)
+
+    -- A bar whistle.
+    whistle : BarWhistle Conf
+
+injectLabelsInScWorld : ScWorldWithLabels → ScWorld
+
+injectLabelsInScWorld w = record
+  { Conf = Label × Conf
+  ; _⊑_ = _⊑′_
+  ; _⊑?_ = _⊑?′_
+  ; _⇉ = _⇉ ∘ proj₂
+  ; _↷ = _↷ ∘ proj₂
+  ; whistle = inverseImageWhistle proj₂ whistle
+  }
+  where
+  open ScWorldWithLabels w
+
+  _⊑′_ : Label × Conf → Label × Conf → Set
+  (l , c) ⊑′ (l′ , c′) = c ⊑ c′
+
+  _⊑?′_ : (c c′ : Label × Conf) → Dec (proj₂ c ⊑ proj₂ c′)
+  (l , c) ⊑?′ (l′ , c′) = c ⊑? c′
+
+--
+-- Big-step non-deterministic supercompilation
+--
 
 -- BigStepNDSC
 
@@ -155,8 +210,10 @@ module BigStepMRSC (scWorld : ScWorld) where
       (s  : c ∷ h ⊢MRSC c′ ↪ g) →
       h ⊢MRSC c ↪ rebuild c g
 
+  --
   -- Functional big-step multi-result supercompilation.
   -- (The naive version builds Cartesian products immediately.)
+  --
 
   -- naive-mrsc′
 
