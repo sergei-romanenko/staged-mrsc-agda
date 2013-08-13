@@ -14,6 +14,7 @@ import GraphsTheorems
 import BigStepSc
 import BigStepScTheorems
 import BigStepScTests
+import Cographs
 
 -- An instantiation of the model for counter systems
 
