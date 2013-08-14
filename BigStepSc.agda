@@ -224,8 +224,9 @@ module BigStepMRSC (scWorld : ScWorld) where
   ... | no ¬f with ↯? h
   ... | yes w = []
   ... | no ¬w with b
-  ... | now bz = ⊥-elim (¬w bz)
-  ... | later bs = split! ++ rebuild!
+  ... | now bz with ¬w bz
+  ... | ()
+  naive-mrsc′ {n} h b c | no ¬f | no ¬w | later bs = split! ++ rebuild!
     where
     split! =
       map (split c)
@@ -255,8 +256,9 @@ module BigStepMRSC (scWorld : ScWorld) where
   ... | no ¬f with ↯? h
   ... | yes w = Ø
   ... | no ¬w with b
-  ... | now bz = ⁇ (¬w bz)
-  ... | later bs = alt split! rebuild!
+  ... | now bz with ¬w bz
+  ... | ()
+  lazy-mrsc′ {n} h b c | no ¬f | no ¬w | later bs = alt split! rebuild!
     where
     split!   = split   c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ⇉))
     rebuild! = rebuild c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ↷))

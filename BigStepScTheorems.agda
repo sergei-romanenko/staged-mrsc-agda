@@ -106,8 +106,10 @@ module MRSC-correctness where
   ... | no ¬f with ↯? h
   naive-mrsc-sound′ {n} h b () | no ¬f | yes w
   naive-mrsc-sound′ {n} h b {c} {g} q | no ¬f | no ¬w with b
-  ... | now bz = ⊥-elim (¬w bz)
-  ... | later bs = helper (Inverse.from ++↔ ⟨$⟩ q)
+  ... | now bz with ¬w bz
+  ... | ()
+  naive-mrsc-sound′ {n} h b {c} {g} q | no ¬f | no ¬w | later bs =
+    helper (Inverse.from ++↔ ⟨$⟩ q)
     where
     step : ∀ c → List (Graph Conf)
     step = naive-mrsc′ (c ∷ h) (bs c)
@@ -305,8 +307,9 @@ module MRSC-naive≡lazy where
     ... | no ¬f with ↯? h
     ... | yes w = refl
     ... | no ¬w with b
-    ... | now bz = refl
-    ... | later bs =
+    ... | now bz with ¬w bz
+    ... | ()
+    naive≡lazy′ {n} h b c | no ¬f | no ¬w | later bs =
       cong₂ (λ u v → map (split c) (cartesian u) ++
                       map (rebuild c) (concat v))
         (map∘naive-mrsc′ (c ∷ h) (bs c) (c ⇉))

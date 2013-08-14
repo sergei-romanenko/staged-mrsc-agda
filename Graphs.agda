@@ -107,7 +107,6 @@ data Graph (C : Set) : Set where
 -- LazyGraph
 
 data LazyGraph (C : Set) : Set where
-  ⁇      : ⊥ → LazyGraph C
   Ø       : LazyGraph C
   alt     : (gs₁ gs₂ : LazyGraph C) → LazyGraph C
   back    : ∀ (c : C) → LazyGraph C
@@ -126,8 +125,6 @@ mutual
 
   ⟪_⟫ : {C : Set} (gs : LazyGraph C) → List (Graph C)
 
-  ⟪ ⁇ a⊥ ⟫ =
-    ⊥-elim a⊥
   ⟪ Ø ⟫ =
     []
   ⟪ alt gs₁ gs₂ ⟫ =
@@ -213,8 +210,6 @@ mutual
   cl-empty′ : {C : Set} (gs : LazyGraph C) →
     Maybe (LazyGraph C)
 
-  cl-empty′ (⁇ a⊥) =
-    nothing
   cl-empty′ Ø =
     nothing
   cl-empty′ (alt gs₁ gs₂) with cl-empty′ gs₁ | cl-empty′ gs₂
@@ -278,8 +273,6 @@ mutual
   cl-bad-conf : {C : Set} (bad : C → Bool) (gs : LazyGraph C) →
     LazyGraph C
 
-  cl-bad-conf bad (⁇ a⊥) =
-    ⁇ a⊥
   cl-bad-conf bad Ø =
     Ø
   cl-bad-conf bad (alt gs₁ gs₂) =
@@ -364,8 +357,6 @@ mutual
 
   cl-min-size : ∀ {C : Set} (gs : LazyGraph C) → ℕ × LazyGraph C
 
-  cl-min-size (⁇ a⊥) =
-    ⊥-elim a⊥
   cl-min-size Ø =
     0 , Ø -- should be ∞ , Ø
   cl-min-size (alt gs₁ gs₂) =

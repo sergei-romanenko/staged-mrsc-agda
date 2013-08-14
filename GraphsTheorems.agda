@@ -69,8 +69,6 @@ mutual
   cl-empty-correct : ∀ {C : Set} (gs : LazyGraph C) →
     ⟪ cl-empty gs ⟫ ≡ ⟪ gs ⟫
 
-  cl-empty-correct (⁇ a⊥) =
-    ⊥-elim a⊥
   cl-empty-correct Ø =
     refl
   cl-empty-correct (alt gs₁ gs₂)
@@ -195,8 +193,6 @@ module ClBadConfig-Sound where
       {C : Set} (bad : C → Bool) (gs : LazyGraph C) →
       ⟪ cl-bad-conf bad gs ⟫ ⊆ ⟪ gs ⟫
 
-    cl-bad-conf-sound bad (⁇ a⊥) =
-      ⊥-elim a⊥
     cl-bad-conf-sound bad Ø =
       id
     cl-bad-conf-sound bad (alt gs₁ gs₂) {g}
