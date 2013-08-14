@@ -56,3 +56,24 @@ graph-cl-unsafe = CntWorld.cl-unsafe MOESI graph
 
 graph-cl-min-size = cl-min-size graph-cl-unsafe
 graph-min-size = ⟪ proj₂ graph-cl-min-size ⟫
+
+-- Cographs
+
+open import Cographs
+open BigStepMRSC∞ scwMOESI
+
+graph∞ : LazyCograph (ωConf 5)
+graph∞ = build-cograph (CntWorld.start MOESI)
+
+graph∞-safe : LazyCograph (ωConf 5)
+graph∞-safe = cl-bad-conf∞ (CntWorld.unsafe MOESI) graph∞
+
+graph∞-pruned : LazyGraph (ωConf 5)
+graph∞-pruned = cl-empty (prune-cograph graph∞-safe)
+
+open import Relation.Binary.PropositionalEquality
+
+graph-cl-unsafe≡graph∞-pruned :
+  graph-cl-unsafe ≡ graph∞-pruned
+
+graph-cl-unsafe≡graph∞-pruned = refl

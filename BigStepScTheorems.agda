@@ -336,4 +336,5 @@ module MRSC-naive≡lazy where
 
   naive≡lazy : ∀ (c : Conf) →
     naive-mrsc c ≡ ⟪ lazy-mrsc c ⟫
+
   naive≡lazy c = naive≡lazy′ [] bar[] c

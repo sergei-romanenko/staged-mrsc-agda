@@ -47,13 +47,6 @@ open import Relation.Binary
 open import Relation.Binary.PropositionalEquality as P
   renaming ([_] to P[_])
 
-{-
-open import Algebra
-  using (module Monoid)
-private
-  module LM {a} {A : Set a} = Monoid (List.monoid A)
--}
-
 open import Util
 open import BarWhistles
 open import Graphs
@@ -128,6 +121,8 @@ record ScWorldWithLabels : Set₁ where
 
     -- A bar whistle.
     whistle : BarWhistle Conf
+
+-- injectLabelsInScWorld
 
 injectLabelsInScWorld : ScWorldWithLabels → ScWorld
 
@@ -226,7 +221,8 @@ module BigStepMRSC (scWorld : ScWorld) where
   ... | no ¬w with b
   ... | now bz with ¬w bz
   ... | ()
-  naive-mrsc′ {n} h b c | no ¬f | no ¬w | later bs = split! ++ rebuild!
+  naive-mrsc′ {n} h b c | no ¬f | no ¬w | later bs =
+    split! ++ rebuild!
     where
     split! =
       map (split c)
@@ -254,15 +250,13 @@ module BigStepMRSC (scWorld : ScWorld) where
   lazy-mrsc′ {n} h b c with foldable? h c
   ... | yes (i , c⊑hi) = back c
   ... | no ¬f with ↯? h
-  ... | yes w = Ø
+  ... | yes w = alt Ø Ø  -- This looks silly, but simplifies some proofs...
   ... | no ¬w with b
   ... | now bz with ¬w bz
   ... | ()
-  lazy-mrsc′ {n} h b c | no ¬f | no ¬w | later bs = alt split! rebuild!
-    where
-    split!   = split   c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ⇉))
-    rebuild! = rebuild c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ↷))
-
+  lazy-mrsc′ {n} h b c | no ¬f | no ¬w | later bs =
+    alt (split   c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ⇉)))
+        (rebuild c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ↷)))
 
   -- lazy-mrsc
 

@@ -172,7 +172,7 @@ mutual
 -- `cl-bad-conf` is sound
 --
 
-module ClBadConfig-Sound where
+module ClBadConf-Sound where
 
   open Membership-≡
 

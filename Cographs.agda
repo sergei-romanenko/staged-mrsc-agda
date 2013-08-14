@@ -42,7 +42,6 @@ open import BigStepSc
 -- LazyGraph
 
 data LazyCograph (C : Set) : Set where
-  ⁇      : ⊥ → LazyCograph C
   Ø       : LazyCograph C
   alt     : (gs₁ gs₂ : LazyCograph C) → LazyCograph C
   back    : ∀ (c : C) → LazyCograph C
@@ -51,9 +50,9 @@ data LazyCograph (C : Set) : Set where
   rebuild : ∀ (c : C) (gss : ∞(List (LazyCograph C))) →
               LazyCograph C
 
--- BigStepMRSC
+-- BigStepMRSC∞
 
-module ∞BigStepMRSC (scWorld : ScWorld) where
+module BigStepMRSC∞ (scWorld : ScWorld) where
 
   open ScWorld scWorld
   open BigStepMRSC scWorld
@@ -67,11 +66,9 @@ module ∞BigStepMRSC (scWorld : ScWorld) where
                        LazyCograph Conf
     build-cograph′ {n} h c with foldable? h c
     ... | yes (i , c⊑hi) = back c
-    ... | no ¬f = alt split! rebuild!
-      where
-
-      split!   = split c (♯ build-cograph′* (c ∷ h) (c ⇉))
-      rebuild! = rebuild c (♯ build-cograph′* (c ∷ h) (c ↷))
+    ... | no ¬f =
+      alt (split c (♯ build-cograph′* (c ∷ h) (c ⇉)))
+          (rebuild c (♯ build-cograph′* (c ∷ h) (c ↷)))
 
     -- build-cograph′*
 
@@ -86,13 +83,6 @@ module ∞BigStepMRSC (scWorld : ScWorld) where
   build-cograph : (c : Conf) → LazyCograph Conf
   build-cograph c = build-cograph′ [] c
   
-  -- alt-Ø
-
-  alt-Ø : (gs₁ gs₂ : LazyGraph Conf) → LazyGraph Conf
-
-  alt-Ø Ø gs₂ = gs₂
-  alt-Ø gs₁ Ø = gs₁
-  alt-Ø gs₁ gs₂ = alt gs₁ gs₂
 
   mutual
 
@@ -101,21 +91,24 @@ module ∞BigStepMRSC (scWorld : ScWorld) where
     prune-cograph′ : ∀ {n} (h : History n) (b : Bar ↯ h)
                        (gs : LazyCograph Conf) → LazyGraph Conf
 
-    prune-cograph′ h b (⁇ a⊥) = ⁇ a⊥
     prune-cograph′ h b Ø = Ø
     prune-cograph′ h b (alt gs₁ gs₂) =
-      alt-Ø (prune-cograph′ h b gs₁) (prune-cograph′ h b gs₂)
+      alt (prune-cograph′ h b gs₁) (prune-cograph′ h b gs₂)
     prune-cograph′ h b (back c) = back c
     prune-cograph′ h b (split c gss) with ↯? h
     ... | yes w = Ø
     ... | no ¬w with b
-    ... | now bz = ⁇ (¬w bz)
-    ... | later bs = split c (prune-cograph′* (c ∷ h) (bs c) (♭ gss))
+    ... | now bz with ¬w bz
+    ... | ()
+    prune-cograph′ h b (split c gss) | no ¬w | later bs =
+      split c (prune-cograph′* (c ∷ h) (bs c) (♭ gss))
     prune-cograph′ h b (rebuild c gss) with ↯? h
     ... | yes w = Ø
     ... | no ¬w with b
-    ... | now bz = ⁇ (¬w bz)
-    ... | later bs = rebuild c (prune-cograph′* (c ∷ h) (bs c) (♭ gss))
+    ... | now bz with ¬w bz
+    ... | ()
+    prune-cograph′ h b (rebuild c gss) | no ¬w | later bs =
+      rebuild c (prune-cograph′* (c ∷ h) (bs c) (♭ gss))
 
     -- prune-cograph′*
 
@@ -196,8 +189,6 @@ mutual
   cl-bad-conf∞ : {C : Set} (bad : C → Bool) (gs : LazyCograph C) →
     LazyCograph C
 
-  cl-bad-conf∞ bad (⁇ a⊥) =
-    ⁇ a⊥
   cl-bad-conf∞ bad Ø =
     Ø
   cl-bad-conf∞ bad (alt gs₁ gs₂) =
@@ -221,21 +212,10 @@ mutual
     (cl-bad-conf∞ bad gs) ∷ cl-bad-conf∞* bad gss
 
 
-{-
 module ClBadConf∞-Correct (scWorld : ScWorld) where
 
   open ScWorld scWorld
-  open ∞BigStepMRSC scWorld
-
-  -- cl-alt-Ø
-
-  cl-alt-Ø :
-    (bad : Conf → Bool) (gs₁ gs₂ : LazyGraph Conf) →
-    cl-bad-conf bad (alt-Ø gs₁ gs₂) ≡
-      alt-Ø (cl-bad-conf bad gs₁) (cl-bad-conf bad gs₂)
-
-  cl-alt-Ø bad gs₁ gs₂ with cl-bad-conf bad gs₁ | cl-bad-conf bad gs₂
-  cl-alt-Ø bad gs₁ gs₂ | r₁ | r₂ = {!!}
+  open BigStepMRSC∞ scWorld
 
   mutual
 
@@ -247,17 +227,62 @@ module ClBadConf∞-Correct (scWorld : ScWorld) where
       cl-bad-conf bad (prune-cograph′ h b gs) ≡
         prune-cograph′ h b (cl-bad-conf∞ bad gs)
 
-    cl-bad-conf∞′-correct h b bad (⁇ a⊥) = refl
     cl-bad-conf∞′-correct h b bad Ø = refl
     cl-bad-conf∞′-correct h b bad (alt gs₁ gs₂)
       rewrite P.sym $ cl-bad-conf∞′-correct h b bad gs₁
             | P.sym $ cl-bad-conf∞′-correct h b bad gs₂
-      = {!!}
+      = refl
     cl-bad-conf∞′-correct h b bad (back c) with bad c
     ... | true = refl
     ... | false = refl
-    cl-bad-conf∞′-correct h b bad (split c gss) = {!!}
-    cl-bad-conf∞′-correct h b bad (rebuild c gss) = {!!}
+
+    cl-bad-conf∞′-correct h b bad (split c gss)
+      with ↯? h | inspect ↯? h | bad c | inspect bad c
+    ... | yes w | P[ w≡ ] | true | P[ ≡true ] = refl
+    ... | yes w | P[ w≡ ] | false | P[ ≡false ] rewrite w≡ = refl
+    cl-bad-conf∞′-correct h b bad (split c gss)
+      | no ¬w | P[ w≡ ] | true | P[ ≡true ]
+      with b
+    ... | now bz = ⊥-elim (¬w bz)
+    ... | later bs rewrite ≡true = refl
+    cl-bad-conf∞′-correct h b bad (split c gss)
+      | no ¬w | P[ w≡ ] | false | P[ ≡false ]
+      rewrite w≡ with b
+    ... | now bz = ⊥-elim (¬w bz)
+    ... | later bs rewrite ≡false =
+      cong (split c)
+           (cl-bad-conf∞*′-correct (c ∷ h) (bs c) bad (♭ gss))
+
+    cl-bad-conf∞′-correct h b bad (rebuild c gss)
+      with ↯? h | inspect ↯? h | bad c | inspect bad c
+    ... | yes w | P[ w≡ ] | true | P[ ≡true ] = refl
+    ... | yes w | P[ w≡ ] | false | P[ ≡false ] rewrite w≡ = refl
+    cl-bad-conf∞′-correct h b bad (rebuild c gss)
+      | no ¬w | P[ w≡ ] | true | P[ ≡true ]
+      with b
+    ... | now bz = ⊥-elim (¬w bz)
+    ... | later bs rewrite ≡true = refl
+    cl-bad-conf∞′-correct h b bad (rebuild c gss)
+      | no ¬w | P[ w≡ ] | false | P[ ≡false ]
+      rewrite w≡ with b
+    ... | now bz = ⊥-elim (¬w bz)
+    ... | later bs rewrite ≡false =
+      cong (rebuild c)
+           (cl-bad-conf∞*′-correct (c ∷ h) (bs c) bad (♭ gss))
+
+    -- cl-bad-conf∞*′-correct
+
+    cl-bad-conf∞*′-correct :
+      ∀ {n} (h : History n) (b : Bar ↯ h)
+        (bad : Conf → Bool) (gss : List (LazyCograph Conf)) →
+      cl-bad-conf* bad (prune-cograph′* h b gss) ≡
+        prune-cograph′* h b (cl-bad-conf∞* bad gss)
+
+    cl-bad-conf∞*′-correct h b bad [] =
+      refl
+    cl-bad-conf∞*′-correct h b bad (gs ∷ gss) =
+      cong₂ _∷_ (cl-bad-conf∞′-correct h b bad gs)
+                (cl-bad-conf∞*′-correct h b bad gss)
 
   -- cl-bad-conf∞-correct
 
@@ -268,4 +293,3 @@ module ClBadConf∞-Correct (scWorld : ScWorld) where
 
   cl-bad-conf∞-correct bad gs =
     cl-bad-conf∞′-correct [] bar[] bad gs
--}
