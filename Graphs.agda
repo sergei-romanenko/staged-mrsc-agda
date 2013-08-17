@@ -7,7 +7,7 @@ module Graphs where
 open import Algebra
   using (module Monoid)
 open import Data.Bool
-  using (Bool; true; false; if_then_else_)
+  using (Bool; true; false; if_then_else_; not)
 open import Data.Nat
 open import Data.Fin as F
   using (Fin; zero; suc)
@@ -185,15 +185,54 @@ mutual
 --
 -- Then `extract` can be constructed in the following way:
 --
---     extract gs = ⟪ clean gs ⟫
+--     extract gs ≡ ⟪ clean gs ⟫
 --
 -- Theoretically speaking, `clean` is the result of "promoting" `select`:
 --
---     select ∘ ⟪_⟫ ≡ ⟪_⟫ ∘ clean
+--     select ∘ ⟪_⟫ ≗ ⟪_⟫ ∘ clean
 --
 -- The nice property of cleaners is that they are composable:
--- given `cleaner₁` and `cleaner₂`, `cleaner₂ ∘ cleaner₁` is also a cleaner.
+-- given `clean₁` and `clean₂`, `clean₂ ∘ clean₁` is also a cleaner.
 --
+
+--
+-- Some filters
+--
+
+-- Removing graphs that contain "bad" configurations.
+-- Configurations represent states of a computation process.
+-- Some of these states may be "bad" with respect to the problem
+-- that is to be solved by means of supercompilation.
+
+mutual
+
+  -- bad-graph
+
+  bad-graph : {C : Set} (bad : C → Bool) (g : Graph C) → Bool
+
+  bad-graph bad (back c) = bad c
+  bad-graph bad (split c gs) with bad c
+  ... | true = true
+  ... | false = bad-graph* bad gs
+  bad-graph bad (rebuild c g) with bad c
+  ... | true = true
+  ... | false = bad-graph bad g
+
+  -- bad-graph*
+
+  bad-graph* : {C : Set} (bad : C → Bool) (gs : List (Graph C)) → Bool
+
+  bad-graph* bad [] = false
+  bad-graph* bad (g ∷ gs) with bad-graph bad g
+  ... | true = true
+  ... | false = bad-graph* bad gs
+
+  -- fl-bad-conf
+
+fl-bad-conf : {C : Set} (bad : C → Bool) (gs : List (Graph C)) →
+  List (Graph C)
+
+fl-bad-conf bad gs = filter (not ∘ bad-graph bad) gs
 
 --
 -- Some cleaners
@@ -258,13 +297,10 @@ mutual
 
 --
 -- Removing graphs that contain "bad" configurations.
--- Configurations represent states of a computation process.
--- Some of these states may be "bad" with respect to the problem
--- that is to be solved by means of supercompilation.
---
--- The cleaner `cl-bad-conf` assumes "badness" to be monotonic,
+-- The cleaner `cl-bad-conf` corresponds to the filter `fl-bad-conf`.
+-- `cl-bad-conf` exploits the fact that "badness" to be monotonic,
 -- in the sense that a single "bad" configuration spoils the whole
--- graph it appears in.
+-- graph.
 
 mutual
 
@@ -291,7 +327,7 @@ mutual
 
   cl-bad-conf* bad [] = []
   cl-bad-conf* bad (gs ∷ gss) =
-    (cl-bad-conf bad gs) ∷ cl-bad-conf* bad gss
+    cl-bad-conf bad gs ∷ cl-bad-conf* bad gss
 
 
 --

@@ -3,6 +3,8 @@ module Util where
 open import Level
   using (Lift; lift; lower)
 
+open import Data.Bool
+  using (Bool; true; false)
 open import Data.Nat
   hiding(_⊔_)
 open import Data.Nat.Properties
@@ -24,6 +26,8 @@ open import Data.Product as Prod
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃; <_,_>; uncurry)
 open import Data.Sum as Sum
   using (_⊎_; inj₁; inj₂; [_,_]′)
+open import Data.Maybe
+  using (Maybe; just; nothing)
 open import Data.Empty
 
 open import Function
@@ -142,6 +146,58 @@ foldr∘map : ∀ {a b c} {A : Set a} {B : Set b} {C : Set c}
   foldr g n ∘ map f ≗ foldr (g ∘ f) n
 foldr∘map f g n =
   foldr-universal (foldr g n ∘ map f) (g ∘ f) n refl (λ x xs → refl)
+
+-- gfilter-++-commute
+
+gfilter-++-commute :
+  ∀ {a b} {A : Set a} {B : Set b} (f : A → Maybe B) xs ys →
+    gfilter f (xs ++ ys) ≡ gfilter f xs ++ gfilter f ys
+ 
+gfilter-++-commute f [] ys = refl
+gfilter-++-commute f (x ∷ xs) ys with f x
+... | just y = cong (_∷_ y) (gfilter-++-commute f xs ys)
+... | nothing = gfilter-++-commute f xs ys
+
+-- filter-++-commute
+
+filter-++-commute :
+  ∀ {a} {A : Set a} (p : A → Bool) xs ys →
+    filter p (xs ++ ys) ≡ filter p xs ++ filter p ys
+
+filter-++-commute f xs ys =
+  gfilter-++-commute (λ z → Data.Bool.if f z then just z else nothing) xs ys
+
+-- filter∘map
+
+filter∘map :
+  ∀ {a b} {A : Set a} {B : Set b} (p : B → Bool) (f : A → B) xs →
+  filter p (map f xs) ≡ map f (filter (p ∘ f) xs)
+
+filter∘map p f [] = refl
+filter∘map p f (x ∷ xs) with p (f x)
+... | true = cong (_∷_ (f x)) (filter∘map p f xs)
+... | false = filter∘map p f xs
+
+-- filter-false
+
+filter-false :
+  ∀ {a} {A : Set a} (xs : List A) →
+    filter (const false) xs ≡ []
+
+filter-false [] = refl
+filter-false (x ∷ xs) = filter-false xs
+
+-- filter-cong
+
+filter-cong :
+  ∀ {a} {A : Set a} {p q : A → Bool} →
+    p ≗ q → filter p ≗ filter q
+
+filter-cong p≗q [] = refl
+filter-cong {p = p} {q = q} p≗q (x ∷ xs)
+  rewrite p≗q x with q x
+... | true = cong (_∷_ x) (filter-cong p≗q xs)
+... | false = filter-cong p≗q xs
 
 --
 -- Some "technical" theorems about `Any`
@@ -571,6 +627,97 @@ cartesian-mono xss₁ xss₂ xss₁⊆xss₂ {zs} =
 ∈*∘map-mono clean mono [] = []
 ∈*∘map-mono clean mono (x ∷ xs) =
   (mono x) ∷ ∈*∘map-mono clean mono xs
+
+--
+-- filter∘cartesian
+--
+
+-- filter∘cartesian2
+
+filter∘cartesian2 :
+  ∀ {A : Set} (p : A → Bool) (xs : List A) (xss : List (List A)) →
+    filter (all p) (cartesian2 xs xss) ≡
+      cartesian2 (filter p xs) (filter (all p) xss)
+
+filter∘cartesian2 p [] xss = refl
+
+filter∘cartesian2 p (x ∷ xs) xss with p x | inspect p x
+
+... | true | P[ ≡true ] = begin
+  filter (all p) (cartesian2 (x ∷ xs) xss)
+    ≡⟨⟩
+  filter (all p) (map (_∷_ x) xss ++ cartesian2 xs xss)
+    ≡⟨ filter-++-commute (all p) (map (_∷_ x) xss) (cartesian2 xs xss) ⟩
+  filter (all p) (map (_∷_ x) xss) ++ filter (all p) (cartesian2 xs xss)
+    ≡⟨ cong₂ _++_ helper₂ (filter∘cartesian2 p xs xss) ⟩
+  map (_∷_ x) (filter (all p) xss) ++
+  cartesian2 (filter p xs) (filter (all p) xss)
+  ∎
+  where
+  open ≡-Reasoning
+  helper₁ : all p ∘ _∷_ x ≡ all p
+  helper₁ rewrite ≡true = refl
+
+  helper₂ : filter (all p) (map (_∷_ x) xss) ≡ map (_∷_ x) (filter (all p) xss)
+  helper₂ = begin
+    filter (all p) (map (_∷_ x) xss)
+      ≡⟨ filter∘map (all p) (_∷_ x) xss ⟩
+    map (_∷_ x) (filter (all p ∘ _∷_ x) xss)
+      ≡⟨ cong (map (_∷_ x)) (cong (flip filter xss) helper₁) ⟩
+    map (_∷_ x) (filter (all p) xss)
+    ∎
+
+... | false | P[ ≡false ] = begin
+  filter (all p) (cartesian2 (x ∷ xs) xss)
+    ≡⟨⟩
+  filter (all p) (map (_∷_ x) xss ++ cartesian2 xs xss)
+    ≡⟨ filter-++-commute (all p) (map (_∷_ x) xss) (cartesian2 xs xss) ⟩
+  filter (all p) (map (_∷_ x) xss) ++ filter (all p) (cartesian2 xs xss)
+    ≡⟨ cong₂ _++_ helper₂ (filter∘cartesian2 p xs xss) ⟩
+  [] ++ cartesian2 (filter p xs) (filter (all p) xss)
+    ≡⟨⟩
+  cartesian2 (filter p xs) (filter (all p) xss)
+  ∎
+  where
+  open ≡-Reasoning
+
+  helper₁ : all p ∘ _∷_ x ≡ const false
+  helper₁ rewrite ≡false = refl
+
+  helper₂ : filter (all p) (map (_∷_ x) xss) ≡ []
+  helper₂ = begin
+    filter (all p) (map (_∷_ x) xss)
+      ≡⟨ filter∘map (all p) (_∷_ x) xss ⟩
+    map (_∷_ x) (filter (all p ∘ _∷_ x) xss)
+      ≡⟨ cong (map (_∷_ x)) (cong (flip filter xss) helper₁) ⟩
+    map (_∷_ x) (filter (const false) xss)
+      ≡⟨ cong (map (_∷_ x)) (filter-false xss) ⟩
+    map (_∷_ x) []
+      ≡⟨⟩
+    []
+    ∎
+
+-- filter∘cartesian
+
+filter∘cartesian :
+  ∀ {A : Set} (p : A → Bool) (xss : List (List A)) →
+    filter (all p) (cartesian xss) ≡ cartesian (map (filter p) xss)
+
+filter∘cartesian p [] = refl
+filter∘cartesian p (xs ∷ xss) = begin
+  filter (all p) (cartesian (xs ∷ xss))
+    ≡⟨⟩
+  filter (all p) (cartesian2 xs (cartesian xss))
+    ≡⟨ filter∘cartesian2 p xs (cartesian xss) ⟩
+  cartesian2 (filter p xs) (filter (all p) (cartesian xss))
+    ≡⟨ cong (cartesian2 (filter p xs)) (filter∘cartesian p xss) ⟩
+  cartesian2 (filter p xs) (cartesian (map (filter p) xss))
+    ≡⟨⟩
+  cartesian (filter p xs ∷ map (filter p) xss)
+    ≡⟨⟩
+  cartesian (map (filter p) (xs ∷ xss))
+  ∎
+  where open ≡-Reasoning
 
 --
 -- Cartesian product for vectors
