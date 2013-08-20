@@ -40,19 +40,15 @@ open import BigStepSc
 -- by the "lazy" (staged) version of multi-result
 -- supercompilation.
 
--- CographFork
-
-data CographFork : Set where
-  split rebuild : CographFork
-
 -- LazyGraph
 
 data LazyCograph (C : Set) : Set where
-  Ø       : LazyCograph C
-  alt     : (gs₁ gs₂ : LazyCograph C) → LazyCograph C
-  back    : (c : C) → LazyCograph C
-  fork    : (f : CographFork) (c : C) (gss : ∞(List (LazyCograph C))) →
-               LazyCograph C
+  Ø      : LazyCograph C
+  alt    : (gs₁ gs₂ : LazyCograph C) →
+            LazyCograph C
+  stop   : (c : C) → LazyCograph C
+  build  : (c : C) (gss : ∞(List (LazyCograph C))) →
+            LazyCograph C
 
 -- BigStepMRSC∞
 
@@ -69,10 +65,10 @@ module BigStepMRSC∞ (scWorld : ScWorld) where
     build-cograph′ : ∀ {n} (h : History n) (c : Conf) →
                        LazyCograph Conf
     build-cograph′ {n} h c with foldable? h c
-    ... | yes (i , c⊑hi) = back c
+    ... | yes (i , c⊑hi) = stop c
     ... | no ¬f =
-      alt (fork split c (♯ build-cograph′* (c ∷ h) (c ⇉)))
-          (fork rebuild c (♯ build-cograph′* (c ∷ h) (c ↷)))
+      alt (build c (♯ build-cograph′* (c ∷ h) (c ⇉)))
+          (build c (♯ (build-cograph′↷ (c ∷ h) (c ↷) ∷ [])))
 
     -- build-cograph′*
 
@@ -81,6 +77,15 @@ module BigStepMRSC∞ (scWorld : ScWorld) where
     build-cograph′* h [] = []
     build-cograph′* h (c ∷ cs) =
       build-cograph′ h c ∷ build-cograph′* h cs
+
+    -- build-cograph′↷
+
+    build-cograph′↷ : ∀ {n} (h : History n) (cs : List Conf) →
+                        LazyCograph Conf
+
+    build-cograph′↷ h [] = Ø
+    build-cograph′↷ h (c ∷ cs) =
+      alt (build-cograph′ h c) (build-cograph′↷ h cs)
 
   -- build-cograph
 
@@ -98,17 +103,15 @@ module BigStepMRSC∞ (scWorld : ScWorld) where
     prune-cograph′ h b Ø = Ø
     prune-cograph′ h b (alt gs₁ gs₂) =
       alt (prune-cograph′ h b gs₁) (prune-cograph′ h b gs₂)
-    prune-cograph′ h b (back c) = back c
+    prune-cograph′ h b (stop c) = stop c
 
-    prune-cograph′ h b (fork f c gss) with ↯? h
+    prune-cograph′ h b (build c gss) with ↯? h
     ... | yes w = Ø
     ... | no ¬w with b
     ... | now bz with ¬w bz
     ... | ()
-    prune-cograph′ h b (fork split c gss) | no ¬w | later bs =
-      split c (prune-cograph′* (c ∷ h) (bs c) (♭ gss))
-    prune-cograph′ h b (fork rebuild c gss) | no ¬w | later bs =
-      rebuild c (prune-cograph′* (c ∷ h) (bs c) (♭ gss))
+    prune-cograph′ h b (build c gss) | no ¬w | later bs =
+      build c (prune-cograph′* (c ∷ h) (bs c) (♭ gss))
 
     -- prune-cograph′*
 
@@ -132,7 +135,7 @@ module BigStepMRSC∞ (scWorld : ScWorld) where
       ∀ {n} (h : History n) (b : Bar ↯ h) (c : Conf) →
       prune-cograph′ h b (build-cograph′ h c) ≡ lazy-mrsc′ h b c 
 
-    prune′∘build′-correct h b c with foldable? h c
+    prune′∘build′-correct {n} h b c with foldable? h c
     ... | yes (i , c⊑hi) =
       refl
     ... | no ¬f with ↯? h
@@ -140,10 +143,9 @@ module BigStepMRSC∞ (scWorld : ScWorld) where
     ... | no ¬w with b
     ... | now bz = ⊥-elim (¬w bz)
     ... | later bs =
-      cong₂ alt (cong (split c)
-                      (prune′∘build′*-correct (c ∷ h) (bs c) (c ⇉)))
-                (cong (rebuild c)
-                      (prune′∘build′*-correct (c ∷ h) (bs c) (c ↷)))
+      cong₂ (λ u v → alt (build c u) (build c (v ∷ [])))
+            (prune′∘build′*-correct (c ∷ h) (bs c) (c ⇉))
+            (prune′∘build′↷-correct (c ∷ h) (bs c) (c ↷))
 
     -- prune′∘build′*-correct
 
@@ -154,6 +156,17 @@ module BigStepMRSC∞ (scWorld : ScWorld) where
     prune′∘build′*-correct h b [] = refl
     prune′∘build′*-correct h b (c ∷ cs) =
       cong₂ _∷_ (prune′∘build′-correct h b c) (prune′∘build′*-correct h b cs)
+
+    -- prune′∘build′↷-correct
+
+    prune′∘build′↷-correct :
+      ∀ {n} (h : History n) (b : Bar ↯ h) (cs : List Conf) →
+      prune-cograph′ h b (build-cograph′↷ h cs) ≡
+      foldr alt Ø (map (lazy-mrsc′ h b) cs)
+
+    prune′∘build′↷-correct h b [] = refl
+    prune′∘build′↷-correct h b (c ∷ cs) =
+      cong₂ alt (prune′∘build′-correct h b c) (prune′∘build′↷-correct h b cs)
 
   -- prune∘build-correct
 
@@ -193,11 +206,11 @@ mutual
     Ø
   cl-bad-conf∞ bad (alt gs₁ gs₂) =
     alt (cl-bad-conf∞ bad gs₁) (cl-bad-conf∞ bad gs₂)
-  cl-bad-conf∞ bad (back c) =
-    if bad c then Ø else (back c)
-  cl-bad-conf∞ bad (fork f c gss) with bad c
+  cl-bad-conf∞ bad (stop c) =
+    if bad c then Ø else (stop c)
+  cl-bad-conf∞ bad (build c gss) with bad c
   ... | true = Ø
-  ... | false = fork f c (♯ (cl-bad-conf∞* bad (♭ gss)))
+  ... | false = build c (♯ (cl-bad-conf∞* bad (♭ gss)))
 
   -- cl-bad-conf∞*
 
@@ -229,30 +242,22 @@ module ClBadConf∞-Correct (scWorld : ScWorld) where
       rewrite P.sym $ cl-bad-conf∞′-correct h b bad gs₁
             | P.sym $ cl-bad-conf∞′-correct h b bad gs₂
       = refl
-    cl-bad-conf∞′-correct h b bad (back c) with bad c
+    cl-bad-conf∞′-correct h b bad (stop c) with bad c
     ... | true = refl
     ... | false = refl
 
-    cl-bad-conf∞′-correct h b bad (fork f c gss)
+    cl-bad-conf∞′-correct h b bad (build c gss)
       with ↯? h | inspect ↯? h | bad c | inspect bad c
     ... | yes w | P[ w≡ ] | true | P[ ≡true ] = refl
     ... | yes w | P[ w≡ ] | false | P[ ≡false ] rewrite w≡ = refl
-    cl-bad-conf∞′-correct h b bad (fork f c gss)
-      | no ¬w | P[ w≡ ] | true | P[ ≡true ]
-      with b
+    ... | no ¬w | P[ w≡ ] | true | P[ ≡true ] with b
     ... | now bz = ⊥-elim (¬w bz)
-    ... | later bs with f
-    ... | split rewrite ≡true = refl
-    ... | rebuild rewrite ≡true = refl
-    cl-bad-conf∞′-correct h b bad (fork f c gss)
-      | no ¬w | P[ w≡ ] | false | P[ ≡false ]
-      rewrite w≡ with b
+    ... | later bs rewrite ≡true = refl
+    cl-bad-conf∞′-correct h b bad (build c gss)
+      | no ¬w | P[ w≡ ] | false | P[ ≡false ] rewrite w≡ with b
     ... | now bz = ⊥-elim (¬w bz)
-    ... | later bs with f
-    ... | split rewrite ≡false =
-      cong (split c) (cl-bad-conf∞*′-correct (c ∷ h) (bs c) bad (♭ gss))
-    ... | rebuild rewrite ≡false =
-      cong (rebuild c) (cl-bad-conf∞*′-correct (c ∷ h) (bs c) bad (♭ gss))
+    ... | later bs rewrite ≡false =
+      cong (build c) (cl-bad-conf∞*′-correct (c ∷ h) (bs c) bad (♭ gss))
 
     -- cl-bad-conf∞*′-correct
 

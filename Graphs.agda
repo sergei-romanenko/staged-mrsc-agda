@@ -79,19 +79,18 @@ open import Util
 -- 
 -- * Back-nodes are produced by folding a configuration to another
 --   configuration in the history.
--- * Split-nodes are produced by decomposing a configuration into
---   a number of other configurations (e.g. by driving or taking apart
---   a let-expression).
--- * Rebuild nodes are produced by rewriting a configuration by another
---   one (e.g. by generalization, introducing a let-expression or
---   applying a lemma during two-level supercompilation).
+-- * Forth-nodes are produced by
+--     + decomposing a configuration into a number of other configurations
+--       (e.g. by driving or taking apart a let-expression), or
+--     + by rewriting a configuration by another one (e.g. by generalization,
+--       introducing a let-expression or applying a lemma during
+--       two-level supercompilation).
 
 -- Graph
 
 data Graph (C : Set) : Set where
-  back    : ∀ (c : C) → Graph C
-  split   : ∀ (c : C) (gs : List (Graph C)) → Graph C
-  rebuild : ∀ (c : C) (g : Graph C) → Graph C
+  back  : ∀ (c : C) → Graph C
+  forth : ∀ (c : C) (gs : List (Graph C)) → Graph C
 
 --
 -- Lazy graphs of configuration
@@ -107,17 +106,15 @@ data Graph (C : Set) : Set where
 -- LazyGraph
 
 data LazyGraph (C : Set) : Set where
-  Ø       : LazyGraph C
-  alt     : (gs₁ gs₂ : LazyGraph C) → LazyGraph C
-  back    : ∀ (c : C) → LazyGraph C
-  split   : ∀ (c : C) (gss : List (LazyGraph C)) →
-              LazyGraph C
-  rebuild : ∀ (c : C) (gss : List (LazyGraph C)) →
-              LazyGraph C
+  Ø     : LazyGraph C
+  alt   : (gs₁ gs₂ : LazyGraph C) → LazyGraph C
+  stop  : ∀ (c : C) → LazyGraph C
+  build : ∀ (c : C) (gss : List (LazyGraph C)) →
+            LazyGraph C
 
 -- The semantics of `LazyGraph C` is formally defined by
--- the function `⟪_⟫` that generates a list of `Graph C n`
--- from  a `LazyGraph C`.
+-- the interpreter `⟪_⟫` that generates a list of `Graph C n` from
+-- a `LazyGraph C` by executing commands recorded in `LazyGraph C`.
 
 mutual
 
@@ -129,12 +126,10 @@ mutual
     []
   ⟪ alt gs₁ gs₂ ⟫ =
     ⟪ gs₁ ⟫ ++ ⟪ gs₂ ⟫
-  ⟪ back c ⟫ =
+  ⟪ stop c ⟫ =
     [ back c ]
-  ⟪ split c gss ⟫ =
-    map (split c) (cartesian ⟪ gss ⟫*)
-  ⟪ rebuild c gss ⟫ =
-    map (rebuild c) (concat ⟪ gss ⟫*)
+  ⟪ build c gss ⟫ =
+    map (forth c) (cartesian ⟪ gss ⟫*)
 
   -- ⟪_⟫*
 
@@ -211,12 +206,9 @@ mutual
   bad-graph : {C : Set} (bad : C → Bool) (g : Graph C) → Bool
 
   bad-graph bad (back c) = bad c
-  bad-graph bad (split c gs) with bad c
+  bad-graph bad (forth c gs) with bad c
   ... | true = true
   ... | false = bad-graph* bad gs
-  bad-graph bad (rebuild c g) with bad c
-  ... | true = true
-  ... | false = bad-graph bad g
 
   -- bad-graph*
 
@@ -255,24 +247,11 @@ mutual
   ... | nothing | gs₂′ = gs₂′
   ... | gs₁′ | nothing = gs₁′
   ... | just gs₁′ | just gs₂′ = just (alt gs₁′ gs₂′)
-  cl-empty′ (back c) =
-    just (back c)
-  cl-empty′ (split c gss) with cl-empty-∧ gss
+  cl-empty′ (stop c) =
+    just (stop c)
+  cl-empty′ (build c gss) with cl-empty-∧ gss
   ... | nothing = nothing
-  ... | just gss′ = just (split c gss′)
-  cl-empty′ (rebuild c gss) with cl-empty-∨ gss
-  ... | [] = nothing
-  ... | gss′ = just (rebuild c gss′)
-
-  -- cl-empty-∨
-
-  cl-empty-∨ : {C : Set} (gss : List (LazyGraph C)) →
-    List (LazyGraph C)
-
-  cl-empty-∨ [] = []
-  cl-empty-∨ (gs ∷ gss) with cl-empty′ gs | cl-empty-∨ gss
-  ... | nothing | gss′ = gss′
-  ... | just gs′ | gss′ = gs′ ∷ gss′
+  ... | just gss′ = just (build c gss′)
 
   -- cl-empty-∧
 
@@ -313,12 +292,10 @@ mutual
     Ø
   cl-bad-conf bad (alt gs₁ gs₂) =
     alt (cl-bad-conf bad gs₁) (cl-bad-conf bad gs₂)
-  cl-bad-conf bad (back c) =
-    if bad c then Ø else (back c)
-  cl-bad-conf bad (split c gss) =
-    if bad c then Ø else (split c (cl-bad-conf* bad gss))
-  cl-bad-conf bad (rebuild c gss) =
-    if bad c then Ø else (rebuild c (cl-bad-conf* bad gss))
+  cl-bad-conf bad (stop c) =
+    if bad c then Ø else (stop c)
+  cl-bad-conf bad (build c gss) =
+    if bad c then Ø else (build c (cl-bad-conf* bad gss))
 
   -- cl-bad-conf*
 
@@ -352,8 +329,7 @@ mutual
   graph-size  : ∀ {C : Set} (g : Graph C) → ℕ
 
   graph-size (back c) = 1
-  graph-size (split c gs) = suc (graph-size* gs)
-  graph-size (rebuild c g) = suc (graph-size g)
+  graph-size (forth c gs) = suc (graph-size* gs)
 
   -- graph-size*
 
@@ -397,14 +373,11 @@ mutual
     0 , Ø -- should be ∞ , Ø
   cl-min-size (alt gs₁ gs₂) =
     select-min₂ (cl-min-size gs₁) (cl-min-size gs₂)
-  cl-min-size (back c) =
-    1 , back c
-  cl-min-size (split c gss) with cl-min-size-∧ gss
+  cl-min-size (stop c) =
+    1 , stop c
+  cl-min-size (build c gss) with cl-min-size-∧ gss
   ... | 0 , _ = 0 , Ø
-  ... | k , gs = k , split c gs
-  cl-min-size (rebuild c gss) with select-min (cl-min-size* gss)
-  ... | _ , Ø = 0 , Ø
-  ... | k , gs = suc k , rebuild c [ gs ]
+  ... | k , gs = k , build c gs
 
   -- cl-min-size*
 

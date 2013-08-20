@@ -76,9 +76,9 @@ module NDSC-test3 where
   open BigStepNDSC scWorld3
 
   w3graph1 : [] ⊢NDSC c0 ↪
-    split c0
-      (split c1 [ back c0 ] ∷
-       split c2 [ split c1 [ back c0 ] ] ∷ [])
+    forth c0
+      (forth c1 [ back c0 ] ∷
+       forth c2 [ forth c1 [ back c0 ] ] ∷ [])
   w3graph1 =
     ndsc-split ¬f1
       (ndsc-split ¬f2
@@ -101,7 +101,7 @@ module NDSC-test3 where
     ¬f4 (suc (suc ()) , _)
 
   w3graph2 : [] ⊢NDSC c0 ↪
-    rebuild c0 (split c1 (back c0 ∷ []))
+    forth c0 [ forth c1 (back c0 ∷ [])]
   w3graph2 =
     ndsc-rebuild ¬f1 (here refl)
       (ndsc-split ¬f2

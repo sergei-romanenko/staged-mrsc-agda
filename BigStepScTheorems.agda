@@ -7,11 +7,11 @@ open import Level
 open import Data.Nat
 open import Data.List as List
 open import Data.List.Properties
-  using (map-compose; map-cong; foldr-fusion)
+  using (map-compose; map-cong; foldr-fusion; map-++-commute)
 open import Data.List.Any
   using (Any; here; there; module Membership-≡)
 open import Data.List.Any.Properties
-  using (Any↔; ++↔; return↔; map↔; concat↔; ⊎↔)
+  using (Any↔; Any-cong; ++↔; return↔; map↔; concat↔; ⊎↔)
 open import Data.List.Any.Membership as MB
   using (map-∈↔)
 open import Data.Fin as F
@@ -109,8 +109,10 @@ module MRSC-correctness where
   ... | now bz with ¬w bz
   ... | ()
   naive-mrsc-sound′ {n} h b {c} {g} q | no ¬f | no ¬w | later bs =
-    helper (Inverse.from ++↔ ⟨$⟩ q)
+    helper (++→⊎ q)
     where
+    open ∼-Reasoning
+
     step : ∀ c → List (Graph Conf)
     step = naive-mrsc′ (c ∷ h) (bs c)
 
@@ -118,21 +120,32 @@ module MRSC-correctness where
     gss₀ = cartesian (map step (c ⇉))
 
     gs₁ gs₂ : List (Graph Conf)
-    gs₁ = map (split c) gss₀
-    gs₂ = map (rebuild c) (concat (map step (c ↷)))
+    gs₁ = map (forth c) gss₀
+    gs₂ = map (λ g → forth c [ g ]) (concat (map step (c ↷)))
+
+    ++→⊎ :
+      g ∈ map (forth c) (cartesian (map step (c ⇉))) ++
+          map (λ g → forth c [ g ]) (concat (map step (c ↷))) →
+      g ∈ gs₁ ⊎ g ∈ gs₂
+    ++→⊎ =
+      g ∈ map (forth c) (cartesian (map step (c ⇉))) ++
+          map (λ g → forth c [ g ]) (concat (map step (c ↷)))
+        ≡⟨ refl ⟩
+      g ∈ gs₁ ++ gs₂
+        ↔⟨ sym $ ++↔ ⟩
+      (g ∈ gs₁ ⊎ g ∈ gs₂)
+      ∎
 
     split-helper :
-       g ∈ gs₁ → ∃ (λ gs′ → gs′ ∈ gss₀ × g ≡ split c gs′)
+       g ∈ gs₁ → ∃ (λ gs′ → gs′ ∈ gss₀ × g ≡ forth c gs′)
     split-helper =
       _ ↔⟨ sym $ map-∈↔ ⟩ _ ∎
-      where open ∼-Reasoning
 
     rebuild-helper :
-      g ∈ map (rebuild c) (concat (map step (c ↷))) →
-      ∃ (λ c′ → c′ ∈ c ↷ × ∃ (λ g′ → g′ ∈ step c′ × g ≡ rebuild c g′))
+      g ∈ map (λ g → forth c [ g ]) (concat (map step (c ↷))) →
+      ∃ (λ c′ → c′ ∈ c ↷ × ∃ (λ g′ → g′ ∈ step c′ × g ≡ forth c [ g′ ]))
     rebuild-helper =
-      _ ↔⟨ sym $ concat↔∘Any↔ g (rebuild c) step (c ↷) ⟩ _ ∎
-      where open ∼-Reasoning
+      _ ↔⟨ sym $ concat↔∘Any↔ g (λ g′ → forth c [ g′ ]) step (c ↷) ⟩ _ ∎
 
     helper : (g ∈ gs₁ ⊎ g ∈ gs₂) → h ⊢MRSC c ↪ g
 
@@ -140,7 +153,6 @@ module MRSC-correctness where
     ... | gs′ , gs′∈gss₀ , g≡ rewrite g≡ =
       mrsc-split ¬f ¬w pw
       where
-      open ∼-Reasoning
 
       pw₀ : ∀ {cs gs} → gs ∈ cartesian (map step cs) →
         Pointwise.Rel _∈_ gs (map step cs)
@@ -206,8 +218,8 @@ module MRSC-correctness where
     gss₀ = cartesian (map step (c ⇉))
 
     gs₁ gs₂ : List (Graph Conf)
-    gs₁ = map (split c) gss₀
-    gs₂ = map (rebuild c) (concat (map step (c ↷)))
+    gs₁ = map (forth c) gss₀
+    gs₂ = map (λ g → forth c [ g ]) (concat (map step (c ↷)))
 
     pw : ∀ {cs gs} →
            Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) cs gs →
@@ -232,15 +244,15 @@ module MRSC-correctness where
     helper :
       _ → _
     helper =
-      ∃ (λ gs′ → gs′ ∈ gss₀ × split c gs ≡ split c gs′)
+      ∃ (λ gs′ → gs′ ∈ gss₀ × forth c gs ≡ forth c gs′)
         ↔⟨ map-∈↔ ⟩
-      split c gs ∈ map (split c) gss₀
+      forth c gs ∈ map (forth c) gss₀
         ↔⟨ _ ∎ ⟩
-      split c gs ∈ gs₁
+      forth c gs ∈ gs₁
         ∼⟨ inj₁ ⟩
-      (split c gs ∈ gs₁ ⊎ split c gs ∈ gs₂)
+      (forth c gs ∈ gs₁ ⊎ forth c gs ∈ gs₂)
         ↔⟨ ++↔ ⟩
-      split c gs ∈ gs₁ ++ gs₂
+      forth c gs ∈ gs₁ ++ gs₂
       ∎
 
   naive-mrsc-complete′ .h b (mrsc-rebuild {n} {h} {c} {c′} {g} _ _ i q)
@@ -250,20 +262,21 @@ module MRSC-correctness where
     open ∼-Reasoning
 
     step = naive-mrsc′ (c ∷ h) (bs c)
-    gs₁ = map (split c) (cartesian (map step (c ⇉)))
-    gs₂ = map (rebuild c) (concat (map step (c ↷)))
+    gs₁ = map (forth c) (cartesian (map step (c ⇉)))
+    gs₂ = map (λ g → forth c [ g ]) (concat (map step (c ↷)))
 
     g∈ : g ∈ step c′
     g∈ = naive-mrsc-complete′ (c ∷ h) (bs c) q
 
     helper =
-      ∃ (λ c′ → c′ ∈ c ↷ × ∃ (λ g′ → g′ ∈ step c′ × rebuild c g ≡ rebuild c g′))
-        ↔⟨ concat↔∘Any↔ (rebuild c g) (rebuild c) step (c ↷) ⟩
-      rebuild c g ∈ gs₂
+      ∃ (λ c′ → c′ ∈ c ↷ ×
+           ∃ (λ g′ → g′ ∈ step c′ × forth c [ g ] ≡ forth c [ g′ ]))
+        ↔⟨ concat↔∘Any↔ (forth c [ g ]) (λ g′ → forth c [ g′ ]) step (c ↷) ⟩
+      forth c [ g ] ∈ gs₂
         ∼⟨ inj₂ ⟩
-      (rebuild c g ∈ gs₁ ⊎ rebuild c g ∈ gs₂)
+      (forth c [ g ] ∈ gs₁ ⊎ forth c [ g ] ∈ gs₂)
         ↔⟨ ++↔ ⟩
-      rebuild c g ∈ gs₁ ++ gs₂
+      forth c [ g ] ∈ gs₁ ++ gs₂
       ∎
 
   -- naive-mrsc-complete
@@ -295,6 +308,14 @@ module MRSC-naive≡lazy where
 
   open BigStepMRSC scWorld
 
+  -- ⟪⟫∘foldr
+
+  ⟪⟫∘foldr : {C : Set} (gss : List (LazyGraph C)) →
+    ⟪ foldr alt Ø gss ⟫ ≡ concat ⟪ gss ⟫*
+
+  ⟪⟫∘foldr [] = refl
+  ⟪⟫∘foldr (gs ∷ gss) = cong (_++_ ⟪ gs ⟫) (⟪⟫∘foldr gss)
+
   mutual
 
     -- naive≡lazy′
@@ -309,11 +330,43 @@ module MRSC-naive≡lazy where
     ... | no ¬w with b
     ... | now bz with ¬w bz
     ... | ()
-    naive≡lazy′ {n} h b c | no ¬f | no ¬w | later bs =
-      cong₂ (λ u v → map (split c) (cartesian u) ++
-                      map (rebuild c) (concat v))
-        (map∘naive-mrsc′ (c ∷ h) (bs c) (c ⇉))
-        (map∘naive-mrsc′ (c ∷ h) (bs c) (c ↷))
+    naive≡lazy′ {n} h b c | no ¬f | no ¬w | later bs = begin
+      map (forth c) (cartesian (map step (c ⇉))) ++
+      map (λ g → forth c [ g ]) (concat (map step (c ↷)))
+        ≡⟨ cong₂ _++_ (cong (map (forth c) ∘ cartesian)
+                            (map∘naive-mrsc′ (c ∷ h) (bs c) (c ⇉)))
+                      shuffle ⟩
+      map (forth c) (cartesian ⟪ map lazy-step (c ⇉) ⟫*) ++
+      map (forth c) (cartesian [ ⟪ foldr alt Ø (map lazy-step (c ↷)) ⟫ ]) 
+      ∎
+      where
+      open ≡-Reasoning
+
+      step = naive-mrsc′ (c ∷ h) (bs c)
+      lazy-step = lazy-mrsc′ (c ∷ h) (bs c)
+
+      shuffle-forth : ∀ {C : Set} (c : C) (gs : List (Graph C)) →
+        map (λ g → forth c [ g ]) gs ≡ map (forth c) (cartesian [ gs ])
+
+      shuffle-forth c [] = refl
+      shuffle-forth c (g ∷ gs) =
+        cong (_∷_ (forth c (g ∷ []))) (shuffle-forth c gs)
+
+      shuffle :
+        map (λ g → forth c [ g ]) (concat (map step (c ↷))) ≡
+        map (forth c) (cartesian [ ⟪ foldr alt Ø (map lazy-step (c ↷)) ⟫ ])
+
+      shuffle = begin
+        map (λ g → forth c [ g ]) (concat (map step (c ↷)))
+          ≡⟨ shuffle-forth c (concat (map step (c ↷))) ⟩
+        map (forth c) (cartesian [ concat (map step (c ↷)) ])
+          ≡⟨ cong (λ u → map (forth c) (cartesian [ concat u ]))
+                  (map∘naive-mrsc′ (c ∷ h) (bs c) (c ↷)) ⟩
+        map (forth c) (cartesian [ concat ⟪ map lazy-step (c ↷) ⟫* ])
+          ≡⟨ cong (λ u → map (forth c) (cartesian [ u ]))
+                  (P.sym $ ⟪⟫∘foldr (map lazy-step (c ↷))) ⟩
+        map (forth c) (cartesian [ ⟪ foldr alt Ø (map lazy-step (c ↷)) ⟫ ])
+        ∎
 
     -- map∘naive-mrsc′
 
@@ -332,7 +385,9 @@ module MRSC-naive≡lazy where
       ∎
       where open ≡-Reasoning
 
+  --
   -- naive≡lazy
+  --
 
   naive≡lazy : ∀ (c : Conf) →
     naive-mrsc c ≡ ⟪ lazy-mrsc c ⟫

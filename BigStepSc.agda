@@ -164,13 +164,13 @@ module BigStepNDSC (scWorld : ScWorld) where
       {gs : List (Graph Conf)}
       (¬f : ¬ Foldable h c) →
       (s  : Pointwise.Rel (_⊢NDSC_↪_ (c ∷ h)) (c ⇉) gs) →
-      h ⊢NDSC c ↪ (split c gs)
+      h ⊢NDSC c ↪ (forth c gs)
     ndsc-rebuild : ∀ {n} {h : History n} {c c′}
       {g  : Graph Conf}
       (¬f : ¬ Foldable h c)
       (i  : Any (_≡_ c′) (c ↷)) →
       (s  : c ∷ h ⊢NDSC c′ ↪ g) →
-      h ⊢NDSC c ↪ rebuild c g
+      h ⊢NDSC c ↪ forth c [ g ]
 
 --
 -- Big-step multi-result supercompilation
@@ -196,14 +196,14 @@ module BigStepMRSC (scWorld : ScWorld) where
       (¬f : ¬ Foldable h c)
       (¬w : ¬ ↯ h) →
       (s  : Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) (c ⇉) gs) →
-      h ⊢MRSC c ↪ (split c gs)
+      h ⊢MRSC c ↪ (forth c gs)
     mrsc-rebuild : ∀ {n} {h : History n} {c c′}
       {g  : Graph Conf}
       (¬f : ¬ Foldable h c)
       (¬w : ¬ ↯ h) →
       (i  : Any (_≡_ c′) (c ↷)) →
       (s  : c ∷ h ⊢MRSC c′ ↪ g) →
-      h ⊢MRSC c ↪ rebuild c g
+      h ⊢MRSC c ↪ forth c [ g ]
 
   --
   -- Functional big-step multi-result supercompilation.
@@ -222,14 +222,10 @@ module BigStepMRSC (scWorld : ScWorld) where
   ... | now bz with ¬w bz
   ... | ()
   naive-mrsc′ {n} h b c | no ¬f | no ¬w | later bs =
-    split! ++ rebuild!
-    where
-    split! =
-      map (split c)
-          (cartesian (map (naive-mrsc′ (c ∷ h) (bs c)) (c ⇉)))
-    rebuild! =
-      map (rebuild c)
-          (concat (map (naive-mrsc′ (c ∷ h) (bs c)) (c ↷)))
+    map (forth c)
+        (cartesian (map (naive-mrsc′ (c ∷ h) (bs c)) (c ⇉))) ++
+    map (λ g → forth c [ g ])
+        (concat (map (naive-mrsc′ (c ∷ h) (bs c)) (c ↷)))
   
   -- naive-mrsc
 
@@ -248,15 +244,15 @@ module BigStepMRSC (scWorld : ScWorld) where
   lazy-mrsc′ : ∀ {n} (h : History n) (b : Bar ↯ h) (c : Conf) →
                   LazyGraph Conf
   lazy-mrsc′ {n} h b c with foldable? h c
-  ... | yes (i , c⊑hi) = back c
+  ... | yes (i , c⊑hi) = stop c
   ... | no ¬f with ↯? h
   ... | yes w = alt Ø Ø  -- This looks silly, but simplifies some proofs...
   ... | no ¬w with b
   ... | now bz with ¬w bz
   ... | ()
   lazy-mrsc′ {n} h b c | no ¬f | no ¬w | later bs =
-    alt (split   c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ⇉)))
-        (rebuild c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ↷)))
+    alt (build c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ⇉)))
+        (build c [ foldr alt Ø (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ↷))])
 
   -- lazy-mrsc
 
@@ -277,8 +273,8 @@ module GraphExtraction (scWorld : ScWorld) where
     (p : h ⊢NDSC c ↪ g) → Graph Conf
 
   extractGraph (ndsc-fold {c = c} (i , c⊑c′)) = back c
-  extractGraph (ndsc-split {c = c} {gs = gs} ¬f ps) = split c gs
-  extractGraph (ndsc-rebuild {c = c} {g = g} ¬f i p) = rebuild c g
+  extractGraph (ndsc-split {c = c} {gs = gs} ¬f ps) = forth c gs
+  extractGraph (ndsc-rebuild {c = c} {g = g} ¬f i p) = forth c [ g ]
 
   -- extractGraph-sound
 
