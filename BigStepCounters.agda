@@ -5,7 +5,7 @@ open import Data.Nat as N
 open import Data.Nat.Properties as NP
   using (≤-step)
 open import Data.List as List
-  using (List; []; _∷_)
+  using (List; []; _∷_; [_])
 open import Data.Vec as Vec
   using (Vec; []; _∷_)
 open import Relation.Binary.Vec.Pointwise as Pointwise
@@ -229,8 +229,8 @@ mkScWorld l maxDepth {k} ⟨⟨ start , _⇉ω , unsafe ⟩⟩ = record
   { Conf = ωConf k
   ; _⊑_ = _⊑_
   ; _⊑?_ = _⊑?_
-  ; _⇉ = _⇉ω
-  ; _↷ = List.filter (not ∘ unsafe) ∘ _↷
+  ; _⇉ = λ (c : ωConf k) → c ⇉ω ∷ List.map [_] (c ↷)
+--  ; _↷ = List.filter (not ∘ unsafe) ∘ _↷
   ; whistle = ⟨ (λ {n} h → (maxDepth N.≤ n) ⊎ (↯ h))
               , (λ {n} c h → [ inj₁ ∘ ≤-step , inj₂ ∘ inj₂ ]′)
               , (λ {n} h → (maxDepth N.≤? n) ⊎-dec (↯? h))

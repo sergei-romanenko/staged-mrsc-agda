@@ -61,8 +61,7 @@ module ScWorld3 where
     { Conf = C3
     ; _⊑_ = _≡_
     ; _⊑?_ = _≟C3_
-    ; _⇉ = _⇉′
-    ; _↷ = _↷′
+    ; _⇉ = λ c → [ c ⇉′ ] ++ map [_] (c ↷′)
     ; whistle = pathLengthWhistle C3 4
     }
 
@@ -80,12 +79,12 @@ module NDSC-test3 where
       (forth c1 [ back c0 ] ∷
        forth c2 [ forth c1 [ back c0 ] ] ∷ [])
   w3graph1 =
-    ndsc-split ¬f1
-      (ndsc-split ¬f2
+    ndsc-build ¬f1 (here refl)
+      (ndsc-build ¬f2 (here refl)
         (ndsc-fold (suc zero , refl) ∷ []) ∷
-      (ndsc-split ¬f3
-        (ndsc-split ¬f4
-          (ndsc-fold (suc (suc zero) , refl) ∷ []) ∷ [])) ∷ [])
+      (ndsc-build ¬f3 (here refl)
+        (ndsc-build ¬f4 (here refl)
+          (ndsc-fold (suc (suc zero) , refl) ∷ []) ∷ [])) ∷ [])      
     where
     ¬f1 : ¬ Σ (Fin zero) (λ z → c0 ≡ lookup z [])
     ¬f1 (() , _)
@@ -103,9 +102,9 @@ module NDSC-test3 where
   w3graph2 : [] ⊢NDSC c0 ↪
     forth c0 [ forth c1 (back c0 ∷ [])]
   w3graph2 =
-    ndsc-rebuild ¬f1 (here refl)
-      (ndsc-split ¬f2
-        ((ndsc-fold (suc zero , refl)) ∷ []))
+    ndsc-build ¬f1 (there (here refl))
+      (ndsc-build ¬f2 (here refl)
+        (ndsc-fold (suc zero , refl) ∷ []) ∷ [])
     where
     ¬f1 : Σ (Fin zero) (λ z → c0 ≡ lookup z []) → ⊥
     ¬f1 (() , _)

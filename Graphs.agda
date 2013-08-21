@@ -107,10 +107,8 @@ data Graph (C : Set) : Set where
 
 data LazyGraph (C : Set) : Set where
   Ø     : LazyGraph C
-  alt   : (gs₁ gs₂ : LazyGraph C) → LazyGraph C
-  stop  : ∀ (c : C) → LazyGraph C
-  build : ∀ (c : C) (gss : List (LazyGraph C)) →
-            LazyGraph C
+  stop  : (c : C) → LazyGraph C
+  build : (c : C) (gsss : List (List (LazyGraph C))) → LazyGraph C
 
 -- The semantics of `LazyGraph C` is formally defined by
 -- the interpreter `⟪_⟫` that generates a list of `Graph C n` from
@@ -122,14 +120,19 @@ mutual
 
   ⟪_⟫ : {C : Set} (gs : LazyGraph C) → List (Graph C)
 
-  ⟪ Ø ⟫ =
-    []
-  ⟪ alt gs₁ gs₂ ⟫ =
-    ⟪ gs₁ ⟫ ++ ⟪ gs₂ ⟫
+  ⟪ Ø ⟫ = []
   ⟪ stop c ⟫ =
     [ back c ]
-  ⟪ build c gss ⟫ =
-    map (forth c) (cartesian ⟪ gss ⟫*)
+  ⟪ build c gsss ⟫ =
+    map (forth c) (concat ⟪ gsss ⟫**)
+
+  -- ⟪_⟫**
+
+  ⟪_⟫** : {C : Set} (gsss : List (List (LazyGraph C))) →
+              List (List (List (Graph C)))
+
+  ⟪ [] ⟫** = []
+  ⟪ gss ∷ gsss ⟫** = cartesian ⟪ gss ⟫* ∷ ⟪ gsss ⟫**
 
   -- ⟪_⟫*
 
@@ -219,7 +222,10 @@ mutual
   ... | true = true
   ... | false = bad-graph* bad gs
 
-  -- fl-bad-conf
+
+-- This filter removes the graphs containing "bad" configurations.
+
+-- fl-bad-conf
 
 fl-bad-conf : {C : Set} (bad : C → Bool) (gs : List (Graph C)) →
   List (Graph C)
@@ -243,15 +249,32 @@ mutual
 
   cl-empty′ Ø =
     nothing
-  cl-empty′ (alt gs₁ gs₂) with cl-empty′ gs₁ | cl-empty′ gs₂
-  ... | nothing | gs₂′ = gs₂′
-  ... | gs₁′ | nothing = gs₁′
-  ... | just gs₁′ | just gs₂′ = just (alt gs₁′ gs₂′)
   cl-empty′ (stop c) =
     just (stop c)
-  cl-empty′ (build c gss) with cl-empty-∧ gss
-  ... | nothing = nothing
-  ... | just gss′ = just (build c gss′)
+  cl-empty′ (build c gsss) with cl-empty** gsss
+  ... | [] = nothing
+  ... | gsss′ = just (build c gsss′)
+
+  -- cl-empty′*
+
+  cl-empty′* : {C : Set} (gss : List (LazyGraph C)) →
+    Maybe (List (LazyGraph C))
+
+  cl-empty′* [] = nothing
+  cl-empty′* (gs ∷ gss) with cl-empty′ gs | cl-empty′* gss
+  ... | nothing | cl-gss = cl-gss
+  ... | just gs′ | nothing = just [ gs′ ]
+  ... | just gs′ | just gss′ = just (gs′ ∷ gss′)
+
+  -- cl-empty**
+
+  cl-empty** : {C : Set} (gsss : List (List (LazyGraph C))) →
+    List (List (LazyGraph C))
+
+  cl-empty** [] = []
+  cl-empty** (gss ∷ gsss) with cl-empty-∧ gss | cl-empty** gsss
+  ... | nothing | gsss′ = gsss′
+  ... | just gss′ | gsss′ = gss′ ∷ gsss′
 
   -- cl-empty-∧
 
@@ -288,14 +311,20 @@ mutual
   cl-bad-conf : {C : Set} (bad : C → Bool) (gs : LazyGraph C) →
     LazyGraph C
 
-  cl-bad-conf bad Ø =
-    Ø
-  cl-bad-conf bad (alt gs₁ gs₂) =
-    alt (cl-bad-conf bad gs₁) (cl-bad-conf bad gs₂)
+  cl-bad-conf bad Ø = Ø
   cl-bad-conf bad (stop c) =
     if bad c then Ø else (stop c)
-  cl-bad-conf bad (build c gss) =
-    if bad c then Ø else (build c (cl-bad-conf* bad gss))
+  cl-bad-conf bad (build c gsss) =
+    if bad c then Ø else (build c (cl-bad-conf** bad gsss))
+
+  -- cl-bad-conf**
+
+  cl-bad-conf** : {C : Set} (bad : C → Bool)
+    (gsss : List (List (LazyGraph C))) → List (List (LazyGraph C))
+
+  cl-bad-conf** bad [] = []
+  cl-bad-conf** bad (gss ∷ gsss) =
+    cl-bad-conf* bad gss ∷ (cl-bad-conf** bad gsss)
 
   -- cl-bad-conf*
 
@@ -342,26 +371,24 @@ mutual
 -- Now we define a cleaner that produces a lazy graph
 -- representing the smallest graph (or the empty set of graphs).
 
--- We use a trick: ∞ is represented by 0 in (0 , Ø).
+-- We use a trick: ∞ is represented by 0 in (0 , alt []).
 
 -- select-min₂
 
-select-min₂ : ∀ {C : Set} (kgs₁ kgs₂ : ℕ × LazyGraph C) →
-  ℕ × LazyGraph C
+select-min₂ : ∀ {A : Set} (kx₁ kx₂ : ℕ × A) → ℕ × A
 
-select-min₂ (_ , Ø) (k₂ , gs₂) = k₂ , gs₂
-select-min₂ (k₁ , gs₁) (_ , Ø) = k₁ , gs₁
-select-min₂ (k₁ , gs₁) (k₂ , gs₂) with k₁ ≤? k₂
-... | yes _ = k₁ , gs₁
-... | no  _ = k₂ , gs₂
+select-min₂ (0 , _) (k₂ , x₂) = k₂ , x₂
+select-min₂ (k₁ , x₁) (0 , _) = k₁ , x₁
+select-min₂ (k₁ , x₁) (k₂ , x₂) with k₁ ≤? k₂
+... | yes _ = k₁ , x₁
+... | no  _ = k₂ , x₂
 
 -- select-min
 
-select-min : ∀ {C : Set} (kgss : List (ℕ × LazyGraph C)) →
-  ℕ × LazyGraph C
+select-min : ∀ {A : Set} (n : A) (kxs : List (ℕ × A)) → ℕ × A
 
-select-min [] = 0 , Ø
-select-min (kgs ∷ kgss) = foldl select-min₂ kgs kgss
+select-min n [] = 0 , n
+select-min n (kgs ∷ kgss) = foldl select-min₂ kgs kgss
 
 mutual
 
@@ -370,14 +397,12 @@ mutual
   cl-min-size : ∀ {C : Set} (gs : LazyGraph C) → ℕ × LazyGraph C
 
   cl-min-size Ø =
-    0 , Ø -- should be ∞ , Ø
-  cl-min-size (alt gs₁ gs₂) =
-    select-min₂ (cl-min-size gs₁) (cl-min-size gs₂)
+    0 , Ø
   cl-min-size (stop c) =
     1 , stop c
-  cl-min-size (build c gss) with cl-min-size-∧ gss
+  cl-min-size (build c gsss) with cl-min-size** gsss
   ... | 0 , _ = 0 , Ø
-  ... | k , gs = k , build c gs
+  ... | k , gss = suc k , build c [ gss ]
 
   -- cl-min-size*
 
@@ -386,6 +411,15 @@ mutual
 
   cl-min-size* [] = []
   cl-min-size* (gs ∷ gss) = cl-min-size gs ∷ cl-min-size* gss
+
+  -- cl-min-size**
+
+  cl-min-size** : ∀ {C : Set} (gsss : List (List (LazyGraph C))) →
+    ℕ × List (LazyGraph C)
+
+  cl-min-size** [] = 0 , []
+  cl-min-size** (gss ∷ gsss) with cl-min-size-∧ gss | cl-min-size** gsss
+  ... | kgss₁ | kgss₂ = select-min₂ kgss₁ kgss₂
 
   -- cl-min-size-∧
 

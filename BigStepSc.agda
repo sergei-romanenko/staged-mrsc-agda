@@ -24,7 +24,7 @@ open import Data.List as List
 open import Data.List.Properties
   using (map-compose; map-cong; foldr-fusion)
 open import Data.List.Any
-  using (Any; here; there)
+  using (Any; here; there; module Membership-≡)
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.Vec as Vec
@@ -47,6 +47,8 @@ open import Relation.Binary
 open import Relation.Binary.PropositionalEquality as P
   renaming ([_] to P[_])
 
+open Membership-≡
+
 open import Util
 open import BarWhistles
 open import Graphs
@@ -67,13 +69,16 @@ record ScWorld : Set₁ where
     -- ⊑ is decidable.
     _⊑?_ : (c c′ : Conf) → Dec (c ⊑ c′)
 
-    -- Driving/splitting a configuration leads to a finite number of new ones.
-    _⇉ : (c : Conf) → List Conf
 
-    -- Rebuilding a configuration replaces it with an equivalent
-    -- or more general one.
-    -- We suppose that the number of possible rebuildings is finite!
-    _↷ : (c : Conf) → List Conf
+    -- Transforming a configuration decomposes it in a (finite) number
+    -- of other configurations. Since this transformation my be
+    -- non-deterministic, the result of the transformation is
+    -- a list of lists of configurations.
+
+    -- Sometimes, a configuration can be "decomposed" into a single
+    -- configuration (in which case the transformation is usually called
+    -- a "reduction" step). 
+    _⇉ : (c : Conf) → List (List Conf)
 
     -- A bar whistle.
     whistle : BarWhistle Conf
@@ -111,13 +116,8 @@ record ScWorldWithLabels : Set₁ where
     -- ⊑ is decidable.
     _⊑?_ : (c c′ : Conf) → Dec (c ⊑ c′)
 
-    -- Driving/splitting a configuration leads to a finite number of new ones.
-    _⇉ : (c : Conf) → List (Label × Conf)
-
-    -- Rebuilding a configuration replaces it with an equivalent
-    -- or more general one.
-    -- We suppose that the number of possible rebuildings is finite!
-    _↷ : (c : Conf) → List (Label × Conf)
+    -- Driving/splitting/rebuilding a configuration
+    _⇉ : (c : Conf) → List (List (Label × Conf))
 
     -- A bar whistle.
     whistle : BarWhistle Conf
@@ -131,7 +131,6 @@ injectLabelsInScWorld w = record
   ; _⊑_ = _⊑′_
   ; _⊑?_ = _⊑?′_
   ; _⇉ = _⇉ ∘ proj₂
-  ; _↷ = _↷ ∘ proj₂
   ; whistle = inverseImageWhistle proj₂ whistle
   }
   where
@@ -160,17 +159,14 @@ module BigStepNDSC (scWorld : ScWorld) where
     ndsc-fold  : ∀ {n} {h : History n} {c}
       (f : Foldable h c) →
       h ⊢NDSC c ↪ back c
-    ndsc-split : ∀ {n} {h : History n} {c}
+
+    ndsc-build : ∀ {n} {h : History n} {c}
+      {cs : List (Conf)}
       {gs : List (Graph Conf)}
       (¬f : ¬ Foldable h c) →
-      (s  : Pointwise.Rel (_⊢NDSC_↪_ (c ∷ h)) (c ⇉) gs) →
+      (i : cs ∈ c ⇉)
+      (s  : Pointwise.Rel (_⊢NDSC_↪_ (c ∷ h)) cs gs) →
       h ⊢NDSC c ↪ (forth c gs)
-    ndsc-rebuild : ∀ {n} {h : History n} {c c′}
-      {g  : Graph Conf}
-      (¬f : ¬ Foldable h c)
-      (i  : Any (_≡_ c′) (c ↷)) →
-      (s  : c ∷ h ⊢NDSC c′ ↪ g) →
-      h ⊢NDSC c ↪ forth c [ g ]
 
 --
 -- Big-step multi-result supercompilation
@@ -191,19 +187,15 @@ module BigStepMRSC (scWorld : ScWorld) where
     mrsc-fold  : ∀ {n} {h : History n} {c}
       (f : Foldable h c) →
       h ⊢MRSC c ↪ back c
-    mrsc-split : ∀ {n} {h : History n} {c}
+
+    mrsc-build : ∀ {n} {h : History n} {c}
+      {cs : List Conf}
       {gs : List (Graph Conf)}
       (¬f : ¬ Foldable h c)
       (¬w : ¬ ↯ h) →
-      (s  : Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) (c ⇉) gs) →
+      (i : cs ∈ c ⇉)
+      (s  : Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) cs gs) →
       h ⊢MRSC c ↪ (forth c gs)
-    mrsc-rebuild : ∀ {n} {h : History n} {c c′}
-      {g  : Graph Conf}
-      (¬f : ¬ Foldable h c)
-      (¬w : ¬ ↯ h) →
-      (i  : Any (_≡_ c′) (c ↷)) →
-      (s  : c ∷ h ⊢MRSC c′ ↪ g) →
-      h ⊢MRSC c ↪ forth c [ g ]
 
   --
   -- Functional big-step multi-result supercompilation.
@@ -223,10 +215,8 @@ module BigStepMRSC (scWorld : ScWorld) where
   ... | ()
   naive-mrsc′ {n} h b c | no ¬f | no ¬w | later bs =
     map (forth c)
-        (cartesian (map (naive-mrsc′ (c ∷ h) (bs c)) (c ⇉))) ++
-    map (λ g → forth c [ g ])
-        (concat (map (naive-mrsc′ (c ∷ h) (bs c)) (c ↷)))
-  
+        (concat (map (cartesian ∘ map (naive-mrsc′ (c ∷ h) (bs c))) (c ⇉)))
+
   -- naive-mrsc
 
   naive-mrsc : (c : Conf) → List (Graph Conf)
@@ -246,13 +236,12 @@ module BigStepMRSC (scWorld : ScWorld) where
   lazy-mrsc′ {n} h b c with foldable? h c
   ... | yes (i , c⊑hi) = stop c
   ... | no ¬f with ↯? h
-  ... | yes w = alt Ø Ø  -- This looks silly, but simplifies some proofs...
+  ... | yes w = Ø
   ... | no ¬w with b
   ... | now bz with ¬w bz
   ... | ()
   lazy-mrsc′ {n} h b c | no ¬f | no ¬w | later bs =
-    alt (build c (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ⇉)))
-        (build c [ foldr alt Ø (map (lazy-mrsc′ (c ∷ h) (bs c)) (c ↷))])
+    build c (map (map (lazy-mrsc′ (c ∷ h) (bs c))) (c ⇉))
 
   -- lazy-mrsc
 
@@ -273,8 +262,7 @@ module GraphExtraction (scWorld : ScWorld) where
     (p : h ⊢NDSC c ↪ g) → Graph Conf
 
   extractGraph (ndsc-fold {c = c} (i , c⊑c′)) = back c
-  extractGraph (ndsc-split {c = c} {gs = gs} ¬f ps) = forth c gs
-  extractGraph (ndsc-rebuild {c = c} {g = g} ¬f i p) = forth c [ g ]
+  extractGraph (ndsc-build {c = c} {gs = gs} ¬f i ps) = forth c gs
 
   -- extractGraph-sound
 
@@ -282,6 +270,4 @@ module GraphExtraction (scWorld : ScWorld) where
     (p : h ⊢NDSC c ↪ g) → extractGraph p ≡ g
 
   extractGraph-sound (ndsc-fold f) = refl
-  extractGraph-sound (ndsc-split ¬f ps) = refl
-  extractGraph-sound (ndsc-rebuild ¬f i p) = refl
-
+  extractGraph-sound (ndsc-build ¬f i ps) = refl
