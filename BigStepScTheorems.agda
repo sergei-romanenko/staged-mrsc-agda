@@ -291,7 +291,8 @@ module MRSC-naive≡lazy where
     ... | now bz with ¬w bz
     ... | ()
     naive≡lazy′ {n} h b c | no ¬f | no ¬w | later bs =
-      cong (map (forth c) ∘ concat) (helper (c ⇉))
+      cong (map (forth c)) (helper (c ⇉))
+      --cong (map (forth c) ∘ concat) (helper (c ⇉))
       where
       open ≡-Reasoning
 
@@ -299,20 +300,21 @@ module MRSC-naive≡lazy where
       lazy-step = lazy-mrsc′ (c ∷ h) (bs c)
 
       helper : ∀ css →
-        map (cartesian ∘ map naive-step) css ≡
+        concat (map (cartesian ∘ map naive-step) css) ≡
           ⟪ map (map lazy-step) css ⟫**
+
       helper [] = refl
       helper (cs ∷ css) = begin
-        map (cartesian ∘ map naive-step) (cs ∷ css)
+        concat (map (cartesian ∘ map naive-step) (cs ∷ css))
           ≡⟨⟩
-        cartesian (map naive-step cs) ∷ map (cartesian ∘ map naive-step) css
-          ≡⟨ cong₂ _∷_ (cong cartesian (map∘naive-mrsc′ (c ∷ h) (bs c) cs))
-                       (helper css) ⟩
-        cartesian ⟪ map lazy-step cs ⟫* ∷ ⟪ map (map lazy-step) css ⟫**
+        cartesian (map naive-step cs) ++
+          concat (map (cartesian ∘ map naive-step) css)
+          ≡⟨ cong₂ _++_ (cong cartesian (map∘naive-mrsc′ (c ∷ h) (bs c) cs))
+                        (helper css) ⟩
+        cartesian ⟪ map lazy-step cs ⟫* ++ ⟪ map (map lazy-step) css ⟫**
           ≡⟨⟩
         ⟪ map (map lazy-step) (cs ∷ css) ⟫**
         ∎
-
 
     -- map∘naive-mrsc′
 

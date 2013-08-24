@@ -7,7 +7,7 @@ module Graphs where
 open import Algebra
   using (module Monoid)
 open import Data.Bool
-  using (Bool; true; false; if_then_else_; not)
+  using (Bool; true; false; if_then_else_; not; _∧_; _∨_)
 open import Data.Nat
 open import Data.Fin as F
   using (Fin; zero; suc)
@@ -124,15 +124,15 @@ mutual
   ⟪ stop c ⟫ =
     [ back c ]
   ⟪ build c gsss ⟫ =
-    map (forth c) (concat ⟪ gsss ⟫**)
+    map (forth c) ⟪ gsss ⟫**
 
   -- ⟪_⟫**
 
   ⟪_⟫** : {C : Set} (gsss : List (List (LazyGraph C))) →
-              List (List (List (Graph C)))
+              List (List (Graph C))
 
   ⟪ [] ⟫** = []
-  ⟪ gss ∷ gsss ⟫** = cartesian ⟪ gss ⟫* ∷ ⟪ gsss ⟫**
+  ⟪ gss ∷ gsss ⟫** = cartesian ⟪ gss ⟫* ++ ⟪ gsss ⟫**
 
   -- ⟪_⟫*
 
@@ -209,19 +209,16 @@ mutual
   bad-graph : {C : Set} (bad : C → Bool) (g : Graph C) → Bool
 
   bad-graph bad (back c) = bad c
-  bad-graph bad (forth c gs) with bad c
-  ... | true = true
-  ... | false = bad-graph* bad gs
+  bad-graph bad (forth c gs) =
+    bad c ∨ bad-graph* bad gs
 
   -- bad-graph*
 
   bad-graph* : {C : Set} (bad : C → Bool) (gs : List (Graph C)) → Bool
 
   bad-graph* bad [] = false
-  bad-graph* bad (g ∷ gs) with bad-graph bad g
-  ... | true = true
-  ... | false = bad-graph* bad gs
-
+  bad-graph* bad (g ∷ gs) =
+    bad-graph bad g ∨ bad-graph* bad gs
 
 -- This filter removes the graphs containing "bad" configurations.
 
@@ -253,18 +250,7 @@ mutual
     just (stop c)
   cl-empty′ (build c gsss) with cl-empty** gsss
   ... | [] = nothing
-  ... | gsss′ = just (build c gsss′)
-
-  -- cl-empty′*
-
-  cl-empty′* : {C : Set} (gss : List (LazyGraph C)) →
-    Maybe (List (LazyGraph C))
-
-  cl-empty′* [] = nothing
-  cl-empty′* (gs ∷ gss) with cl-empty′ gs | cl-empty′* gss
-  ... | nothing | cl-gss = cl-gss
-  ... | just gs′ | nothing = just [ gs′ ]
-  ... | just gs′ | just gss′ = just (gs′ ∷ gss′)
+  ... | gss′ ∷ gsss′ = just (build c (gss′ ∷ gsss′))
 
   -- cl-empty**
 
@@ -272,9 +258,9 @@ mutual
     List (List (LazyGraph C))
 
   cl-empty** [] = []
-  cl-empty** (gss ∷ gsss) with cl-empty-∧ gss | cl-empty** gsss
-  ... | nothing | gsss′ = gsss′
-  ... | just gss′ | gsss′ = gss′ ∷ gsss′
+  cl-empty** (gss ∷ gsss) with cl-empty-∧ gss
+  ... | nothing = cl-empty** gsss
+  ... | just gss′ = gss′ ∷ cl-empty** gsss
 
   -- cl-empty-∧
 
@@ -371,7 +357,7 @@ mutual
 -- Now we define a cleaner that produces a lazy graph
 -- representing the smallest graph (or the empty set of graphs).
 
--- We use a trick: ∞ is represented by 0 in (0 , alt []).
+-- We use a trick: ∞ is represented by 0 in (0 , Ø).
 
 -- select-min₂
 

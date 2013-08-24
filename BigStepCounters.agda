@@ -196,7 +196,8 @@ record CntWorld (k : ℕ) : Set₁ where
 
     start : ωConf k
 
-    _⇉ω : (c : ωConf k) → List (ωConf k)
+    -- Driving (deterministic)
+    _⇊ : (c : ωConf k) → List (ωConf k)
 
     unsafe : (c : ωConf k) → Bool
 
@@ -225,12 +226,11 @@ tooBig? l {k} c = vecAny (tooBig₁? l) c
 
 
 mkScWorld : ∀ (l : ℕ) (maxDepth : ℕ) {k} (cntWorld : CntWorld k) → ScWorld
-mkScWorld l maxDepth {k} ⟨⟨ start , _⇉ω , unsafe ⟩⟩ = record
+mkScWorld l maxDepth {k} ⟨⟨ start , _⇊ , unsafe ⟩⟩ = record
   { Conf = ωConf k
   ; _⊑_ = _⊑_
   ; _⊑?_ = _⊑?_
-  ; _⇉ = λ (c : ωConf k) → c ⇉ω ∷ List.map [_] (c ↷)
---  ; _↷ = List.filter (not ∘ unsafe) ∘ _↷
+  ; _⇉ = λ c → c ⇊ ∷ List.map [_] (c ↷) -- driving + rebuilding
   ; whistle = ⟨ (λ {n} h → (maxDepth N.≤ n) ⊎ (↯ h))
               , (λ {n} c h → [ inj₁ ∘ ≤-step , inj₂ ∘ inj₂ ]′)
               , (λ {n} h → (maxDepth N.≤? n) ⊎-dec (↯? h))
