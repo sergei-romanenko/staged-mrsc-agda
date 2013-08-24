@@ -59,26 +59,27 @@ module BigStepMRSC∞ (scWorld : ScWorld) where
 
     -- build-cograph′
 
-    build-cograph′ : ∀ {n} (h : History n) (c : Conf) →
-                       LazyCograph Conf
-    build-cograph′ {n} h c with foldable? h c
-    ... | yes (i , c⊑hi) = stop c
+    build-cograph′ : (h : History) (c : Conf) → LazyCograph Conf
+
+    build-cograph′ h c with foldable? h c
+    ... | yes f = stop c
     ... | no ¬f =
       build c (♯ build-cograph⇉ h c (c ⇉))
 
     -- build-cograph′⇉
 
-    build-cograph⇉ :
-      ∀ {n} (h : History n) (c : Conf) (css : List (List Conf)) →
-            List (List (LazyCograph Conf))
+    build-cograph⇉ : (h : History) (c : Conf) (css : List (List Conf)) →
+      List (List (LazyCograph Conf))
+
     build-cograph⇉ h c [] = []
     build-cograph⇉ h c (cs ∷ css) =
       build-cograph′* (c ∷ h) cs ∷ build-cograph⇉ h c css
 
     -- build-cograph′*
 
-    build-cograph′* : ∀ {n} (h : History n) (cs : List Conf) →
-                        List (LazyCograph Conf)
+    build-cograph′* : (h : History) (cs : List Conf) →
+      List (LazyCograph Conf)
+
     build-cograph′* h [] = []
     build-cograph′* h (c ∷ cs) =
       build-cograph′ h c ∷ build-cograph′* h cs
@@ -93,8 +94,8 @@ module BigStepMRSC∞ (scWorld : ScWorld) where
 
     -- prune-cograph′
 
-    prune-cograph′ : ∀ {n} (h : History n) (b : Bar ↯ h)
-                       (gs : LazyCograph Conf) → LazyGraph Conf
+    prune-cograph′ : (h : History) (b : Bar ↯ h) (gs : LazyCograph Conf) →
+      LazyGraph Conf
 
     prune-cograph′ h b Ø = Ø
     prune-cograph′ h b (stop c) = stop c
@@ -108,8 +109,8 @@ module BigStepMRSC∞ (scWorld : ScWorld) where
 
     -- prune-cograph′*
 
-    prune-cograph′* : ∀ {n} (h : History n) (b : Bar ↯ h)
-                       (gss : List (LazyCograph Conf)) → List (LazyGraph Conf)
+    prune-cograph′* : (h : History) (b : Bar ↯ h)
+      (gss : List (LazyCograph Conf)) → List (LazyGraph Conf)
 
     prune-cograph′* h b [] = []
     prune-cograph′* h b (gs ∷ gss) =
@@ -125,11 +126,11 @@ module BigStepMRSC∞ (scWorld : ScWorld) where
     -- prune′∘build′-correct
 
     prune′∘build′-correct :
-      ∀ {n} (h : History n) (b : Bar ↯ h) (c : Conf) →
+      (h : History) (b : Bar ↯ h) (c : Conf) →
       prune-cograph′ h b (build-cograph′ h c) ≡ lazy-mrsc′ h b c 
 
-    prune′∘build′-correct {n} h b c with foldable? h c
-    ... | yes (i , c⊑hi) =
+    prune′∘build′-correct h b c with foldable? h c
+    ... | yes f =
       refl
     ... | no ¬f with ↯? h
     ... | yes w = refl
@@ -141,8 +142,8 @@ module BigStepMRSC∞ (scWorld : ScWorld) where
     -- prune-cograph′⇉
 
     prune-cograph′⇉ :
-      ∀ {n} (h : History n) (bs : (c : Conf) → Bar ↯ (c ∷ h))
-        (c : Conf) (css : List (List Conf)) →
+      (h : History) (bs : (c : Conf) → Bar ↯ (c ∷ h))
+      (c : Conf) (css : List (List Conf)) →
         map (prune-cograph′* (c ∷ h) (bs c)) (build-cograph⇉ h c css) ≡
         map (map (lazy-mrsc′ (c ∷ h) (bs c))) css
 
@@ -154,7 +155,7 @@ module BigStepMRSC∞ (scWorld : ScWorld) where
     -- prune′∘build′*-correct
 
     prune′∘build′*-correct :
-      ∀ {n} (h : History n) (b : Bar ↯ h) (cs : List Conf) →
+      (h : History) (b : Bar ↯ h) (cs : List Conf) →
       prune-cograph′* h b (build-cograph′* h cs) ≡ map (lazy-mrsc′ h b) cs
 
     prune′∘build′*-correct h b [] = refl
@@ -232,7 +233,7 @@ module ClBadConf∞-Correct (scWorld : ScWorld) where
     -- cl-bad-conf∞′-correct
 
     cl-bad-conf∞′-correct :
-      ∀ {n} (h : History n) (b : Bar ↯ h)
+      (h : History) (b : Bar ↯ h)
       (bad : Conf → Bool) (gs : LazyCograph Conf) →
       cl-bad-conf bad (prune-cograph′ h b gs) ≡
         prune-cograph′ h b (cl-bad-conf∞ bad gs)
@@ -258,7 +259,7 @@ module ClBadConf∞-Correct (scWorld : ScWorld) where
     -- cl-bad-conf∞**′-correct
 
     cl-bad-conf∞**′-correct :
-      ∀ {n} (h : History n) (b : Bar ↯ h)
+      (h : History) (b : Bar ↯ h)
         (bad : Conf → Bool) (gsss : List (List (LazyCograph Conf))) →
       cl-bad-conf** bad (map (prune-cograph′* h b) gsss) ≡
       map (prune-cograph′* h b) (cl-bad-conf∞** bad gsss)
@@ -271,7 +272,7 @@ module ClBadConf∞-Correct (scWorld : ScWorld) where
     -- cl-bad-conf∞*′-correct
 
     cl-bad-conf∞*′-correct :
-      ∀ {n} (h : History n) (b : Bar ↯ h)
+      (h : History) (b : Bar ↯ h)
         (bad : Conf → Bool) (gss : List (LazyCograph Conf)) →
       cl-bad-conf* bad (prune-cograph′* h b gss) ≡
         prune-cograph′* h b (cl-bad-conf∞* bad gss)

@@ -231,20 +231,20 @@ mkScWorld l maxDepth {k} ⟨⟨ start , _⇊ , unsafe ⟩⟩ = record
   ; _⊑_ = _⊑_
   ; _⊑?_ = _⊑?_
   ; _⇉ = λ c → c ⇊ ∷ List.map [_] (c ↷) -- driving + rebuilding
-  ; whistle = ⟨ (λ {n} h → (maxDepth N.≤ n) ⊎ (↯ h))
-              , (λ {n} c h → [ inj₁ ∘ ≤-step , inj₂ ∘ inj₂ ]′)
-              , (λ {n} h → (maxDepth N.≤? n) ⊎-dec (↯? h))
+  ; whistle = ⟨ (λ h → (maxDepth N.≤ List.length h) ⊎ (↯ h))
+              , (λ c h → [ inj₁ ∘ ≤-step , inj₂ ∘ inj₂ ]′)
+              , (λ h → (maxDepth N.≤? List.length h) ⊎-dec (↯? h))
               , bar[]
               ⟩
   }
   where
 
-  ↯ : ∀ {n} (h : Vec (ωConf k) n) → Set
+  ↯ : ∀ (h : List (ωConf k)) → Set
 
   ↯ [] = ⊥
   ↯ (c ∷ h) = TooBig l c ⊎ ↯ h
 
-  ↯? : ∀ {n} → Decidable₁ (↯ {n})
+  ↯? : Decidable₁ ↯
   ↯? [] = no id
   ↯? (c ∷ h) with ↯? h
   ... | yes dh = yes (inj₂ dh)
@@ -258,7 +258,7 @@ mkScWorld l maxDepth {k} ⟨⟨ start , _⇊ , unsafe ⟩⟩ = record
   -- TODO: It is possible to construct a whistle based on the fact that
   -- the set of configurations such that `¬ TooBig l c` is finite.
 
-  bar[] : Bar (λ {m} h → maxDepth N.≤ m ⊎ ↯ h) []
+  bar[] : Bar (λ h → maxDepth N.≤ List.length h ⊎ ↯ h) []
   bar[] = bar-⊎ [] (BarWhistle.bar[] (pathLengthWhistle (ωConf k) maxDepth))
 
 --

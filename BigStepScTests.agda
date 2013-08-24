@@ -3,11 +3,7 @@ module BigStepScTests where
 open import Data.Nat
 open import Data.List as List
 open import Data.List.Any
-  using (Any; here; there)
-open import Data.Fin as F
-  using (Fin; zero; suc)
-open import Data.Vec as Vec
-  using (Vec; []; _∷_; lookup)
+  using (Any; here; there; module Membership-≡)
 open import Data.Product
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃)
 open import Relation.Binary.List.Pointwise
@@ -18,6 +14,8 @@ open import Data.Empty
 open import Relation.Nullary
 open import Relation.Binary.PropositionalEquality as P
   renaming ([_] to P[_])
+
+open Membership-≡
 
 open import Graphs
 open import BarWhistles
@@ -81,34 +79,34 @@ module NDSC-test3 where
   w3graph1 =
     ndsc-build ¬f1 (here refl)
       (ndsc-build ¬f2 (here refl)
-        (ndsc-fold (suc zero , refl) ∷ []) ∷
+        (ndsc-fold (there (here refl)) ∷ []) ∷
       (ndsc-build ¬f3 (here refl)
         (ndsc-build ¬f4 (here refl)
-          (ndsc-fold (suc (suc zero) , refl) ∷ []) ∷ [])) ∷ [])      
+          (ndsc-fold (there (there (here refl))) ∷ []) ∷ [])) ∷ [])      
     where
-    ¬f1 : ¬ Σ (Fin zero) (λ z → c0 ≡ lookup z [])
-    ¬f1 (() , _)
-    ¬f2 : ¬ Σ (Fin (suc zero)) (λ z → c1 ≡ lookup z (c0 ∷ []))
-    ¬f2 (zero , ())
-    ¬f2 (suc () , _)
-    ¬f3 : ¬ Σ (Fin (suc zero)) (λ z → c2 ≡ lookup z (c0 ∷ []))
-    ¬f3 (zero , ())
-    ¬f3 (suc () , _)
-    ¬f4 : ¬ Σ (Fin (suc (suc zero))) (λ z → c1 ≡ lookup z (c2 ∷ c0 ∷ []))
-    ¬f4 (zero , ())
-    ¬f4 (suc zero , ())
-    ¬f4 (suc (suc ()) , _)
+    ¬f1 : c0 ∈ [] → ⊥
+    ¬f1 ()
+    ¬f2 : c1 ∈ c0 ∷ [] → ⊥
+    ¬f2 (here ())
+    ¬f2 (there ())
+    ¬f3 : c2 ∈ c0 ∷ [] → ⊥
+    ¬f3 (here ())
+    ¬f3 (there ())
+    ¬f4 : c1 ∈ c2 ∷ c0 ∷ [] → ⊥
+    ¬f4 (here ())
+    ¬f4 (there (here ()))
+    ¬f4 (there (there ()))
 
   w3graph2 : [] ⊢NDSC c0 ↪
     forth c0 [ forth c1 (back c0 ∷ [])]
   w3graph2 =
     ndsc-build ¬f1 (there (here refl))
       (ndsc-build ¬f2 (here refl)
-        (ndsc-fold (suc zero , refl) ∷ []) ∷ [])
+        (ndsc-fold (there (here refl)) ∷ []) ∷ [])
     where
-    ¬f1 : Σ (Fin zero) (λ z → c0 ≡ lookup z []) → ⊥
-    ¬f1 (() , _)
-    ¬f2 : Σ (Fin (suc zero)) (λ z → c1 ≡ lookup z (c0 ∷ [])) → ⊥
-    ¬f2 (zero , ())
-    ¬f2 (suc () , _)
+    ¬f1 : c0 ∈ [] → ⊥
+    ¬f1 ()
+    ¬f2 : c1 ∈ c0 ∷ [] → ⊥
+    ¬f2 (here ())
+    ¬f2 (there ())
 

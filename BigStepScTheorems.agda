@@ -65,17 +65,17 @@ module MRSC→NDSC′ where
   open BigStepNDSC scWorld
   open BigStepMRSC scWorld
 
-  MRSC→NDSC : ∀ {n} {h : History n} {c g} →
+  MRSC→NDSC : ∀ {h : History} {c g} →
     h ⊢MRSC c ↪ g → h ⊢NDSC c ↪ g
 
   MRSC→NDSC (mrsc-fold f) =
     ndsc-fold f
 
-  MRSC→NDSC (mrsc-build {n} {h} {c} {cs} {gs} ¬f ¬w i ∀i⊢ci↪g) =
+  MRSC→NDSC (mrsc-build {h} {c} {cs} {gs} ¬f ¬w i ∀i⊢ci↪g) =
     ndsc-build ¬f i (pw-map ∀i⊢ci↪g)
     where
-    pw-map : ∀ {cs : List Conf} {gs : List (Graph Conf)}
-               (qs : Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) cs gs) →
+    pw-map : {cs : List Conf} {gs : List (Graph Conf)}
+             (qs : Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) cs gs) →
              Pointwise.Rel (_⊢NDSC_↪_ (c ∷ h)) cs gs
     pw-map [] = []
     pw-map (q ∷ qs) = MRSC→NDSC q ∷ (pw-map qs)
@@ -93,19 +93,19 @@ module MRSC-correctness where
   -- naive-mrsc-sound′
 
   naive-mrsc-sound′ :
-    ∀ {n} (h : History n) (b : Bar ↯ h) {c : Conf} {g : Graph Conf} →
+    (h : History) (b : Bar ↯ h) {c : Conf} {g : Graph Conf} →
     g ∈ naive-mrsc′ h b c → h ⊢MRSC c ↪ g
 
   naive-mrsc-sound′ h b {c} q with foldable? h c
-  naive-mrsc-sound′ h b (here g≡) | yes (i , c⊑hi) rewrite g≡ =
-    mrsc-fold (i , c⊑hi)
-  naive-mrsc-sound′ h b (there ()) | yes (i , c⊑hi)
+  naive-mrsc-sound′ h b (here g≡) | yes f rewrite g≡ =
+    mrsc-fold f
+  naive-mrsc-sound′ h b (there ()) | yes f
   ... | no ¬f with ↯? h
-  naive-mrsc-sound′ {n} h b () | no ¬f | yes w
-  naive-mrsc-sound′ {n} h b {c} {g} q | no ¬f | no ¬w with b
+  naive-mrsc-sound′ h b () | no ¬f | yes w
+  naive-mrsc-sound′ h b {c} {g} q | no ¬f | no ¬w with b
   ... | now bz with ¬w bz
   ... | ()
-  naive-mrsc-sound′ {n} h b {c} {g} q | no ¬f | no ¬w | later bs =
+  naive-mrsc-sound′ h b {c} {g} q | no ¬f | no ¬w | later bs =
     helper q
     where
     open ∼-Reasoning
@@ -172,11 +172,11 @@ module MRSC-correctness where
   -- naive-mrsc-complete′
 
   naive-mrsc-complete′ :
-    ∀ {n} (h : History n) (b : Bar ↯ h) {c : Conf} {g : Graph Conf} →
-     h ⊢MRSC c ↪ g → g ∈ naive-mrsc′ h b c
+    (h : History) (b : Bar ↯ h) {c : Conf} {g : Graph Conf} →
+      h ⊢MRSC c ↪ g → g ∈ naive-mrsc′ h b c
 
   naive-mrsc-complete′ h b {c} q with foldable? h c
-  naive-mrsc-complete′ h b (mrsc-fold f) | yes (i , c⊑hi) =
+  naive-mrsc-complete′ h b (mrsc-fold f) | yes f′ =
     here refl
   naive-mrsc-complete′ h b (mrsc-build ¬f ¬w i s) | yes f =
     ⊥-elim (¬f f)
@@ -280,17 +280,17 @@ module MRSC-naive≡lazy where
 
     -- naive≡lazy′
 
-    naive≡lazy′ : ∀ {n} (h : History n) (b : Bar ↯ h) (c : Conf) →
+    naive≡lazy′ : (h : History) (b : Bar ↯ h) (c : Conf) →
       naive-mrsc′ h b c ≡ ⟪ lazy-mrsc′ h b c ⟫
 
-    naive≡lazy′ {n} h b c with foldable? h c
-    ... | yes (i , c⊑hi) = refl
+    naive≡lazy′ h b c with foldable? h c
+    ... | yes f = refl
     ... | no ¬f with ↯? h
     ... | yes w = refl
     ... | no ¬w with b
     ... | now bz with ¬w bz
     ... | ()
-    naive≡lazy′ {n} h b c | no ¬f | no ¬w | later bs =
+    naive≡lazy′ h b c | no ¬f | no ¬w | later bs =
       cong (map (forth c)) (helper (c ⇉))
       --cong (map (forth c) ∘ concat) (helper (c ⇉))
       where
@@ -318,8 +318,7 @@ module MRSC-naive≡lazy where
 
     -- map∘naive-mrsc′
 
-    map∘naive-mrsc′ : ∀ {n} (h : History n) (b : Bar ↯ h)
-                            (cs : List Conf) →
+    map∘naive-mrsc′ : (h : History ) (b : Bar ↯ h) (cs : List Conf) →
       map (naive-mrsc′ h b) cs ≡ ⟪ map (lazy-mrsc′ h b) cs ⟫*
 
     map∘naive-mrsc′ h b cs = begin
@@ -337,7 +336,7 @@ module MRSC-naive≡lazy where
   -- naive≡lazy
   --
 
-  naive≡lazy : ∀ (c : Conf) →
+  naive≡lazy : (c : Conf) →
     naive-mrsc c ≡ ⟪ lazy-mrsc c ⟫
 
   naive≡lazy c = naive≡lazy′ [] bar[] c

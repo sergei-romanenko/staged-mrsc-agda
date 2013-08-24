@@ -18,6 +18,10 @@ open import Data.Nat
 open import Data.Nat.Properties
   using (≤′⇒≤; ≤⇒≤′; ≰⇒>; ≤-step)
 open import Data.List as List
+open import Data.List.Any as Any
+  using (Any)
+open import Data.List.Any.Properties
+  using (∷↔)
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.Vec as Vec
@@ -35,15 +39,21 @@ open import Function.Related as Related
   using ()
   renaming (module EquationalReasoning to ∼-Reasoning)
 
+open import Relation.Binary.Sum
+  using (_⊎-cong_)
+open import Relation.Binary.Product.Pointwise
+  using (_×-cong_)
+
 open import Relation.Nullary
 open import Relation.Unary
-  using (_∈_; _∪_; _⊆′_)
+  using (_∈_; _∪_; _⊆_)
   renaming (Decidable to Decidable₁)
 
 open import Relation.Binary
   using (Rel; _⇒_)
   renaming (Decidable to Decidable₂)
 open import Relation.Binary.PropositionalEquality as P
+  hiding (sym)
   renaming ([_] to P[_])
 
 open import Induction.WellFounded
@@ -55,15 +65,15 @@ open import AlmostFullRel
 -- Bar
 
 -- The set of finite paths such that either
--- (1) B h is valid right now; or
+-- (1) D h is valid right now; or
 -- (2) for all possible a₁ ∷ h either
---     (1) B (a₁ ∷ h) is valid right now; or
+--     (1) D (a₁ ∷ h) is valid right now; or
 --     (2) for all possible a₂ ∷ a₁ ∷ h either ...
 
-data Bar {A : Set} (B : ∀ {m} → Vec A m → Set) :
-         {n : ℕ} (h : Vec A n) → Set where
-  now   : ∀ {n} {h : Vec A n} (bz : B h) → Bar B h
-  later : ∀ {n} {h : Vec A n} (bs : ∀ c → Bar B (c ∷ h)) → Bar B h
+data Bar {A : Set} (D : List A → Set) :
+         (h : List A) → Set where
+  now   : {h : List A} (bz : D h) → Bar D h
+  later : {h : List A} (bs : ∀ c → Bar D (c ∷ h)) → Bar D h
 
 
 record BarWhistle (A : Set) : Set₁ where
@@ -76,9 +86,9 @@ record BarWhistle (A : Set) : Set₁ where
   field
 
     -- Dangerous histories
-    ↯ : ∀ {n} (h : Vec A n) → Set
-    ↯∷ : ∀ {n} (c : A) (h : Vec A n) → ↯ h → ↯ (c ∷ h)
-    ↯? : ∀ {n} (h : Vec A n) → Dec (↯ h)
+    ↯ : (h : List A) → Set
+    ↯∷ : (c : A) (h : List A) → ↯ h → ↯ (c ∷ h)
+    ↯? : (h : List A) → Dec (↯ h)
 
     -- Bar-induction
     -- (In Coquand's terms, `Bar ↯` is required to be "an inductive bar".)
@@ -90,17 +100,17 @@ record BarWhistle (A : Set) : Set₁ where
 -- This module shows the generation of finite sequences
 -- by means of a bar whistle.
 
-module BarGen {A : Set} (g : ∀ {m} → Vec A m → A) (w : BarWhistle A) where
+module BarGen {A : Set} (g : List A → A) (w : BarWhistle A) where
 
   open BarWhistle w
 
-  barGen′ : ∀ {k} (h : Vec A k) (b : Bar ↯ h) →
-              ∃₂ λ n (h′ : Vec A n) → ↯ h′
-  barGen′ {k} h (now bz) = k , h , bz
-  barGen′ {k} h (later bs) with g h
+  barGen′ : ∀ (h : List A) (b : Bar ↯ h) →
+              ∃ λ (h′ : List A) → ↯ h′
+  barGen′ h (now bz) = h , bz
+  barGen′ h (later bs) with g h
   ... | c = barGen′ (c ∷ h) (bs c)
 
-  barGen : ∃₂ λ n (h : Vec A n) → ↯ h
+  barGen : ∃ λ (h : List A) → ↯ h
   barGen = barGen′ [] bar[]
 
 
@@ -116,11 +126,11 @@ data Fan (A : Set) : Set where
 -- by means of a bar whistle.
 
 module BarFanGen
-  {A : Set} (_⇉ : ∀ {k} → Vec A k → List A) (w : BarWhistle A)
+  {A : Set} (_⇉ : List A → List A) (w : BarWhistle A)
   where
   open BarWhistle w
 
-  fanGen′ : ∀ {k} (h : Vec A k) (b : Bar ↯ h) → Fan A
+  fanGen′ : (h : List A) (b : Bar ↯ h) → Fan A
   fanGen′ h (now bz) =
     fan []
   fanGen′ h (later bs) =
@@ -136,21 +146,21 @@ module BarFanGen
 -- bar-mono
 
 bar-mono : ∀ {A : Set}
-  {D D′ : ∀ {m} (h : Vec A m) → Set} →
-  (∀ {m} → D {m} ⊆′ D′ {m}) →
-  ∀ {n} (h : Vec A n) (b : Bar D h) → Bar D′ h
+  {D D′ : ∀ (h : List A) → Set} →
+  D  ⊆ D′ →
+  (h : List A) (b : Bar D h) → Bar D′ h
 bar-mono D→D′ h (now bz) =
-  now (D→D′ h bz)
+  now (D→D′ bz)
 bar-mono D→D′ h (later bs) =
   later (λ c → bar-mono D→D′ (c ∷ h) (bs c))
 
 -- bar-⊎
 
-bar-⊎ : ∀ {A : Set}
-  {D P : ∀ {m} (h : Vec A m) → Set} →
-  ∀ {n} (h : Vec A n) →
+bar-⊎ : {A : Set}
+  {D P : ∀ (h : List A) → Set} →
+  (h : List A) →
   Bar D h → Bar (D ∪ P) h
-bar-⊎ = bar-mono (λ {m} h → inj₁)
+bar-⊎ h b = bar-mono inj₁ h b
 
 
 --
@@ -164,26 +174,29 @@ pathLengthWhistle : (A : Set) (l : ℕ) → BarWhistle A
 pathLengthWhistle A l = ⟨ ↯ , ↯∷ , ↯? , bar[] ⟩
   where
 
-  ↯ : ∀ {n} (h : Vec A n) → Set
-  ↯ {n} h = l ≤ n
+  ↯ : (h : List A) → Set
+  ↯ h = l ≤ length h
 
-  ↯∷ : ∀ {n} (c : A) (h : Vec A n) → ↯ h → ↯ (c ∷ h)
+  ↯∷ : (c : A) (h : List A) → ↯ h → ↯ (c ∷ h)
   ↯∷ c h dh = ≤-step dh
 
-  ↯? : ∀ {n} (h : Vec A n) → Dec (↯ h)
-  ↯? {n} h = l ≤? n
+  ↯? : (h : List A) → Dec (↯ h)
+  ↯? h = l ≤? length h
 
-  bar : ∀ m n (h : Vec A n) (d : m + n ≡ l) → Bar ↯ h
-  bar zero .l h refl =
-    now (≤′⇒≤ ≤′-refl)
-  bar (suc m) n h d =
-    later (λ c → bar m (suc n) (c ∷ h) m+1+n≡l)
+  bar : ∀ m (h : List A) (d : m + length h ≡ l) → Bar ↯ h
+  bar zero h d =
+    now (subst (_≤_ l) (P.sym d) (≤′⇒≤ ≤′-refl))
+  bar (suc m) h d =
+    later (λ c → bar m (c ∷ h) m+1+n≡l)
     where
     open ≡-Reasoning
-    m+1+n≡l = begin m + suc n ≡⟨ m+1+n≡1+m+n m n ⟩ suc (m + n) ≡⟨ d ⟩ l ∎
+    m+1+n≡l = begin
+      m + suc (length h) ≡⟨ m+1+n≡1+m+n m (length h) ⟩
+      suc (m + length h) ≡⟨ d ⟩
+      l ∎
 
   bar[] : Bar ↯ []
-  bar[] = bar l zero [] (l + zero ≡ l ∋ proj₂ *+.+-identity l)
+  bar[] = bar l [] (l + zero ≡ l ∋ proj₂ *+.+-identity l)
 
 --
 -- Bar whistles based on inverse image
@@ -195,14 +208,14 @@ inverseImageWhistle : {A B : Set} (f : A → B)
   (w : BarWhistle B) → BarWhistle A
 
 inverseImageWhistle {A} {B} f ⟨ d , d∷ , d? , bd[] ⟩ =
-  ⟨ d ∘ Vec.map f , ↯∷ , d? ∘ Vec.map f , bar [] bd[] ⟩
+  ⟨ d ∘ map f , ↯∷ , d? ∘ map f , bar [] bd[] ⟩
   where
 
-  ↯∷ : {n : ℕ} (c : A) (h : Vec A n) →
-    d (Vec.map f h) → d (f c ∷ (Vec.map f h))
-  ↯∷ c h dh = d∷ (f c) (Vec.map f h) dh
+  ↯∷ : (c : A) (h : List A) →
+    d (map f h) → d (f c ∷ map f h)
+  ↯∷ c h dh = d∷ (f c) (map f h) dh
 
-  bar : ∀ {n} (h : Vec A n) (b : Bar d (Vec.map f h)) → Bar (d ∘ Vec.map f) h
+  bar : (h : List A) (b : Bar d (map f h)) → Bar (d ∘ map f) h
   bar h (now bz) = now bz
   bar h (later bs) = later (λ c → bar (c ∷ h) (bs (f c)))
 
@@ -217,16 +230,16 @@ wfWhistle : ∀ {A : Set} (_<_ : Rel A Level.zero) → Decidable₂ _<_ →
 wfWhistle {A} _<_ _<?_ wf = ⟨ ↯ , ↯∷ , ↯? , bar[] ⟩
   where
 
-  ↯ : ∀ {n} (h : Vec A n) → Set
+  ↯ : (h : List A) → Set
   ↯ [] = ⊥
   ↯ (c ∷ []) = ⊥
   ↯ (c′ ∷ c ∷ h) = ¬ c′ < c ⊎ ↯ (c ∷ h)
 
-  ↯∷ : {n : ℕ} (c : A) (h : Vec A n) → ↯ h → ↯ (c ∷ h)
+  ↯∷ : (c : A) (h : List A) → ↯ h → ↯ (c ∷ h)
   ↯∷ c [] dh = dh
   ↯∷ c (c′ ∷ h) dh = inj₂ dh
 
-  ↯? : ∀ {n} (h : Vec A n) → Dec (↯ h)
+  ↯? : (h : List A) → Dec (↯ h)
   ↯? [] = no id
   ↯? (c ∷ []) = no id
   ↯? (c′ ∷ c ∷ h) = helper (↯? (c ∷ h))
@@ -237,7 +250,7 @@ wfWhistle {A} _<_ _<?_ wf = ⟨ ↯ , ↯∷ , ↯? , bar[] ⟩
     ... | yes c′<c = no [ (λ c′≮c → c′≮c c′<c) , ¬dch ]′
     ... | no  c′≮c = yes (inj₁ c′≮c)
 
-  bar : ∀ c {n} (h : Vec A n) → Acc _<_ c → Bar ↯ (c ∷ h)
+  bar : ∀ c (h : List A) → Acc _<_ c → Bar ↯ (c ∷ h)
   bar c h (acc rs) with ↯? (c ∷ h)
   ... | yes dch = now dch
   ... | no ¬dch = later helper
@@ -265,23 +278,23 @@ record ⋑-World (A : Set) : Set₁ where
 
   -- _⋑⋑_
 
-  _⋑⋑_ : ∀ {n : ℕ} (h : Vec A n) (c : A) → Set
-  h ⋑⋑ c = VecAny (flip _⋑_ c) h
+  _⋑⋑_ : (h : List A) (c : A) → Set
+  h ⋑⋑ c = Any (flip _⋑_ c) h
 
   -- ⋑↯
 
-  ⋑↯ : {n : ℕ} (h : Vec A n) → Set
+  ⋑↯ : (h : List A) → Set
   ⋑↯ [] = ⊥
   ⋑↯ (c ∷ h) = h ⋑⋑ c ⊎ ⋑↯ h
 
   -- _⋑⋑?_
 
-  _⋑⋑?_ : ∀ {n : ℕ} (h : Vec A n) (c : A) → Dec (h ⋑⋑ c)
-  h ⋑⋑? c = vecAny (flip _⋑?_ c) h
+  _⋑⋑?_ : (h : List A) (c : A) → Dec (h ⋑⋑ c)
+  h ⋑⋑? c = Any.any (flip _⋑?_ c) h
 
   -- ⋑↯?
 
-  ⋑↯? : {n : ℕ} (h : Vec A n) → Dec (⋑↯ h)
+  ⋑↯? : (h : List A) → Dec (⋑↯ h)
   ⋑↯? [] = no id
   ⋑↯? (c ∷ h) with h ⋑⋑? c
   ... | yes ⋑c = yes (inj₁ ⋑c)
@@ -306,16 +319,16 @@ module bar⋑↯⇔af⋑≫ {A : Set} (⋑-world : ⋑-World A) where
 
   open ⋑-World ⋑-world
 
-  ⋑≫ : {n : ℕ} (h : Vec A n) (x y : A) → Set
+  ⋑≫ : (h : List A) (x y : A) → Set
   ⋑≫ h x y = ⋑↯ (x ∷ h) ⊎ (x ⋑ y)
 
   -- bar⋑↯→af⋑≫
 
-  bar⋑↯→af⋑≫ : {n : ℕ} (h : Vec A n) →
+  bar⋑↯→af⋑≫ : (h : List A) →
                   Bar ⋑↯ h → Almost-full (⋑≫ h)
   bar⋑↯→af⋑≫ h (now bz) =
     now (λ x y → inj₁ (inj₂ bz))
-  bar⋑↯→af⋑≫ {n} h (later bs) =
+  bar⋑↯→af⋑≫ h (later bs) =
     later {_≫_ = ⋑≫ h} (λ c → af-⇒ (step c) (afch c))
     where
     open ∼-Reasoning
@@ -328,11 +341,12 @@ module bar⋑↯⇔af⋑≫ {A : Set} (⋑-world : ⋑-World A) where
       (⋑↯ (x ∷ c ∷ h) ⊎ x ⋑ y)
         ↔⟨ _ ∎ ⟩
       ((c ∷ h ⋑⋑ x ⊎ ⋑↯ (c ∷ h)) ⊎ x ⋑ y)
-        ↔⟨ _ ∎ ⟩
+        ↔⟨ ((sym $ ∷↔ (flip _⋑_ x)) ⊎-cong ((h ⋑⋑ c ⊎ ⋑↯ h) ∎)) ⊎-cong
+                            ((x ⋑ y) ∎) ⟩
       (((c ⋑ x ⊎ h ⋑⋑ x) ⊎ (h ⋑⋑ c ⊎ ⋑↯ h)) ⊎ x ⋑ y)
         ∼⟨ [ [ [ inj₂ ∘ inj₂ , inj₁ ∘ inj₁ ∘ inj₁ ]′ ,
-               [ inj₂ ∘ inj₁ ∘ inj₁ , inj₁ ∘ inj₁ ∘ inj₂ ]′ ]′ ,
-             inj₁ ∘ inj₂ ]′ ⟩
+             [ inj₂ ∘ inj₁ ∘ inj₁ , inj₁ ∘ inj₁ ∘ inj₂ ]′ ]′
+             , inj₁ ∘ inj₂ ]′ ⟩
       (((h ⋑⋑ x ⊎ ⋑↯ h) ⊎ x ⋑ y) ⊎ ((h ⋑⋑ c ⊎ ⋑↯ h) ⊎ c ⋑ x))
         ↔⟨ _ ∎ ⟩
       ((⋑↯ (x ∷ h) ⊎ x ⋑ y) ⊎ (⋑↯ (c ∷ h) ⊎ c ⋑ x))
@@ -342,7 +356,7 @@ module bar⋑↯⇔af⋑≫ {A : Set} (⋑-world : ⋑-World A) where
 
   -- af⟱⋑≫→bar⋑↯
 
-  af⟱⋑≫→bar⋑↯ : {n : ℕ} (h : Vec A n)
+  af⟱⋑≫→bar⋑↯ : (h : List A)
     (t : WFT A) → ⋑≫ h ⟱ t → Bar ⋑↯ h
 
   af⟱⋑≫→bar⋑↯ h now R⟱ =
@@ -354,7 +368,7 @@ module bar⋑↯⇔af⋑≫ {A : Set} (⋑-world : ⋑-World A) where
       (⋑↯ (c ∷ h) ⊎ c ⋑ c′)
         ∼⟨ [ inj₂ , inj₁ ∘ inj₁ ]′ ⟩
       ((c ⋑ c′ ⊎ (h ⋑⋑ c′)) ⊎ ⋑↯ (c ∷ h))
-        ↔⟨ _ ∎ ⟩
+        ↔⟨ ∷↔ (flip _⋑_ c′) ⊎-cong (⋑↯ (c ∷ h) ∎) ⟩
       (c ∷ h ⋑⋑ c′ ⊎ ⋑↯ (c ∷ h))
         ↔⟨ _ ∎ ⟩
       ⋑↯ (c′ ∷ c ∷ h) ∎ 
@@ -373,7 +387,8 @@ module bar⋑↯⇔af⋑≫ {A : Set} (⋑-world : ⋑-World A) where
              [ [ inj₁ ∘ inj₂ ∘ inj₁ , inj₁ ∘ inj₂ ∘ inj₂ ]′ ,
                  inj₁ ∘ inj₁ ∘ inj₁ ]′ ]′ ⟩
       (((c ⋑ x ⊎ h ⋑⋑ x) ⊎ h ⋑⋑ c ⊎ ⋑↯ h) ⊎ x ⋑ y)
-        ↔⟨ _ ∎ ⟩
+        ↔⟨ ((∷↔ (flip _⋑_ x)) ⊎-cong ((h ⋑⋑ c ⊎ ⋑↯ h) ∎)) ⊎-cong
+                (x ⋑ y ∎) ⟩
       ((c ∷ h ⋑⋑ x ⊎ ⋑↯ (c ∷ h)) ⊎ x ⋑ y)
         ↔⟨ _ ∎ ⟩
       (⋑↯ (x ∷ c ∷ h) ⊎ x ⋑ y)
@@ -387,8 +402,7 @@ module bar⋑↯⇔af⋑≫ {A : Set} (⋑-world : ⋑-World A) where
 
   -- af⋑≫→bar⋑↯
 
-  af⋑≫→bar⋑↯ : {n : ℕ} (h : Vec A n) →
-                  Almost-full (⋑≫ h) → Bar ⋑↯ h
+  af⋑≫→bar⋑↯ : (h : List A) → Almost-full (⋑≫ h) → Bar ⋑↯ h
 
   af⋑≫→bar⋑↯ h af with af→af⟱ af
   ... | t , R⟱ = af⟱⋑≫→bar⋑↯ h t R⟱
@@ -397,7 +411,7 @@ module bar⋑↯⇔af⋑≫ {A : Set} (⋑-world : ⋑-World A) where
   -- bar⋑↯⇔af⋑≫
   --
 
-  bar⋑↯⇔af⋑≫ : {n : ℕ} (h : Vec A n) →
+  bar⋑↯⇔af⋑≫ : (h : List A) →
     Bar ⋑↯ h ⇔ Almost-full (⋑≫ h)
 
   bar⋑↯⇔af⋑≫ h = equivalence (bar⋑↯→af⋑≫ h) (af⋑≫→bar⋑↯ h)

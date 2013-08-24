@@ -23,7 +23,7 @@ open import Data.Nat.Properties
 open import Data.List as List
 open import Data.List.Properties
   using (map-compose; map-cong; foldr-fusion)
-open import Data.List.Any
+open import Data.List.Any as Any
   using (Any; here; there; module Membership-≡)
 open import Data.Fin as F
   using (Fin; zero; suc)
@@ -85,14 +85,14 @@ record ScWorld : Set₁ where
 
   open BarWhistle whistle public
 
-  History : ℕ → Set
-  History n = Vec Conf n
+  History : Set
+  History = List Conf
 
-  Foldable : ∀ {n} (h : History n) (c : Conf) → Set
-  Foldable {n} h c = AnyV (_⊑_ c) h
+  Foldable : ∀ (h : History) (c : Conf) → Set
+  Foldable h c = Any (_⊑_ c) h
 
-  foldable? : ∀ {n} (h : History n) (c : Conf) → Dec (Foldable h c)
-  foldable? h c = anyV (_⊑?_ c) h
+  foldable? : ∀ (h : History) (c : Conf) → Dec (Foldable h c)
+  foldable? h c = Any.any (_⊑?_ c) h
 
 -- If we need labeled edges in the graph of configurations,
 -- the labels can be hidden inside configurations.
@@ -154,13 +154,12 @@ module BigStepNDSC (scWorld : ScWorld) where
 
   infix 4 _⊢NDSC_↪_
 
-  data _⊢NDSC_↪_ : ∀ {n}(h : History n) (c : Conf) (g : Graph Conf) →
-                                                              Set where
-    ndsc-fold  : ∀ {n} {h : History n} {c}
+  data _⊢NDSC_↪_ : ∀ (h : History) (c : Conf) (g : Graph Conf) → Set where
+    ndsc-fold  : ∀ {h : History} {c}
       (f : Foldable h c) →
       h ⊢NDSC c ↪ back c
 
-    ndsc-build : ∀ {n} {h : History n} {c}
+    ndsc-build : ∀ {h : History} {c}
       {cs : List (Conf)}
       {gs : List (Graph Conf)}
       (¬f : ¬ Foldable h c) →
@@ -182,13 +181,12 @@ module BigStepMRSC (scWorld : ScWorld) where
 
   infix 4 _⊢MRSC_↪_
 
-  data _⊢MRSC_↪_ : ∀ {n} (h : History n) (c : Conf) (g : Graph Conf)
-                                                               → Set where
-    mrsc-fold  : ∀ {n} {h : History n} {c}
+  data _⊢MRSC_↪_ : ∀ (h : History) (c : Conf) (g : Graph Conf) → Set where
+    mrsc-fold  : ∀ {h : History} {c}
       (f : Foldable h c) →
       h ⊢MRSC c ↪ back c
 
-    mrsc-build : ∀ {n} {h : History n} {c}
+    mrsc-build : ∀ {h : History} {c}
       {cs : List Conf}
       {gs : List (Graph Conf)}
       (¬f : ¬ Foldable h c)
@@ -204,16 +202,16 @@ module BigStepMRSC (scWorld : ScWorld) where
 
   -- naive-mrsc′
 
-  naive-mrsc′ : ∀ {n} (h : History n) (b : Bar ↯ h) (c : Conf) →
+  naive-mrsc′ : ∀ (h : History) (b : Bar ↯ h) (c : Conf) →
                   List (Graph Conf)
-  naive-mrsc′ {n} h b c with foldable? h c
-  ... | yes (i , c⊑hi) = [ back c ]
+  naive-mrsc′ h b c with foldable? h c
+  ... | yes f = [ back c ]
   ... | no ¬f with ↯? h
   ... | yes w = []
   ... | no ¬w with b
   ... | now bz with ¬w bz
   ... | ()
-  naive-mrsc′ {n} h b c | no ¬f | no ¬w | later bs =
+  naive-mrsc′ h b c | no ¬f | no ¬w | later bs =
     map (forth c)
         (concat (map (cartesian ∘ map (naive-mrsc′ (c ∷ h) (bs c))) (c ⇉)))
 
@@ -231,16 +229,16 @@ module BigStepMRSC (scWorld : ScWorld) where
 
   -- lazy-mrsc′
 
-  lazy-mrsc′ : ∀ {n} (h : History n) (b : Bar ↯ h) (c : Conf) →
+  lazy-mrsc′ : ∀ (h : History) (b : Bar ↯ h) (c : Conf) →
                   LazyGraph Conf
-  lazy-mrsc′ {n} h b c with foldable? h c
-  ... | yes (i , c⊑hi) = stop c
+  lazy-mrsc′ h b c with foldable? h c
+  ... | yes f = stop c
   ... | no ¬f with ↯? h
   ... | yes w = Ø
   ... | no ¬w with b
   ... | now bz with ¬w bz
   ... | ()
-  lazy-mrsc′ {n} h b c | no ¬f | no ¬w | later bs =
+  lazy-mrsc′ h b c | no ¬f | no ¬w | later bs =
     build c (map (map (lazy-mrsc′ (c ∷ h) (bs c))) (c ⇉))
 
   -- lazy-mrsc
@@ -258,15 +256,15 @@ module GraphExtraction (scWorld : ScWorld) where
 
   -- extractGraph
 
-  extractGraph : ∀ {n} {h : History n} {c : Conf} {g : Graph Conf}
+  extractGraph : ∀ {h : History} {c : Conf} {g : Graph Conf}
     (p : h ⊢NDSC c ↪ g) → Graph Conf
 
-  extractGraph (ndsc-fold {c = c} (i , c⊑c′)) = back c
+  extractGraph (ndsc-fold {c = c} f) = back c
   extractGraph (ndsc-build {c = c} {gs = gs} ¬f i ps) = forth c gs
 
   -- extractGraph-sound
 
-  extractGraph-sound : ∀ {n} {h : History n} {c : Conf} {g : Graph Conf}
+  extractGraph-sound : ∀ {h : History} {c : Conf} {g : Graph Conf}
     (p : h ⊢NDSC c ↪ g) → extractGraph p ≡ g
 
   extractGraph-sound (ndsc-fold f) = refl
