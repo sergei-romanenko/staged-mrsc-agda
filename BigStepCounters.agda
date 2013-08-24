@@ -6,6 +6,8 @@ open import Data.Nat.Properties as NP
   using (≤-step)
 open import Data.List as List
   using (List; []; _∷_; [_])
+open import Data.List.Any as Any
+  using (Any; here; there; module Membership-≡)
 open import Data.Vec as Vec
   using (Vec; []; _∷_)
 open import Relation.Binary.Vec.Pointwise as Pointwise
@@ -219,10 +221,10 @@ tooBig₁? l (# i) = l N.≤? i
 -- TooBig
 
 TooBig : ∀ (l : ℕ) {k} (c : ωConf k) → Set
-TooBig l {k} c = VecAny (TooBig₁ l) c
+TooBig l {k} c = Any (TooBig₁ l) (Vec.toList c)
 
 tooBig? : ∀ (l : ℕ) {k} → Decidable₁ (TooBig l {k})
-tooBig? l {k} c = vecAny (tooBig₁? l) c
+tooBig? l {k} c = Any.any (tooBig₁? l) (Vec.toList c)
 
 
 mkScWorld : ∀ (l : ℕ) (maxDepth : ℕ) {k} (cntWorld : CntWorld k) → ScWorld

@@ -70,46 +70,6 @@ module ×⊎ {k ℓ} = CommutativeSemiring (×⊎-CommutativeSemiring k ℓ)
 
 open Membership-≡
 
--- AnyV
-
-AnyV : ∀ {n a ℓ} {A : Set a} (P : A → Set ℓ) (xs : Vec A n) → Set ℓ
-AnyV P xs = ∃ λ i → P (lookup i xs) 
-
--- anyV
-
-anyV : ∀ {n a p} {A : Set a} {P : A → Set p} →
-  Decidable₁ P → Decidable₁ (AnyV {n} P)
-
-anyV {P = P} dp [] = no helper
-  where helper : AnyV P [] → ⊥
-        helper (() , _)
-
-anyV {P = P} dp (x ∷ xs) with dp x
-... | yes px = yes (zero , px)
-... | no ¬px with anyV dp xs
-... | yes (i , py) = yes (suc i , py)
-... | no ¬ipy = no helper
-  where helper : AnyV P (x ∷ xs) → ⊥
-        helper (zero , px) = ¬px px
-        helper (suc i , py) = ¬ipy (i , py)
-
--- VecAny
-
-VecAny : ∀ {n a ℓ} {A : Set a} (P : A → Set ℓ) (xs : Vec A n) → Set ℓ
-VecAny P [] = Level.Lift ⊥
-VecAny P (x ∷ xs) = P x ⊎ VecAny P xs
-
--- vecAny
-
-vecAny : ∀ {n a ℓ} {A : Set a} {P : A → Set ℓ} →
-  Decidable₁ P → Decidable₁ (VecAny {n} P)
-vecAny dp [] = no Level.lower
-vecAny dp (x ∷ xs) with dp x
-... | yes dpx = yes (inj₁ dpx)
-... | no ¬dpx with vecAny dp xs
-... | yes dpxs = yes (inj₂ dpxs)
-... | no ¬dpxs = no [ ¬dpx , ¬dpxs ]′
-
 -- m+1+n≡1+m+n
 
 m+1+n≡1+m+n : ∀ m n → m + suc n ≡ suc (m + n)
