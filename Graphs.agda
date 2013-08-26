@@ -108,7 +108,15 @@ data Graph (C : Set) : Set where
 data LazyGraph (C : Set) : Set where
   Ø     : LazyGraph C
   stop  : (c : C) → LazyGraph C
-  build : (c : C) (gsss : List (List (LazyGraph C))) → LazyGraph C
+  build : (c : C) (lss : List (List (LazyGraph C))) → LazyGraph C
+
+-- ≡Ø?
+
+≡Ø? : {C : Set} (l : LazyGraph C) → Dec (l ≡ Ø)
+
+≡Ø? Ø = yes refl
+≡Ø? (stop c) = no (λ ())
+≡Ø? (build c gsss) = no (λ ())
 
 -- The semantics of `LazyGraph C` is formally defined by
 -- the interpreter `⟪_⟫` that generates a list of `Graph C n` from
@@ -118,59 +126,59 @@ mutual
 
   -- ⟪_⟫
 
-  ⟪_⟫ : {C : Set} (gs : LazyGraph C) → List (Graph C)
+  ⟪_⟫ : {C : Set} (l : LazyGraph C) → List (Graph C)
 
   ⟪ Ø ⟫ = []
   ⟪ stop c ⟫ =
     [ back c ]
-  ⟪ build c gsss ⟫ =
-    map (forth c) ⟪ gsss ⟫**
+  ⟪ build c lss ⟫ =
+    map (forth c) ⟪ lss ⟫**
 
   -- ⟪_⟫**
 
-  ⟪_⟫** : {C : Set} (gsss : List (List (LazyGraph C))) →
+  ⟪_⟫** : {C : Set} (lss : List (List (LazyGraph C))) →
               List (List (Graph C))
 
   ⟪ [] ⟫** = []
-  ⟪ gss ∷ gsss ⟫** = cartesian ⟪ gss ⟫* ++ ⟪ gsss ⟫**
+  ⟪ ls ∷ lss ⟫** = cartesian ⟪ ls ⟫* ++ ⟪ lss ⟫**
 
   -- ⟪_⟫*
 
-  ⟪_⟫* : {C : Set} (gss : List (LazyGraph C)) →
+  ⟪_⟫* : {C : Set} (ls : List (LazyGraph C)) →
               List (List (Graph C))
   ⟪ [] ⟫* = []
-  ⟪ gs ∷ gss ⟫* = ⟪ gs ⟫ ∷ ⟪ gss ⟫*
+  ⟪ l ∷ ls ⟫* = ⟪ l ⟫ ∷ ⟪ ls ⟫*
 
 -- `⟪_⟫*` has only been introduced to make the termination
 -- checker happy. Actually, it is equivalent to `map ⟪_⟫`.
 
 -- ⟪⟫*-is-map
 
-⟪⟫*-is-map : {C : Set} (gss : List (LazyGraph C)) →
-  ⟪ gss ⟫* ≡ map ⟪_⟫ gss
+⟪⟫*-is-map : {C : Set} (ls : List (LazyGraph C)) →
+  ⟪ ls ⟫* ≡ map ⟪_⟫ ls
 
 ⟪⟫*-is-map [] = refl
-⟪⟫*-is-map (gs ∷ gss) =
-  cong (_∷_ ⟪ gs ⟫) (⟪⟫*-is-map gss)
+⟪⟫*-is-map (l ∷ ls) =
+  cong (_∷_ ⟪ l ⟫) (⟪⟫*-is-map ls)
 
 
 --
--- Usually, we are not interested in the whole bag `⟪ gs ⟫`.
+-- Usually, we are not interested in the whole bag `⟪ l ⟫`.
 -- The goal is to find "the best" or "most interesting" graphs.
 -- Hence, there should be developed some techniques of extracting
 -- useful information from a `LazyGraph C n` without evaluating
--- `⟪ gs ⟫` directly.
+-- `⟪ l ⟫` directly.
 
 -- This can be formulated in the following form.
 -- Suppose that a function `select` filters bags of graphs,
 -- removing "bad" graphs, so that
 --
---     select ⟪ gs ⟫
+--     select ⟪ l ⟫
 --
 -- generates the bag of "good" graphs.
 -- Let us find a function `extract` such that
 --
---     extract gs ≡ select ⟪ gs ⟫
+--     extract l ≡ select ⟪ l ⟫
 --
 -- In many cases, `extract` may be more efficient (by several orders
 -- of magnityde) than the composition `select ∘ ⟪_⟫`.
@@ -179,11 +187,11 @@ mutual
 -- lazy graphs. Let `clean` be a function that transforms lazy graphs,
 -- such that
 --
---     ⟪ clean gs ⟫ ⊆ ⟪ gs ⟫
+--     ⟪ clean l ⟫ ⊆ ⟪ l ⟫
 --
 -- Then `extract` can be constructed in the following way:
 --
---     extract gs ≡ ⟪ clean gs ⟫
+--     extract l ≡ ⟪ clean l ⟫
 --
 -- Theoretically speaking, `clean` is the result of "promoting" `select`:
 --
@@ -239,49 +247,38 @@ fl-bad-conf bad gs = filter (not ∘ bad-graph bad) gs
 
 mutual
 
-  -- cl-empty′
+  -- cl-empty
 
-  cl-empty′ : {C : Set} (gs : LazyGraph C) →
-    Maybe (LazyGraph C)
+  cl-empty : {C : Set} (l : LazyGraph C) → LazyGraph C
 
-  cl-empty′ Ø =
-    nothing
-  cl-empty′ (stop c) =
-    just (stop c)
-  cl-empty′ (build c gsss) with cl-empty** gsss
-  ... | [] = nothing
-  ... | gss′ ∷ gsss′ = just (build c (gss′ ∷ gsss′))
+  cl-empty Ø = Ø
+  cl-empty (stop c) = stop c
+  cl-empty (build c lss) with cl-empty** lss
+  ... | [] = Ø
+  ... | ls′ ∷ lss′ = build c (ls′ ∷ lss′)
 
   -- cl-empty**
 
-  cl-empty** : {C : Set} (gsss : List (List (LazyGraph C))) →
+  cl-empty** : {C : Set} (lss : List (List (LazyGraph C))) →
     List (List (LazyGraph C))
 
   cl-empty** [] = []
-  cl-empty** (gss ∷ gsss) with cl-empty-∧ gss
-  ... | nothing = cl-empty** gsss
-  ... | just gss′ = gss′ ∷ cl-empty** gsss
+  cl-empty** (ls ∷ lss) with cl-empty-∧ ls
+  ... | nothing = cl-empty** lss
+  ... | just ls′ = ls′ ∷ cl-empty** lss
 
   -- cl-empty-∧
 
-  cl-empty-∧ : {C : Set} (gss : List (LazyGraph C)) →
+  cl-empty-∧ : {C : Set} (ls : List (LazyGraph C)) →
     Maybe (List (LazyGraph C))
 
   cl-empty-∧ [] = just []
-  cl-empty-∧ (gs ∷ gss) with cl-empty′ gs
+  cl-empty-∧ (l ∷ ls) with cl-empty l
+  ... | l′ with ≡Ø? l′
+  ... | yes ≡Ø = nothing
+  ... | no ≢Ø with cl-empty-∧ ls
   ... | nothing = nothing
-  ... | just gs′ with cl-empty-∧ gss
-  ... | nothing = nothing
-  ... | just gss′ = just (gs′ ∷ gss′)
-
-  -- cl-empty
-
-  cl-empty : {C : Set} (gs : LazyGraph C) → LazyGraph C
-
-  cl-empty gs with cl-empty′ gs
-  ... | nothing = Ø
-  ... | just gs′ = gs′
-
+  ... | just ls′ = just (l′ ∷ ls′)
 
 --
 -- Removing graphs that contain "bad" configurations.
