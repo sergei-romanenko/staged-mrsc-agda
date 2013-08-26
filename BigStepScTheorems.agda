@@ -292,7 +292,6 @@ module MRSC-naive≡lazy where
     ... | ()
     naive≡lazy′ h b c | no ¬f | no ¬w | later bs =
       cong (map (forth c)) (helper (c ⇉))
-      --cong (map (forth c) ∘ concat) (helper (c ⇉))
       where
       open ≡-Reasoning
 

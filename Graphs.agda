@@ -116,7 +116,7 @@ data LazyGraph (C : Set) : Set where
 
 ≡Ø? Ø = yes refl
 ≡Ø? (stop c) = no (λ ())
-≡Ø? (build c gsss) = no (λ ())
+≡Ø? (build c lss) = no (λ ())
 
 -- The semantics of `LazyGraph C` is formally defined by
 -- the interpreter `⟪_⟫` that generates a list of `Graph C n` from
@@ -291,32 +291,32 @@ mutual
 
   -- cl-bad-conf
 
-  cl-bad-conf : {C : Set} (bad : C → Bool) (gs : LazyGraph C) →
+  cl-bad-conf : {C : Set} (bad : C → Bool) (l : LazyGraph C) →
     LazyGraph C
 
   cl-bad-conf bad Ø = Ø
   cl-bad-conf bad (stop c) =
     if bad c then Ø else (stop c)
-  cl-bad-conf bad (build c gsss) =
-    if bad c then Ø else (build c (cl-bad-conf** bad gsss))
+  cl-bad-conf bad (build c lss) =
+    if bad c then Ø else (build c (cl-bad-conf** bad lss))
 
   -- cl-bad-conf**
 
   cl-bad-conf** : {C : Set} (bad : C → Bool)
-    (gsss : List (List (LazyGraph C))) → List (List (LazyGraph C))
+    (lss : List (List (LazyGraph C))) → List (List (LazyGraph C))
 
   cl-bad-conf** bad [] = []
-  cl-bad-conf** bad (gss ∷ gsss) =
-    cl-bad-conf* bad gss ∷ (cl-bad-conf** bad gsss)
+  cl-bad-conf** bad (ls ∷ lss) =
+    cl-bad-conf* bad ls ∷ (cl-bad-conf** bad lss)
 
   -- cl-bad-conf*
 
   cl-bad-conf* : {C : Set} (bad : C → Bool)
-    (gss : List (LazyGraph C)) → List (LazyGraph C)
+    (ls : List (LazyGraph C)) → List (LazyGraph C)
 
   cl-bad-conf* bad [] = []
-  cl-bad-conf* bad (gs ∷ gss) =
-    cl-bad-conf bad gs ∷ cl-bad-conf* bad gss
+  cl-bad-conf* bad (l ∷ ls) =
+    cl-bad-conf bad l ∷ cl-bad-conf* bad ls
 
 
 --
@@ -325,7 +325,7 @@ mutual
 
 -- cl-empty&bad
 
-cl-empty&bad : {C : Set} (bad : C → Bool) (gs : LazyGraph C) →
+cl-empty&bad : {C : Set} (bad : C → Bool) (l : LazyGraph C) →
   LazyGraph C
 
 cl-empty&bad bad = cl-empty ∘ cl-bad-conf bad
@@ -345,7 +345,7 @@ mutual
 
   -- graph-size*
 
-  graph-size* : ∀ {C : Set} (g : List (Graph C)) → ℕ
+  graph-size* : ∀ {C : Set} (gs : List (Graph C)) → ℕ
 
   graph-size* [] = 0
   graph-size* (g ∷ gs) = graph-size g + graph-size* gs
@@ -377,51 +377,51 @@ mutual
 
   -- cl-min-size
 
-  cl-min-size : ∀ {C : Set} (gs : LazyGraph C) → ℕ × LazyGraph C
+  cl-min-size : ∀ {C : Set} (l : LazyGraph C) → ℕ × LazyGraph C
 
   cl-min-size Ø =
     0 , Ø
   cl-min-size (stop c) =
     1 , stop c
-  cl-min-size (build c gsss) with cl-min-size** gsss
+  cl-min-size (build c lss) with cl-min-size** lss
   ... | 0 , _ = 0 , Ø
-  ... | k , gss = suc k , build c [ gss ]
+  ... | k , ls = suc k , build c [ ls ]
 
   -- cl-min-size*
 
-  cl-min-size* : ∀ {C : Set} (gss : List(LazyGraph C)) →
+  cl-min-size* : ∀ {C : Set} (ls : List (LazyGraph C)) →
     List (ℕ × LazyGraph C)
 
   cl-min-size* [] = []
-  cl-min-size* (gs ∷ gss) = cl-min-size gs ∷ cl-min-size* gss
+  cl-min-size* (l ∷ ls) = cl-min-size l ∷ cl-min-size* ls
 
   -- cl-min-size**
 
-  cl-min-size** : ∀ {C : Set} (gsss : List (List (LazyGraph C))) →
+  cl-min-size** : ∀ {C : Set} (lss : List (List (LazyGraph C))) →
     ℕ × List (LazyGraph C)
 
   cl-min-size** [] = 0 , []
-  cl-min-size** (gss ∷ gsss) with cl-min-size-∧ gss | cl-min-size** gsss
-  ... | kgss₁ | kgss₂ = select-min₂ kgss₁ kgss₂
+  cl-min-size** (ls ∷ lss) with cl-min-size-∧ ls | cl-min-size** lss
+  ... | kls₁ | kls₂ = select-min₂ kls₁ kls₂
 
   -- cl-min-size-∧
 
-  cl-min-size-∧ : ∀ {C : Set} (gss : List (LazyGraph C)) →
+  cl-min-size-∧ : ∀ {C : Set} (ls : List (LazyGraph C)) →
     ℕ × List (LazyGraph C)
 
   cl-min-size-∧ [] = 1 , []
-  cl-min-size-∧ (gs ∷ gss) with cl-min-size gs | cl-min-size-∧ gss
-  ... | 0 , gs′ | _ , gss′ = 0 , gs′ ∷ gss′
-  ... | _ , gs′ | 0 , gss′ = 0 , gs′ ∷ gss′
-  ... | i , gs′ | j , gss′ = i + j , gs′ ∷ gss′
+  cl-min-size-∧ (l ∷ ls) with cl-min-size l | cl-min-size-∧ ls
+  ... | 0 , l′ | _ , ls′ = 0 , l′ ∷ ls′
+  ... | _ , l′ | 0 , ls′ = 0 , l′ ∷ ls′
+  ... | i , l′ | j , ls′ = i + j , l′ ∷ ls′
 
 {-
 --
 -- `cl-min-size` is sound:
 --
---  Let cl-min-size gs ≡ (k , gs′). Then
---     ⟪ gs′ ⟫ ⊆ ⟪ gs ⟫
---     k ≡ graph-size (hd ⟪ gs′ ⟫)
+--  Let cl-min-size l ≡ (k , l′). Then
+--     ⟪ l′ ⟫ ⊆ ⟪ l ⟫
+--     k ≡ graph-size (hd ⟪ l′ ⟫)
 --
 -- TODO: prove this formally
 -}
