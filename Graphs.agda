@@ -12,10 +12,11 @@ open import Data.Nat
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.List as List
+  using (List; []; _∷_; [_]; _++_; map; filter; foldl)
 open import Data.List.Properties
   using (∷-injective; map-compose)
-open import Data.List.Any
-  using (Any; here; there; module Membership-≡)
+open import Data.List.Any as Any
+  using (Any; here; there; any; module Membership-≡)
 open import Data.List.Any.Properties
   using (Any-cong; Any↔; ++↔; return↔; map↔; concat↔; ⊎↔)
 open import Data.List.Any.Membership as MB
@@ -110,13 +111,13 @@ data LazyGraph (C : Set) : Set where
   stop  : (c : C) → LazyGraph C
   build : (c : C) (lss : List (List (LazyGraph C))) → LazyGraph C
 
--- ≡Ø?
+-- Ø≡?
 
-≡Ø? : {C : Set} (l : LazyGraph C) → Dec (l ≡ Ø)
+Ø≡? : {C : Set} (l : LazyGraph C) → Dec (Ø ≡ l)
 
-≡Ø? Ø = yes refl
-≡Ø? (stop c) = no (λ ())
-≡Ø? (build c lss) = no (λ ())
+Ø≡? Ø = yes refl
+Ø≡? (stop c) = no (λ ())
+Ø≡? (build c lss) = no (λ ())
 
 -- The semantics of `LazyGraph C` is formally defined by
 -- the interpreter `⟪_⟫` that generates a list of `Graph C n` from
@@ -263,22 +264,20 @@ mutual
     List (List (LazyGraph C))
 
   cl-empty** [] = []
-  cl-empty** (ls ∷ lss) with cl-empty-∧ ls
-  ... | nothing = cl-empty** lss
-  ... | just ls′ = ls′ ∷ cl-empty** lss
+  cl-empty** (ls ∷ lss) with cl-empty* ls
+  ... | ls′ with any Ø≡? ls′
+  ... | yes _ = cl-empty** lss
+  ... | no _ = ls′ ∷ cl-empty** lss
 
-  -- cl-empty-∧
 
-  cl-empty-∧ : {C : Set} (ls : List (LazyGraph C)) →
-    Maybe (List (LazyGraph C))
+  -- cl-empty*
 
-  cl-empty-∧ [] = just []
-  cl-empty-∧ (l ∷ ls) with cl-empty l
-  ... | l′ with ≡Ø? l′
-  ... | yes ≡Ø = nothing
-  ... | no ≢Ø with cl-empty-∧ ls
-  ... | nothing = nothing
-  ... | just ls′ = just (l′ ∷ ls′)
+  cl-empty* : {C : Set} (ls : List (LazyGraph C)) →
+    List (LazyGraph C)
+
+  cl-empty* [] = []
+  cl-empty* (l ∷ ls) = cl-empty l ∷ cl-empty* ls
+
 
 --
 -- Removing graphs that contain "bad" configurations.

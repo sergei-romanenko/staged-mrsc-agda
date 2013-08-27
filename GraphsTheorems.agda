@@ -12,10 +12,11 @@ open import Data.Nat
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.List as List
+  using (List; []; _∷_; map; _++_; filter; all)
 open import Data.List.Properties
   using (∷-injective; map-compose; map-++-commute)
-open import Data.List.Any
-  using (Any; here; there; module Membership-≡)
+open import Data.List.Any as Any
+  using (Any; here; there; any; module Membership-≡)
 open import Data.List.Any.Properties
   using (Any-cong; Any↔; ++↔; return↔; map↔; concat↔; ⊎↔)
 open import Data.List.Any.Membership as MB
@@ -83,57 +84,39 @@ mutual
     ⟪ cl-empty** lss ⟫** ≡ ⟪ lss ⟫**
 
   cl-empty**-correct [] = refl
-  cl-empty**-correct (ls ∷ lss)
-    with cl-empty-∧ ls | inspect cl-empty-∧ ls
-  cl-empty**-correct (ls ∷ lss)
-    | nothing | P[ ≡nothing ]
-    rewrite cl-empty-∧-nothing ls ≡nothing
+  cl-empty**-correct (ls ∷ lss) with cl-empty* ls | inspect cl-empty* ls
+  ... | ls′ | P[ ≡ls′ ] with any Ø≡? ls′
+  ... | yes anyØ
+    rewrite P.sym $ ≡ls′ | cl-empty-any-Ø ls anyØ
           | cl-empty**-correct lss = refl
-  cl-empty**-correct (ls ∷ lss)
-    | just ls′ | P[ ≡just ]
-    rewrite cl-empty-∧-just ls ls′ ≡just
+  ... | no ¬anyØ
+    rewrite P.sym $ ≡ls′ | cl-empty*-correct ls
           | cl-empty**-correct lss = refl
 
-  -- cl-empty-∧-nothing
+  -- cl-empty*-correct
 
-  cl-empty-∧-nothing : ∀ {C : Set} (ls : List (LazyGraph C)) →
-    cl-empty-∧ ls ≡ nothing → cartesian ⟪ ls ⟫* ≡ []
+  cl-empty*-correct :  ∀ {C : Set} (ls : List (LazyGraph C)) →
+    ⟪ cl-empty* ls ⟫* ≡ ⟪ ls ⟫*
 
-  cl-empty-∧-nothing [] ()
-  cl-empty-∧-nothing (l ∷ ls) eq with cl-empty l | inspect cl-empty l
-  ... | l′ | P[ ≡l′ ] with ≡Ø? l′
-  ... | yes ≡Ø
-    rewrite P.sym $ cl-empty-correct l | ≡l′ | ≡Ø = refl
-  ... | no ≡Ø
-    with cl-empty-∧ ls | inspect cl-empty-∧ ls
-  ... | nothing | P[ ≡nothing ]
-    rewrite cl-empty-∧-nothing ls ≡nothing | cartesian2[] ⟪ l ⟫ = refl
-  cl-empty-∧-nothing (l ∷ ls) () | l′ | P[ ≡l′ ] | no ≡Ø | just ls′ | P[ ≡just ]
+  cl-empty*-correct [] = refl
+  cl-empty*-correct (l ∷ ls) =
+    cong₂ _∷_ (cl-empty-correct l) (cl-empty*-correct ls)
 
-  -- cl-empty-∧-just
+  -- cl-empty-any-Ø
 
-  cl-empty-∧-just : ∀ {C : Set} (ls ls′ : List (LazyGraph C)) →
-    cl-empty-∧ ls ≡ just ls′ → ⟪ ls ⟫* ≡ ⟪ ls′ ⟫*
+  cl-empty-any-Ø :  ∀ {C : Set} (ls : List (LazyGraph C)) →
+    Any (_≡_ Ø) (cl-empty* ls) → cartesian ⟪ ls ⟫* ≡ []
 
-  cl-empty-∧-just [] [] eq = refl
-  cl-empty-∧-just [] (l′ ∷ ls′) ()
-  cl-empty-∧-just (l ∷ ls) [] eq with cl-empty l | inspect cl-empty l
-  ... | l′ | P[ ≡l′ ] with ≡Ø? l′
-  cl-empty-∧-just (l ∷ ls) [] () | l′ | P[ ≡l′ ] | yes ≡Ø
-  ... | no ≢Ø with cl-empty-∧ ls | inspect cl-empty-∧ ls
-  cl-empty-∧-just (l ∷ ls) [] () | l′ | P[ ≡l′ ] | no ≢Ø
-    | nothing | P[ ≡nothing ]
-  cl-empty-∧-just (l ∷ ls) [] () | l′ | P[ ≡l′ ] | no ≢Ø | just ls′ | P[ ≡just ]
-  cl-empty-∧-just (l ∷ ls) (l₁ ∷ ls₁) eq with cl-empty l | inspect cl-empty l
-  ... | l′ | P[ ≡l′ ] with ≡Ø? l′
-  cl-empty-∧-just (l ∷ ls) (l₁ ∷ ls₁) () | l′ | P[ ≡l′ ] | yes ≡Ø
-  ... | no ≢Ø with cl-empty-∧ ls | inspect cl-empty-∧ ls
-  cl-empty-∧-just (l ∷ ls) (l₁ ∷ ls₁) () | l′ | P[ ≡l′ ] | no ≢Ø
-    | nothing | P[ ≡nothing ]
-  cl-empty-∧-just (l ∷ ls) (l₁ ∷ ls₁) refl | .l₁ | P[ ≡l′ ] | no ≢Ø
-    | just .ls₁ | P[ ≡just ]
-    rewrite P.sym $ cl-empty-correct l | ≡l′
-          | cl-empty-∧-just ls ls₁ ≡just = refl
+  cl-empty-any-Ø [] ()
+  cl-empty-any-Ø (l ∷ ls) eq  with cl-empty l | inspect cl-empty l
+  ... | l′ | P[ ≡l′ ] with Ø≡? l′
+  ... | yes Ø≡
+    rewrite P.sym $ cl-empty-correct l | ≡l′ | P.sym $ Ø≡ = refl
+  cl-empty-any-Ø (l ∷ ls) (here Ø≡) | l′ | P[ ≡l′ ] | no Ø≢ =
+    ⊥-elim (Ø≢ Ø≡)
+  cl-empty-any-Ø (l ∷ ls) (there eq) | l′ | P[ ≡l′ ] | no Ø≢
+    rewrite cl-empty-any-Ø ls eq | cartesian2[] ⟪ l ⟫ = refl
+
 
 --
 -- `cl-bad-conf` is sound
@@ -245,8 +228,7 @@ module ClBadConf~FlBadConf where
   mutual
 
     cl-bad-conf-correct : {C : Set} (bad : C → Bool) →
-      --⟪_⟫ ∘ cl-bad-conf bad ≗ fl-bad-conf bad ∘ ⟪_⟫
-      ∀ l → ⟪ cl-bad-conf bad l ⟫ ≡ fl-bad-conf bad ⟪ l ⟫
+      ⟪_⟫ ∘ cl-bad-conf bad ≗ fl-bad-conf bad ∘ ⟪_⟫
 
     cl-bad-conf-correct bad Ø =
       refl
