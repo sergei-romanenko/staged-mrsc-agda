@@ -57,6 +57,30 @@ open import Graphs
 open ScWorld scWorld
 
 --
+-- Extracting the residual graph from a proof
+--
+-- (Just for fun, currently this is not used anywhere.)
+
+module GraphExtraction where
+  open BigStepNDSC scWorld
+
+  -- extractGraph
+
+  extractGraph : ∀ {h : History} {c : Conf} {g : Graph Conf}
+    (p : h ⊢NDSC c ↪ g) → Graph Conf
+
+  extractGraph (ndsc-fold {c = c} f) = back c
+  extractGraph (ndsc-build {c = c} {gs = gs} ¬f i ps) = forth c gs
+
+  -- extractGraph-sound
+
+  extractGraph-sound : ∀ {h : History} {c : Conf} {g : Graph Conf}
+    (p : h ⊢NDSC c ↪ g) → extractGraph p ≡ g
+
+  extractGraph-sound (ndsc-fold f) = refl
+  extractGraph-sound (ndsc-build ¬f i ps) = refl
+
+--
 -- MRSC is sound with respect to NDSC
 --
 
@@ -71,12 +95,12 @@ module MRSC→NDSC′ where
   MRSC→NDSC (mrsc-fold f) =
     ndsc-fold f
 
-  MRSC→NDSC (mrsc-build {h} {c} {cs} {gs} ¬f ¬w i ∀i⊢ci↪g) =
-    ndsc-build ¬f i (pw-map ∀i⊢ci↪g)
+  MRSC→NDSC (mrsc-build {h} {c} {cs} {gs} ¬f ¬w i ∀i⊢ci↪gi) =
+    ndsc-build ¬f i (pw-map ∀i⊢ci↪gi)
     where
     pw-map : {cs : List Conf} {gs : List (Graph Conf)}
-             (qs : Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) cs gs) →
-             Pointwise.Rel (_⊢NDSC_↪_ (c ∷ h)) cs gs
+             (qs : (c ∷ h) ⊢MRSC* cs ↪ gs) →
+             (c ∷ h) ⊢NDSC* cs ↪ gs
     pw-map [] = []
     pw-map (q ∷ qs) = MRSC→NDSC q ∷ (pw-map qs)
 
@@ -118,7 +142,7 @@ module MRSC-correctness where
 
     helper₄ : ∀ cs gs →
       gs ∈ cartesian (map step cs) →
-        Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) cs gs
+        (c ∷ h) ⊢MRSC* cs ↪ gs
     helper₄ cs gs =
       gs ∈ cartesian (map step cs)
         ↔⟨ sym $ ∈*↔∈cartesian ⟩
@@ -126,7 +150,7 @@ module MRSC-correctness where
         ∼⟨ ∈*∘map→ step cs ⟩
       Pointwise.Rel (λ c′ gs′ → gs′ ∈ step c′) cs gs
         ∼⟨ Pointwise.map (naive-mrsc-sound′ (c ∷ h) (bs c)) ⟩
-      Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) cs gs
+      (c ∷ h) ⊢MRSC* cs ↪ gs
       ∎
 
     helper₃ : ∀ gss′ css → gss′ ∈ map (cartesian ∘ map step) css → _
@@ -201,10 +225,10 @@ module MRSC-correctness where
     gss = concat gsss
 
     pw→cart : ∀ cs gs →
-      Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) cs gs →
+      (c ∷ h) ⊢MRSC* cs ↪ gs →
         gs ∈ cartesian (map step cs)
     pw→cart cs gs =
-      Pointwise.Rel (_⊢MRSC_↪_ (c ∷ h)) cs gs
+      (c ∷ h) ⊢MRSC* cs ↪ gs
         ∼⟨ Pointwise.map (naive-mrsc-complete′ (c ∷ h) (bs c)) ⟩
       Pointwise.Rel (λ c′ gs′ → gs′ ∈ step c′) cs gs
         ∼⟨ ∈*∘map← step cs ⟩
