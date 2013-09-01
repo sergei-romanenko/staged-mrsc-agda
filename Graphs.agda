@@ -133,15 +133,15 @@ mutual
   ⟪ stop c ⟫ =
     [ back c ]
   ⟪ build c lss ⟫ =
-    map (forth c) ⟪ lss ⟫**
+    map (forth c) ⟪ lss ⟫⇉
 
-  -- ⟪_⟫**
+  -- ⟪_⟫⇉
 
-  ⟪_⟫** : {C : Set} (lss : List (List (LazyGraph C))) →
+  ⟪_⟫⇉ : {C : Set} (lss : List (List (LazyGraph C))) →
               List (List (Graph C))
 
-  ⟪ [] ⟫** = []
-  ⟪ ls ∷ lss ⟫** = cartesian ⟪ ls ⟫* ++ ⟪ lss ⟫**
+  ⟪ [] ⟫⇉ = []
+  ⟪ ls ∷ lss ⟫⇉ = cartesian ⟪ ls ⟫* ++ ⟪ lss ⟫⇉
 
   -- ⟪_⟫*
 
@@ -254,20 +254,20 @@ mutual
 
   cl-empty Ø = Ø
   cl-empty (stop c) = stop c
-  cl-empty (build c lss) with cl-empty** lss
+  cl-empty (build c lss) with cl-empty⇉ lss
   ... | [] = Ø
   ... | ls′ ∷ lss′ = build c (ls′ ∷ lss′)
 
-  -- cl-empty**
+  -- cl-empty⇉
 
-  cl-empty** : {C : Set} (lss : List (List (LazyGraph C))) →
+  cl-empty⇉ : {C : Set} (lss : List (List (LazyGraph C))) →
     List (List (LazyGraph C))
 
-  cl-empty** [] = []
-  cl-empty** (ls ∷ lss) with cl-empty* ls
+  cl-empty⇉ [] = []
+  cl-empty⇉ (ls ∷ lss) with cl-empty* ls
   ... | ls′ with any Ø≡? ls′
-  ... | yes _ = cl-empty** lss
-  ... | no _ = ls′ ∷ cl-empty** lss
+  ... | yes _ = cl-empty⇉ lss
+  ... | no _ = ls′ ∷ cl-empty⇉ lss
 
 
   -- cl-empty*
@@ -297,16 +297,16 @@ mutual
   cl-bad-conf bad (stop c) =
     if bad c then Ø else (stop c)
   cl-bad-conf bad (build c lss) =
-    if bad c then Ø else (build c (cl-bad-conf** bad lss))
+    if bad c then Ø else (build c (cl-bad-conf⇉ bad lss))
 
-  -- cl-bad-conf**
+  -- cl-bad-conf⇉
 
-  cl-bad-conf** : {C : Set} (bad : C → Bool)
+  cl-bad-conf⇉ : {C : Set} (bad : C → Bool)
     (lss : List (List (LazyGraph C))) → List (List (LazyGraph C))
 
-  cl-bad-conf** bad [] = []
-  cl-bad-conf** bad (ls ∷ lss) =
-    cl-bad-conf* bad ls ∷ (cl-bad-conf** bad lss)
+  cl-bad-conf⇉ bad [] = []
+  cl-bad-conf⇉ bad (ls ∷ lss) =
+    cl-bad-conf* bad ls ∷ (cl-bad-conf⇉ bad lss)
 
   -- cl-bad-conf*
 
@@ -382,7 +382,7 @@ mutual
     0 , Ø
   cl-min-size (stop c) =
     1 , stop c
-  cl-min-size (build c lss) with cl-min-size** lss
+  cl-min-size (build c lss) with cl-min-size⇉ lss
   ... | 0 , _ = 0 , Ø
   ... | k , ls = suc k , build c [ ls ]
 
@@ -394,13 +394,13 @@ mutual
   cl-min-size* [] = []
   cl-min-size* (l ∷ ls) = cl-min-size l ∷ cl-min-size* ls
 
-  -- cl-min-size**
+  -- cl-min-size⇉
 
-  cl-min-size** : ∀ {C : Set} (lss : List (List (LazyGraph C))) →
+  cl-min-size⇉ : ∀ {C : Set} (lss : List (List (LazyGraph C))) →
     ℕ × List (LazyGraph C)
 
-  cl-min-size** [] = 0 , []
-  cl-min-size** (ls ∷ lss) with cl-min-size-∧ ls | cl-min-size** lss
+  cl-min-size⇉ [] = 0 , []
+  cl-min-size⇉ (ls ∷ lss) with cl-min-size-∧ ls | cl-min-size⇉ lss
   ... | kls₁ | kls₂ = select-min₂ kls₁ kls₂
 
   -- cl-min-size-∧

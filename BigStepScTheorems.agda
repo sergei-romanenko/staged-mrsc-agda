@@ -324,7 +324,7 @@ module MRSC-naive≡lazy where
 
       helper : ∀ css →
         concat (map (cartesian ∘ map naive-step) css) ≡
-          ⟪ map (map lazy-step) css ⟫**
+          ⟪ map (map lazy-step) css ⟫⇉
 
       helper [] = refl
       helper (cs ∷ css) = begin
@@ -334,9 +334,9 @@ module MRSC-naive≡lazy where
           concat (map (cartesian ∘ map naive-step) css)
           ≡⟨ cong₂ _++_ (cong cartesian (map∘naive-mrsc′ (c ∷ h) (bs c) cs))
                         (helper css) ⟩
-        cartesian ⟪ map lazy-step cs ⟫* ++ ⟪ map (map lazy-step) css ⟫**
+        cartesian ⟪ map lazy-step cs ⟫* ++ ⟪ map (map lazy-step) css ⟫⇉
           ≡⟨⟩
-        ⟪ map (map lazy-step) (cs ∷ css) ⟫**
+        ⟪ map (map lazy-step) (cs ∷ css) ⟫⇉
         ∎
 
     -- map∘naive-mrsc′

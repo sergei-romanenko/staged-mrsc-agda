@@ -66,23 +66,23 @@ module BigStepMRSC∞ (scWorld : ScWorld) where
     ... | no ¬f =
       build c (♯ build-cograph⇉ h c (c ⇉))
 
-    -- build-cograph′⇉
+    -- build-cograph⇉
 
     build-cograph⇉ : (h : History) (c : Conf) (css : List (List Conf)) →
       List (List (LazyCograph Conf))
 
     build-cograph⇉ h c [] = []
     build-cograph⇉ h c (cs ∷ css) =
-      build-cograph′* (c ∷ h) cs ∷ build-cograph⇉ h c css
+      build-cograph* (c ∷ h) cs ∷ build-cograph⇉ h c css
 
-    -- build-cograph′*
+    -- build-cograph*
 
-    build-cograph′* : (h : History) (cs : List Conf) →
+    build-cograph* : (h : History) (cs : List Conf) →
       List (LazyCograph Conf)
 
-    build-cograph′* h [] = []
-    build-cograph′* h (c ∷ cs) =
-      build-cograph′ h c ∷ build-cograph′* h cs
+    build-cograph* h [] = []
+    build-cograph* h (c ∷ cs) =
+      build-cograph′ h c ∷ build-cograph* h cs
 
   -- build-cograph
 
@@ -105,16 +105,16 @@ module BigStepMRSC∞ (scWorld : ScWorld) where
     ... | now bz with ¬w bz
     ... | ()
     prune-cograph′ h b (build c lss) | no ¬w | later bs =
-      build c (map (prune-cograph′* (c ∷ h) (bs c)) (♭ lss))
+      build c (map (prune-cograph* (c ∷ h) (bs c)) (♭ lss))
 
-    -- prune-cograph′*
+    -- prune-cograph*
 
-    prune-cograph′* : (h : History) (b : Bar ↯ h)
+    prune-cograph* : (h : History) (b : Bar ↯ h)
       (ls : List (LazyCograph Conf)) → List (LazyGraph Conf)
 
-    prune-cograph′* h b [] = []
-    prune-cograph′* h b (l ∷ ls) =
-      prune-cograph′ h b l ∷ (prune-cograph′* h b ls)
+    prune-cograph* h b [] = []
+    prune-cograph* h b (l ∷ ls) =
+      prune-cograph′ h b l ∷ (prune-cograph* h b ls)
 
   -- prune-cograph
 
@@ -144,23 +144,23 @@ module BigStepMRSC∞ (scWorld : ScWorld) where
     prune-cograph′⇉ :
       (h : History) (bs : (c : Conf) → Bar ↯ (c ∷ h))
       (c : Conf) (css : List (List Conf)) →
-        map (prune-cograph′* (c ∷ h) (bs c)) (build-cograph⇉ h c css) ≡
+        map (prune-cograph* (c ∷ h) (bs c)) (build-cograph⇉ h c css) ≡
         map (map (lazy-mrsc′ (c ∷ h) (bs c))) css
 
     prune-cograph′⇉ h bs c [] = refl
     prune-cograph′⇉ h bs c (cs ∷ css) =
-      cong₂ _∷_ (prune′∘build′*-correct (c ∷ h) (bs c) cs)
+      cong₂ _∷_ (prune′∘build*-correct (c ∷ h) (bs c) cs)
                 (prune-cograph′⇉ h bs c css)
 
-    -- prune′∘build′*-correct
+    -- prune′∘build*-correct
 
-    prune′∘build′*-correct :
+    prune′∘build*-correct :
       (h : History) (b : Bar ↯ h) (cs : List Conf) →
-      prune-cograph′* h b (build-cograph′* h cs) ≡ map (lazy-mrsc′ h b) cs
+      prune-cograph* h b (build-cograph* h cs) ≡ map (lazy-mrsc′ h b) cs
 
-    prune′∘build′*-correct h b [] = refl
-    prune′∘build′*-correct h b (c ∷ cs) =
-      cong₂ _∷_ (prune′∘build′-correct h b c) (prune′∘build′*-correct h b cs)
+    prune′∘build*-correct h b [] = refl
+    prune′∘build*-correct h b (c ∷ cs) =
+      cong₂ _∷_ (prune′∘build′-correct h b c) (prune′∘build*-correct h b cs)
 
   -- prune∘build-correct
 
@@ -202,16 +202,16 @@ mutual
     if bad c then Ø else (stop c)
   cl-bad-conf∞ bad (build c lss) with bad c
   ... | true = Ø
-  ... | false = build c (♯ (cl-bad-conf∞** bad (♭ lss)))
+  ... | false = build c (♯ (cl-bad-conf∞⇉ bad (♭ lss)))
 
-  -- cl-bad-conf∞**
+  -- cl-bad-conf∞⇉
 
-  cl-bad-conf∞** : {C : Set} (bad : C → Bool)
+  cl-bad-conf∞⇉ : {C : Set} (bad : C → Bool)
     (lss : List (List (LazyCograph C))) → List (List (LazyCograph C))
 
-  cl-bad-conf∞** bad [] = []
-  cl-bad-conf∞** bad (ls ∷ lss) =
-    cl-bad-conf∞* bad ls ∷ (cl-bad-conf∞** bad lss)
+  cl-bad-conf∞⇉ bad [] = []
+  cl-bad-conf∞⇉ bad (ls ∷ lss) =
+    cl-bad-conf∞* bad ls ∷ (cl-bad-conf∞⇉ bad lss)
 
   -- cl-bad-conf∞*
 
@@ -254,34 +254,34 @@ module ClBadConf∞-Correct (scWorld : ScWorld) where
       | no ¬w | P[ w≡ ] | false | P[ ≡false ] rewrite w≡ with b
     ... | now bz = ⊥-elim (¬w bz)
     ... | later bs rewrite ≡false =
-      cong (build c) (cl-bad-conf∞**′-correct (c ∷ h) (bs c) bad (♭ lss))
+      cong (build c) (cl-bad-conf∞⇉-correct (c ∷ h) (bs c) bad (♭ lss))
 
-    -- cl-bad-conf∞**′-correct
+    -- cl-bad-conf∞⇉-correct
 
-    cl-bad-conf∞**′-correct :
+    cl-bad-conf∞⇉-correct :
       (h : History) (b : Bar ↯ h)
         (bad : Conf → Bool) (lss : List (List (LazyCograph Conf))) →
-      cl-bad-conf** bad (map (prune-cograph′* h b) lss) ≡
-      map (prune-cograph′* h b) (cl-bad-conf∞** bad lss)
+      cl-bad-conf⇉ bad (map (prune-cograph* h b) lss) ≡
+      map (prune-cograph* h b) (cl-bad-conf∞⇉ bad lss)
 
-    cl-bad-conf∞**′-correct h b bad [] = refl
-    cl-bad-conf∞**′-correct h b bad (ls ∷ lss) =
-      cong₂ _∷_ (cl-bad-conf∞*′-correct h b bad ls)
-                (cl-bad-conf∞**′-correct h b bad lss)
+    cl-bad-conf∞⇉-correct h b bad [] = refl
+    cl-bad-conf∞⇉-correct h b bad (ls ∷ lss) =
+      cong₂ _∷_ (cl-bad-conf∞*-correct h b bad ls)
+                (cl-bad-conf∞⇉-correct h b bad lss)
 
-    -- cl-bad-conf∞*′-correct
+    -- cl-bad-conf∞*-correct
 
-    cl-bad-conf∞*′-correct :
+    cl-bad-conf∞*-correct :
       (h : History) (b : Bar ↯ h)
         (bad : Conf → Bool) (ls : List (LazyCograph Conf)) →
-      cl-bad-conf* bad (prune-cograph′* h b ls) ≡
-        prune-cograph′* h b (cl-bad-conf∞* bad ls)
+      cl-bad-conf* bad (prune-cograph* h b ls) ≡
+        prune-cograph* h b (cl-bad-conf∞* bad ls)
 
-    cl-bad-conf∞*′-correct h b bad [] =
+    cl-bad-conf∞*-correct h b bad [] =
       refl
-    cl-bad-conf∞*′-correct h b bad (l ∷ ls) =
+    cl-bad-conf∞*-correct h b bad (l ∷ ls) =
       cong₂ _∷_ (cl-bad-conf∞′-correct h b bad l)
-                (cl-bad-conf∞*′-correct h b bad ls)
+                (cl-bad-conf∞*-correct h b bad ls)
 
   --
   -- cl-bad-conf∞-correct
