@@ -40,7 +40,7 @@ open import BigStepSc
 -- by the "lazy" (staged) version of multi-result
 -- supercompilation.
 
--- LazyGraph
+-- LazyCoraph
 
 data LazyCograph (C : Set) : Set where
   Ø     : LazyCograph C
