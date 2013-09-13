@@ -19,5 +19,6 @@ import Cographs
 -- An instantiation of the model for counter systems
 
 import BigStepCounters
-import ProtocolMOSI
-import ProtocolMOESI
+import Protocol.Synapse
+import Protocol.MOSI
+import Protocol.MOESI

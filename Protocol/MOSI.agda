@@ -1,4 +1,4 @@
-module ProtocolMOSI where
+module Protocol.MOSI where
 
 open import Data.Nat as N
   using (ℕ; zero; suc)
