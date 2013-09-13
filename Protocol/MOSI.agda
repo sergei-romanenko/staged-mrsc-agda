@@ -14,10 +14,13 @@ open import Data.Product
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃)
 
 open import Relation.Nullary
+open import Relation.Binary.PropositionalEquality
 
 open import Graphs
 open import BigStepSc
 open import BigStepCounters
+open import Statistics
+  using (length⟪⟫)
 
 MOSI : CntWorld 4
 MOSI = ⟨⟨ start , rules , unsafe ⟩⟩
@@ -60,6 +63,9 @@ graph = lazy-mrsc (CntWorld.start MOSI)
 graph-cl-unsafe : LazyGraph (ωConf 4)
 graph-cl-unsafe = CntWorld.cl-unsafe MOSI graph
 
+#graph-cl-unsafe : length⟪⟫ graph-cl-unsafe ≡ 459
+#graph-cl-unsafe = refl
+
 graph-cl-min-size = cl-min-size graph-cl-unsafe
 graph-min-size = ⟪ proj₂ graph-cl-min-size ⟫
 
@@ -76,8 +82,6 @@ graph∞-safe = cl-bad-conf∞ (CntWorld.unsafe MOSI) graph∞
 
 graph∞-pruned : LazyGraph (ωConf 4)
 graph∞-pruned = cl-empty (prune-cograph graph∞-safe)
-
-open import Relation.Binary.PropositionalEquality
 
 graph-cl-unsafe≡graph∞-pruned :
   graph-cl-unsafe ≡ graph∞-pruned

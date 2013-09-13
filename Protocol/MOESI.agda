@@ -14,10 +14,13 @@ open import Data.Product
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃)
 
 open import Relation.Nullary
+open import Relation.Binary.PropositionalEquality
 
 open import Graphs
 open import BigStepSc
 open import BigStepCounters
+open import Statistics
+  using (length⟪⟫)
 
 MOESI : CntWorld 5
 MOESI = ⟨⟨ start , rules , unsafe ⟩⟩
@@ -51,8 +54,14 @@ open BigStepMRSC scwMOESI
 graph : LazyGraph (ωConf 5)
 graph = lazy-mrsc (CntWorld.start MOESI)
 
+--#graph : length⟪⟫ graph ≡ {!!}
+--#graph = refl
+
 graph-cl-unsafe : LazyGraph (ωConf 5)
 graph-cl-unsafe = CntWorld.cl-unsafe MOESI graph
+
+#graph-cl-unsafe : length⟪⟫ graph-cl-unsafe ≡ 19
+#graph-cl-unsafe = refl
 
 graph-cl-min-size = cl-min-size graph-cl-unsafe
 graph-min-size = ⟪ proj₂ graph-cl-min-size ⟫
@@ -70,8 +79,6 @@ graph∞-safe = cl-bad-conf∞ (CntWorld.unsafe MOESI) graph∞
 
 graph∞-pruned : LazyGraph (ωConf 5)
 graph∞-pruned = cl-empty (prune-cograph graph∞-safe)
-
-open import Relation.Binary.PropositionalEquality
 
 graph-cl-unsafe≡graph∞-pruned :
   graph-cl-unsafe ≡ graph∞-pruned
