@@ -696,3 +696,31 @@ vec-cartesian2 (x ∷ xs) yss = map (_∷_ x) yss ++ vec-cartesian2 xs yss
 vec-cartesian : ∀ {k} {A : Set} (xss : Vec (List A) k) → List (Vec A k)
 vec-cartesian [] = [ [] ]
 vec-cartesian (xs ∷ xss) = vec-cartesian2 xs (vec-cartesian xss)
+
+--
+-- Fusing `cartesian` and `map`
+--
+
+-- cartesianMap
+
+cartesianMap : {A B : Set} (f : A → List B) (xs : List A) → List (List B)
+
+cartesianMap f [] = [ [] ]
+cartesianMap f (x ∷ xs) with f x
+... | [] = []
+... | y ∷ ys = cartesian2 (y ∷ ys) (cartesianMap f xs)
+
+-- cartesianMap-correct
+
+cartesianMap-correct : {A B : Set} (f : A → List B) (xs : List A) →
+  cartesianMap f xs ≡ cartesian (map f xs)
+
+cartesianMap-correct f [] = refl
+cartesianMap-correct f (x ∷ xs) with f x
+... | [] = refl
+... | y ∷ ys = begin
+  cartesian2 (y ∷ ys) (cartesianMap f xs)
+    ≡⟨ cong (cartesian2 (y ∷ ys)) (cartesianMap-correct f xs) ⟩
+  cartesian2 (y ∷ ys) (cartesian (map f xs))
+  ∎
+  where open ≡-Reasoning
