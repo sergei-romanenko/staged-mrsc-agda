@@ -85,38 +85,44 @@ mutual
 
   cl-empty⇉-correct [] = refl
   cl-empty⇉-correct (ls ∷ lss) with cl-empty* ls | inspect cl-empty* ls
-  ... | ls′ | P[ ≡ls′ ] with any Ø≡? ls′
-  ... | yes anyØ
-    rewrite P.sym $ ≡ls′ | cl-empty-any-Ø ls anyØ
-          | cl-empty⇉-correct lss = refl
-  ... | no ¬anyØ
-    rewrite P.sym $ ≡ls′ | cl-empty*-correct ls
-          | cl-empty⇉-correct lss = refl
+  ... | nothing | P[ ≡nothing ]
+    rewrite cl-empty-nothing ls ≡nothing | cl-empty⇉-correct lss = refl
+  ... | just ls′ | P[ ≡just ]
+    rewrite cl-empty-just ls ls′ ≡just | cl-empty⇉-correct lss = refl
 
-  -- cl-empty*-correct
+  -- cl-empty-nothing
 
-  cl-empty*-correct :  ∀ {C : Set} (ls : List (LazyGraph C)) →
-    ⟪ cl-empty* ls ⟫* ≡ ⟪ ls ⟫*
+  cl-empty-nothing : ∀ {C : Set} (ls : List (LazyGraph C)) →
+    cl-empty* ls ≡ nothing → cartesian ⟪ ls ⟫* ≡ []
 
-  cl-empty*-correct [] = refl
-  cl-empty*-correct (l ∷ ls) =
-    cong₂ _∷_ (cl-empty-correct l) (cl-empty*-correct ls)
-
-  -- cl-empty-any-Ø
-
-  cl-empty-any-Ø :  ∀ {C : Set} (ls : List (LazyGraph C)) →
-    Any (_≡_ Ø) (cl-empty* ls) → cartesian ⟪ ls ⟫* ≡ []
-
-  cl-empty-any-Ø [] ()
-  cl-empty-any-Ø (l ∷ ls) eq  with cl-empty l | inspect cl-empty l
+  cl-empty-nothing [] ()
+  cl-empty-nothing (l ∷ ls) eq with cl-empty l | inspect cl-empty l
   ... | l′ | P[ ≡l′ ] with Ø≡? l′
-  ... | yes Ø≡
-    rewrite P.sym $ cl-empty-correct l | ≡l′ | P.sym $ Ø≡ = refl
-  cl-empty-any-Ø (l ∷ ls) (here Ø≡) | l′ | P[ ≡l′ ] | no Ø≢ =
-    ⊥-elim (Ø≢ Ø≡)
-  cl-empty-any-Ø (l ∷ ls) (there eq) | l′ | P[ ≡l′ ] | no Ø≢
-    rewrite cl-empty-any-Ø ls eq | cartesian2[] ⟪ l ⟫ = refl
+  ... | yes Ø≡l′ rewrite P.sym $ cl-empty-correct l | ≡l′ | P.sym $ Ø≡l′ = refl
+  cl-empty-nothing (l ∷ ls) eq | l′ | P[ ≡l′ ] | no Ø≢l′
+    with cl-empty* ls | inspect cl-empty* ls
+  cl-empty-nothing (l ∷ ls) () | l′ | P[ ≡l′ ] | no Ø≢l′ | just ls′ | _
+  cl-empty-nothing (l ∷ ls) eq | l′ | P[ ≡l′ ] | no Ø≢l′
+    | nothing | P[ ≡nothing ]
+    rewrite cl-empty-nothing ls ≡nothing | cartesian2[] ⟪ l ⟫ = refl
 
+  -- cl-empty-just
+
+  cl-empty-just : ∀ {C : Set} (ls ls′ : List (LazyGraph C)) →
+    cl-empty* ls ≡ just ls′ → cartesian ⟪ ls ⟫* ≡ cartesian ⟪ ls′ ⟫*
+
+  cl-empty-just [] .[] refl = refl
+  cl-empty-just (l ∷ ls) ls′ eq with cl-empty l | inspect cl-empty l
+  ... | l₁ | P[ ≡l₁ ] with Ø≡? l₁
+  cl-empty-just (l ∷ ls) ls′ () | l₁ | P[ ≡l₁ ] | yes Ø≡l₁
+  cl-empty-just (l ∷ ls) ls′ eq | l₁ | P[ ≡l₁ ] | no  Ø≢l₁
+    with cl-empty* ls | inspect cl-empty* ls
+  cl-empty-just (l ∷ ls) .(l₁ ∷ ls₁) refl | l₁ | P[ ≡l₁ ] | no Ø≢l₁
+    | just ls₁ | P[ ≡just ]
+    rewrite P.sym $ cl-empty-correct l | ≡l₁
+          | cl-empty-just ls ls₁ ≡just = refl
+  cl-empty-just (l ∷ ls) ls′ () | l₁ | P[ ≡l₁ ] | no Ø≢l₁
+    | nothing | P[ ≡nothing ]
 
 --
 -- `cl-bad-conf` is sound

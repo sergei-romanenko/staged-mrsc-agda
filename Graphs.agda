@@ -246,6 +246,14 @@ fl-bad-conf bad gs = filter (not ∘ bad-graph bad) gs
 -- A cleaner that removes subtrees that represent empty sets of graphs.
 --
 
+-- cl-empty-build
+
+cl-empty-build : {C : Set} (c : C) →
+  List (List (LazyGraph C)) → LazyGraph C
+
+cl-empty-build c [] = Ø
+cl-empty-build c (ls ∷ lss) = build c (ls ∷ lss)
+
 mutual
 
   -- cl-empty
@@ -254,10 +262,32 @@ mutual
 
   cl-empty Ø = Ø
   cl-empty (stop c) = stop c
-  cl-empty (build c lss) with cl-empty⇉ lss
-  ... | [] = Ø
-  ... | ls′ ∷ lss′ = build c (ls′ ∷ lss′)
+  cl-empty (build c lss) = cl-empty-build c (cl-empty⇉ lss)
 
+  -- cl-empty⇉
+
+  cl-empty⇉ : {C : Set} (lss : List (List (LazyGraph C))) →
+    List (List (LazyGraph C))
+
+  cl-empty⇉ [] = []
+  cl-empty⇉ (ls ∷ lss) with cl-empty* ls
+  ... | nothing = cl-empty⇉ lss
+  ... | just ls′ = ls′ ∷ cl-empty⇉ lss
+
+  -- cl-empty*
+
+  cl-empty* : {C : Set} (ls : List (LazyGraph C)) →
+    Maybe (List (LazyGraph C))
+
+  cl-empty* [] = just []
+  cl-empty* (l ∷ ls) with cl-empty l
+  ... | l′ with Ø≡? l′
+  ... | yes _ = nothing
+  ... | no _ with cl-empty* ls
+  ... | nothing = nothing
+  ... | just ls′ = just (l′ ∷ ls′)
+
+{-
   -- cl-empty⇉
 
   cl-empty⇉ : {C : Set} (lss : List (List (LazyGraph C))) →
@@ -277,7 +307,7 @@ mutual
 
   cl-empty* [] = []
   cl-empty* (l ∷ ls) = cl-empty l ∷ cl-empty* ls
-
+-}
 
 --
 -- Removing graphs that contain "bad" configurations.
