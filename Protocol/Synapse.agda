@@ -72,7 +72,7 @@ graph∞ : LazyCograph (ωConf 3)
 graph∞ = build-cograph (CntWorld.start Synapse)
 
 graph∞-safe : LazyCograph (ωConf 3)
-graph∞-safe = cl-bad-conf∞ (CntWorld.unsafe Synapse) graph∞
+graph∞-safe = cl∞-bad-conf (CntWorld.unsafe Synapse) graph∞
 
 graph∞-pruned : LazyGraph (ωConf 3)
 graph∞-pruned = cl-empty (prune-cograph graph∞-safe)
@@ -81,3 +81,15 @@ graph-cl-unsafe≡graph∞-pruned :
   graph-cl-unsafe ≡ graph∞-pruned
 
 graph-cl-unsafe≡graph∞-pruned = refl
+
+-- Removing empty subtrees while pruning.
+
+open BigStepMRSC∞-Ø scwSynapse
+
+graph∞-pruned-Ø : LazyGraph (ωConf 3)
+graph∞-pruned-Ø = prune-cograph-Ø (cl∞-Ø graph∞-safe)
+
+graph-cl-unsafe≡graph∞-pruned-Ø :
+  graph-cl-unsafe ≡ graph∞-pruned-Ø
+
+graph-cl-unsafe≡graph∞-pruned-Ø = refl

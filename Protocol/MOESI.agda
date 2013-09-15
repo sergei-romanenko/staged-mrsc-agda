@@ -75,7 +75,7 @@ graph∞ : LazyCograph (ωConf 5)
 graph∞ = build-cograph (CntWorld.start MOESI)
 
 graph∞-safe : LazyCograph (ωConf 5)
-graph∞-safe = cl-bad-conf∞ (CntWorld.unsafe MOESI) graph∞
+graph∞-safe = cl∞-bad-conf (CntWorld.unsafe MOESI) graph∞
 
 graph∞-pruned : LazyGraph (ωConf 5)
 graph∞-pruned = cl-empty (prune-cograph graph∞-safe)

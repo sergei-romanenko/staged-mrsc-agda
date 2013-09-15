@@ -138,12 +138,12 @@ m ⊑₁? ω =
   where helper : # i ⊑₁ # j → ⊥
         helper #i⊑₁#j = i≢j (#i⊑₁#j→i≡j #i⊑₁#j)
 
-infix 4 _≟ω_
-
 #i≡#j→i≡j : ∀ {i j} → # i ≡ # j → i ≡ j
 #i≡#j→i≡j refl = refl
 
 -- _≟ω_
+
+infix 4 _≟ω_
 
 _≟ω_ : Decidable₂ {A = ℕω} _≡_
 

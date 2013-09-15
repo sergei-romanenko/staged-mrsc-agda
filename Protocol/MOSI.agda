@@ -78,7 +78,7 @@ graph∞ : LazyCograph (ωConf 4)
 graph∞ = build-cograph (CntWorld.start MOSI)
 
 graph∞-safe : LazyCograph (ωConf 4)
-graph∞-safe = cl-bad-conf∞ (CntWorld.unsafe MOSI) graph∞
+graph∞-safe = cl∞-bad-conf (CntWorld.unsafe MOSI) graph∞
 
 graph∞-pruned : LazyGraph (ωConf 4)
 graph∞-pruned = cl-empty (prune-cograph graph∞-safe)
@@ -87,3 +87,15 @@ graph-cl-unsafe≡graph∞-pruned :
   graph-cl-unsafe ≡ graph∞-pruned
 
 graph-cl-unsafe≡graph∞-pruned = refl
+
+-- Removing empty subtrees while pruning.
+
+open BigStepMRSC∞-Ø scwMOSI
+
+graph∞-pruned-Ø : LazyGraph (ωConf 4)
+graph∞-pruned-Ø = prune-cograph-Ø (cl∞-Ø graph∞-safe)
+
+graph-cl-unsafe≡graph∞-pruned-Ø :
+  graph-cl-unsafe ≡ graph∞-pruned-Ø
+
+graph-cl-unsafe≡graph∞-pruned-Ø = refl
