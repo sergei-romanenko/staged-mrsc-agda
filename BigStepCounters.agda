@@ -41,9 +41,10 @@ open import Relation.Binary.PropositionalEquality
   renaming ([_] to P[_])
 
 open import Util
+open import BarWhistles
 open import Graphs
 open import BigStepSc
-open import BarWhistles
+open import Cographs
 
 -- ℕω
 
@@ -204,7 +205,10 @@ record CntWorld (k : ℕ) : Set₁ where
     unsafe : (c : ωConf k) → Bool
 
   cl-unsafe : ∀ (l : LazyGraph (ωConf k)) → LazyGraph (ωConf k)
-  cl-unsafe = cl-empty&bad unsafe
+  cl-unsafe = cl-bad-conf unsafe
+
+  cl∞-unsafe : ∀ (l : LazyCograph (ωConf k)) → LazyCograph (ωConf k)
+  cl∞-unsafe = cl∞-bad-conf unsafe
 
 -- TooBig₁
 

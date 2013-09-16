@@ -331,7 +331,16 @@ mutual
   cl∞-Ø⇉ [] = []
   cl∞-Ø⇉ (ls ∷ lss) with any Ø∞≡? ls
   ... | yes Ø∈ls = cl∞-Ø⇉ lss
-  ... | no  Ø∉ls = ls ∷ cl∞-Ø⇉ lss
+  ... | no  Ø∉ls = cl∞-Ø* ls ∷ cl∞-Ø⇉ lss
+
+  -- cl∞-Ø*
+
+  cl∞-Ø* : {C : Set}
+    (ls : List (LazyCograph C)) → List (LazyCograph C)
+
+  cl∞-Ø* [] = []
+  cl∞-Ø* (l ∷ ls) = cl∞-Ø l ∷ cl∞-Ø* ls
+
 
 -- An optimized version of `prune-cograph`.
 -- The difference is that empty subtrees are removed
@@ -340,127 +349,125 @@ mutual
 module BigStepMRSC∞-Ø (scWorld : ScWorld) where
 
   open ScWorld scWorld
-  --open BigStepMRSC scWorld
-  --  using (lazy-mrsc; lazy-mrsc′)
 
   mutual
 
-    -- prune-cograph′-Ø
+    -- pruneØ-cograph′
 
-    prune-cograph′-Ø : (h : History) (b : Bar ↯ h) (l : LazyCograph Conf) →
+    pruneØ-cograph′ : (h : History) (b : Bar ↯ h) (l : LazyCograph Conf) →
       LazyGraph Conf
 
-    prune-cograph′-Ø h b Ø = Ø
-    prune-cograph′-Ø h b (stop c) = stop c
-    prune-cograph′-Ø h b (build c ♯lss) with  ↯? h
+    pruneØ-cograph′ h b Ø = Ø
+    pruneØ-cograph′ h b (stop c) = stop c
+    pruneØ-cograph′ h b (build c ♯lss) with  ↯? h
     ... | yes w = Ø
     ... | no ¬w with b
     ... | now bz with ¬w bz
     ... | ()
-    prune-cograph′-Ø h b (build c ♯lss) | no ¬w | later bs with ♭ ♯lss
+    pruneØ-cograph′ h b (build c ♯lss) | no ¬w | later bs with ♭ ♯lss
     ... | lss =
-      cl-empty-build c (prune-cograph⇉-Ø (c ∷ h) (bs c) lss)
+      cl-empty-build c (pruneØ-cograph⇉ (c ∷ h) (bs c) lss)
 
-    -- prune-cograph⇉-Ø
+    -- pruneØ-cograph⇉
 
-    prune-cograph⇉-Ø : (h : History) (b : Bar ↯ h)
+    pruneØ-cograph⇉ : (h : History) (b : Bar ↯ h)
       (lss : List (List (LazyCograph Conf))) → List (List (LazyGraph Conf))
-    prune-cograph⇉-Ø h b [] = []
-    prune-cograph⇉-Ø h b (ls ∷ lss) with prune-cograph*-Ø h b ls
-    ... | nothing = prune-cograph⇉-Ø h b lss
-    ... | just ls′ = ls′ ∷ prune-cograph⇉-Ø h b lss
+    pruneØ-cograph⇉ h b [] = []
+    pruneØ-cograph⇉ h b (ls ∷ lss) with pruneØ-cograph* h b ls
+    ... | nothing = pruneØ-cograph⇉ h b lss
+    ... | just ls′ = ls′ ∷ pruneØ-cograph⇉ h b lss
 
-    -- prune-cograph*-Ø
+    -- pruneØ-cograph*
 
-    prune-cograph*-Ø : (h : History) (b : Bar ↯ h)
+    pruneØ-cograph* : (h : History) (b : Bar ↯ h)
       (ls : List (LazyCograph Conf)) → Maybe (List (LazyGraph Conf))
 
-    prune-cograph*-Ø h b [] = just []
-    prune-cograph*-Ø h b (l ∷ ls) with prune-cograph′-Ø h b l
+    pruneØ-cograph* h b [] = just []
+    pruneØ-cograph* h b (l ∷ ls) with pruneØ-cograph′ h b l
     ... | l′ with Ø≡? l′
     ... | yes _ = nothing
-    ... | no _ with prune-cograph*-Ø h b ls
+    ... | no _ with pruneØ-cograph* h b ls
     ... | nothing = nothing
     ... | just ls′ = just (l′ ∷ ls′)
 
-  -- prune-cograph-Ø
+  -- pruneØ-cograph
 
-  prune-cograph-Ø : (l : LazyCograph Conf) → LazyGraph Conf
-  prune-cograph-Ø l = prune-cograph′-Ø [] bar[] l
+  pruneØ-cograph : (l : LazyCograph Conf) → LazyGraph Conf
+  pruneØ-cograph l = pruneØ-cograph′ [] bar[] l
 
   --
-  -- Correctness of `prune-cograph-Ø` with respect to `cl-empty` and
+  -- Correctness of `pruneØ-cograph` with respect to `cl-empty` and
   -- `prune-cograph`.
 
   open BigStepMRSC∞ scWorld
 
   mutual
 
-    -- prune-cograph′-Ø-correct
+    -- pruneØ-cograph′-correct
 
-    prune-cograph′-Ø-correct :
+    pruneØ-cograph′-correct :
       (h : History) (b : Bar ↯ h) (l : LazyCograph Conf) →
-        prune-cograph′-Ø h b l ≡ cl-empty (prune-cograph′ h b l)
+        pruneØ-cograph′ h b l ≡ cl-empty (prune-cograph′ h b l)
 
-    prune-cograph′-Ø-correct h b Ø = refl
-    prune-cograph′-Ø-correct h b (stop c) = refl
-    prune-cograph′-Ø-correct h b (build c ♯lss) with ↯? h
+    pruneØ-cograph′-correct h b Ø = refl
+    pruneØ-cograph′-correct h b (stop c) = refl
+    pruneØ-cograph′-correct h b (build c ♯lss) with ↯? h
     ... | yes w = refl
     ... | no ¬w with b
     ... | now bz with ¬w bz
     ... | ()
-    prune-cograph′-Ø-correct h b (build c ♯lss) | no ¬w | later bs =
+    pruneØ-cograph′-correct h b (build c ♯lss) | no ¬w | later bs =
       cong (cl-empty-build c)
-           (prune-cograph⇉-Ø-correct c (c ∷ h) (bs c) (♭ ♯lss))
+           (pruneØ-cograph⇉-correct c (c ∷ h) (bs c) (♭ ♯lss))
 
-    -- prune-cograph⇉-Ø-correct
+    -- pruneØ-cograph⇉-correct
 
-    prune-cograph⇉-Ø-correct : (c : Conf)
+    pruneØ-cograph⇉-correct : (c : Conf)
       (h : History) (b : Bar ↯ h) (lss : List (List (LazyCograph Conf))) →
-        prune-cograph⇉-Ø h b lss ≡ cl-empty⇉ (map (prune-cograph* h b) lss)
+        pruneØ-cograph⇉ h b lss ≡ cl-empty⇉ (map (prune-cograph* h b) lss)
 
-    prune-cograph⇉-Ø-correct c h b [] = refl
-    prune-cograph⇉-Ø-correct c h b (ls ∷ lss)
-      rewrite prune-cograph*-Ø-correct h b ls
+    pruneØ-cograph⇉-correct c h b [] = refl
+    pruneØ-cograph⇉-correct c h b (ls ∷ lss)
+      rewrite pruneØ-cograph*-correct h b ls
       with cl-empty* (prune-cograph* h b ls)
-    ... | nothing = prune-cograph⇉-Ø-correct c h b lss
-    ... | just ls′ = cong (_∷_ ls′) (prune-cograph⇉-Ø-correct c h b lss)
+    ... | nothing = pruneØ-cograph⇉-correct c h b lss
+    ... | just ls′ = cong (_∷_ ls′) (pruneØ-cograph⇉-correct c h b lss)
     
-    -- prune-cograph*-Ø-correct
+    -- pruneØ-cograph*-correct
 
-    prune-cograph*-Ø-correct :
+    pruneØ-cograph*-correct :
       (h : History) (b : Bar ↯ h) (ls : List (LazyCograph Conf)) →
-        prune-cograph*-Ø h b ls ≡ cl-empty* (prune-cograph* h b ls)
+        pruneØ-cograph* h b ls ≡ cl-empty* (prune-cograph* h b ls)
 
-    prune-cograph*-Ø-correct h b [] = refl
-    prune-cograph*-Ø-correct h b (l ∷ ls)
-      rewrite prune-cograph′-Ø-correct h b l
+    pruneØ-cograph*-correct h b [] = refl
+    pruneØ-cograph*-correct h b (l ∷ ls)
+      rewrite pruneØ-cograph′-correct h b l
       with cl-empty (prune-cograph′ h b l)
     ... | l′ with Ø≡? l′
     ... | yes _ = refl
-    ... | no _ rewrite prune-cograph*-Ø-correct h b ls
+    ... | no _ rewrite pruneØ-cograph*-correct h b ls
       with cl-empty* (prune-cograph* h b ls)
     ... | nothing = refl
     ... | just ls′ = refl 
 
-  -- prune-cograph-Ø-correct
+  -- pruneØ-cograph-correct
 
-  prune-cograph-Ø-correct :
-    prune-cograph-Ø ≗ cl-empty ∘ prune-cograph
+  pruneØ-cograph-correct :
+    pruneØ-cograph ≗ cl-empty ∘ prune-cograph
 
-  prune-cograph-Ø-correct l = prune-cograph′-Ø-correct [] bar[] l
+  pruneØ-cograph-correct l = pruneØ-cograph′-correct [] bar[] l
 
   --
-  -- Correctness of `cl∞-Ø` with respect to `prune-cograph-Ø`
+  -- Correctness of `cl∞-Ø` with respect to `pruneØ-cograph`
   --
 
   Ø∈→nothing :
     (h : History) (b : Bar ↯ h) (ls : List (LazyCograph Conf)) →
-    Any (_≡_ Ø) ls → prune-cograph*-Ø h b ls ≡ nothing
+    Any (_≡_ Ø) ls → pruneØ-cograph* h b ls ≡ nothing
 
   Ø∈→nothing h b .(l ∷ ls) (here {l} {ls} Ø≡l) rewrite P.sym $ Ø≡l = refl
   Ø∈→nothing h b .(l ∷ ls) (there {l} {ls} Ø∈ls)
-    with prune-cograph′-Ø h b l
+    with pruneØ-cograph′ h b l
   ... | l′ with Ø≡? l′
   ... | yes Ø≡l′ = refl
   ... | no  Ø≢l′ rewrite Ø∈→nothing h b ls Ø∈ls = refl
@@ -471,7 +478,7 @@ module BigStepMRSC∞-Ø (scWorld : ScWorld) where
 
     cl∞-Ø′-correct :
       (h : History) (b : Bar ↯ h) (l : LazyCograph Conf) →
-        prune-cograph′-Ø h b (cl∞-Ø l) ≡ prune-cograph′-Ø h b l
+        pruneØ-cograph′ h b (cl∞-Ø l) ≡ pruneØ-cograph′ h b l
 
     cl∞-Ø′-correct h b Ø = refl
     cl∞-Ø′-correct h b (stop c) = refl
@@ -485,18 +492,36 @@ module BigStepMRSC∞-Ø (scWorld : ScWorld) where
 
     cl∞-Ø⇉-correct :
       (h : History) (b : Bar ↯ h) (lss : List (List (LazyCograph Conf))) →
-        prune-cograph⇉-Ø h b (cl∞-Ø⇉ lss) ≡ prune-cograph⇉-Ø h b lss
+        pruneØ-cograph⇉ h b (cl∞-Ø⇉ lss) ≡ pruneØ-cograph⇉ h b lss
 
     cl∞-Ø⇉-correct h b [] = refl
     cl∞-Ø⇉-correct h b (ls ∷ lss) with any Ø∞≡? ls
     ... | yes Ø∈ls rewrite Ø∈→nothing h b ls Ø∈ls = cl∞-Ø⇉-correct h b lss
-    ... | no  Ø∉ls with prune-cograph*-Ø h b ls
-    ... | nothing = cl∞-Ø⇉-correct h b lss
-    ... | just ls′ = cong (_∷_ ls′) (cl∞-Ø⇉-correct h b lss)
+    ... | no  Ø∉ls
+      with pruneØ-cograph* h b ls | inspect (pruneØ-cograph* h b) ls
+    ... | nothing | P[ ≡nothing ]
+      rewrite cl∞-Ø*-correct h b ls | ≡nothing | cl∞-Ø⇉-correct h b lss = refl
+    ... | just ls′ | P[ ≡just ]
+      rewrite cl∞-Ø*-correct h b ls | ≡just =
+        cong (_∷_ ls′) (cl∞-Ø⇉-correct h b lss)
+
+    cl∞-Ø*-correct :
+      (h : History) (b : Bar ↯ h) (ls : List (LazyCograph Conf)) →
+        pruneØ-cograph* h b (cl∞-Ø* ls) ≡ pruneØ-cograph* h b ls
+
+    cl∞-Ø*-correct h b [] = refl
+    cl∞-Ø*-correct h b (l ∷ ls) rewrite cl∞-Ø′-correct h b l
+      with (pruneØ-cograph′ h b l) 
+    ... | l′ with Ø≡? l′
+    ... | yes Ø≡l′ = refl
+    ... | no  Ø≢l′ rewrite cl∞-Ø*-correct h b ls
+      with pruneØ-cograph* h b ls
+    ... | nothing = refl
+    ... | just ls′ = refl
 
   -- cl∞-Ø-correct
 
   cl∞-Ø-correct :
-    prune-cograph-Ø ∘ cl∞-Ø ≗ prune-cograph-Ø
+    pruneØ-cograph ∘ cl∞-Ø ≗ pruneØ-cograph
 
   cl∞-Ø-correct l = cl∞-Ø′-correct [] bar[] l

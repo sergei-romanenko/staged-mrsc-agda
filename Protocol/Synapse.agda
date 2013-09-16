@@ -13,6 +13,8 @@ open import Data.Vec
 open import Data.Product
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃)
 
+open import Function
+
 open import Relation.Nullary
 open import Relation.Binary.PropositionalEquality
 
@@ -43,19 +45,24 @@ Synapse = ⟨⟨ start , rules , unsafe ⟩⟩
     ¶? d ≥ 1 ∧ v ≥ 1 □ ∨
     ¶? d ≥ 2 □
 
+open CntWorld Synapse
+
 scwSynapse : ScWorld
 scwSynapse = mkScWorld 3 10 Synapse
 
+open ScWorld scwSynapse
+ using (Conf)
+
 open BigStepMRSC scwSynapse
 
-graph : LazyGraph (ωConf 3)
-graph = lazy-mrsc (CntWorld.start Synapse)
+graph : LazyGraph Conf
+graph = lazy-mrsc start
 
 #graph : length⟪⟫ graph ≡ 112020
 #graph = refl
 
-graph-cl-unsafe : LazyGraph (ωConf 3)
-graph-cl-unsafe = CntWorld.cl-unsafe Synapse graph
+graph-cl-unsafe : LazyGraph Conf
+graph-cl-unsafe = cl-empty $ cl-unsafe graph
 
 #graph-cl-unsafe : length⟪⟫ graph-cl-unsafe ≡ 5
 #graph-cl-unsafe = refl
@@ -68,28 +75,28 @@ graph-min-size = ⟪ proj₂ graph-cl-min-size ⟫
 open import Cographs
 open BigStepMRSC∞ scwSynapse
 
-graph∞ : LazyCograph (ωConf 3)
-graph∞ = build-cograph (CntWorld.start Synapse)
+cograph : LazyCograph Conf
+cograph = build-cograph start
 
-graph∞-safe : LazyCograph (ωConf 3)
-graph∞-safe = cl∞-bad-conf (CntWorld.unsafe Synapse) graph∞
+cograph-safe : LazyCograph Conf
+cograph-safe = cl∞-Ø $ cl∞-unsafe cograph
 
-graph∞-pruned : LazyGraph (ωConf 3)
-graph∞-pruned = cl-empty (prune-cograph graph∞-safe)
+cograph-pruned : LazyGraph Conf
+cograph-pruned = cl-empty $ prune-cograph cograph-safe
 
-graph-cl-unsafe≡graph∞-pruned :
-  graph-cl-unsafe ≡ graph∞-pruned
+graph-cl-unsafe≡cograph-pruned :
+  graph-cl-unsafe ≡ cograph-pruned
 
-graph-cl-unsafe≡graph∞-pruned = refl
+graph-cl-unsafe≡cograph-pruned = refl
 
 -- Removing empty subtrees while pruning.
 
 open BigStepMRSC∞-Ø scwSynapse
 
-graph∞-pruned-Ø : LazyGraph (ωConf 3)
-graph∞-pruned-Ø = prune-cograph-Ø (cl∞-Ø graph∞-safe)
+cograph-pruned-Ø : LazyGraph Conf
+cograph-pruned-Ø = pruneØ-cograph cograph-safe
 
-graph-cl-unsafe≡graph∞-pruned-Ø :
-  graph-cl-unsafe ≡ graph∞-pruned-Ø
+graph-cl-unsafe≡cograph-pruned-Ø :
+  graph-cl-unsafe ≡ cograph-pruned-Ø
 
-graph-cl-unsafe≡graph∞-pruned-Ø = refl
+graph-cl-unsafe≡cograph-pruned-Ø = refl

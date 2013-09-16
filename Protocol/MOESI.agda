@@ -13,6 +13,8 @@ open import Data.Vec
 open import Data.Product
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃)
 
+open import Function
+
 open import Relation.Nullary
 open import Relation.Binary.PropositionalEquality
 
@@ -46,19 +48,24 @@ MOESI = ⟨⟨ start , rules , unsafe ⟩⟩
     ¶? m ≥ 2 □ ∨
     ¶? e ≥ 2 □
 
+open CntWorld MOESI
+
 scwMOESI : ScWorld
 scwMOESI = mkScWorld 2 10 MOESI
 
+open ScWorld scwMOESI
+  using (Conf)
+
 open BigStepMRSC scwMOESI
 
-graph : LazyGraph (ωConf 5)
-graph = lazy-mrsc (CntWorld.start MOESI)
+graph : LazyGraph Conf
+graph = lazy-mrsc start
 
 --#graph : length⟪⟫ graph ≡ {!!}
 --#graph = refl
 
-graph-cl-unsafe : LazyGraph (ωConf 5)
-graph-cl-unsafe = CntWorld.cl-unsafe MOESI graph
+graph-cl-unsafe : LazyGraph Conf
+graph-cl-unsafe = cl-empty $ cl-unsafe graph
 
 #graph-cl-unsafe : length⟪⟫ graph-cl-unsafe ≡ 19
 #graph-cl-unsafe = refl
@@ -71,16 +78,28 @@ graph-min-size = ⟪ proj₂ graph-cl-min-size ⟫
 open import Cographs
 open BigStepMRSC∞ scwMOESI
 
-graph∞ : LazyCograph (ωConf 5)
-graph∞ = build-cograph (CntWorld.start MOESI)
+cograph : LazyCograph Conf
+cograph = build-cograph start
 
-graph∞-safe : LazyCograph (ωConf 5)
-graph∞-safe = cl∞-bad-conf (CntWorld.unsafe MOESI) graph∞
+cograph-safe : LazyCograph Conf
+cograph-safe = cl∞-Ø $ cl∞-unsafe cograph
 
-graph∞-pruned : LazyGraph (ωConf 5)
-graph∞-pruned = cl-empty (prune-cograph graph∞-safe)
+cograph-pruned : LazyGraph Conf
+cograph-pruned = cl-empty (prune-cograph cograph-safe)
 
-graph-cl-unsafe≡graph∞-pruned :
-  graph-cl-unsafe ≡ graph∞-pruned
+graph-cl-unsafe≡cograph-pruned :
+  graph-cl-unsafe ≡ cograph-pruned
 
-graph-cl-unsafe≡graph∞-pruned = refl
+graph-cl-unsafe≡cograph-pruned = refl
+
+-- Removing empty subtrees while pruning.
+
+open BigStepMRSC∞-Ø scwMOESI
+
+cograph-pruned-Ø : LazyGraph Conf
+cograph-pruned-Ø = pruneØ-cograph cograph-safe
+
+graph-cl-unsafe≡cograph-pruned-Ø :
+  graph-cl-unsafe ≡ cograph-pruned-Ø
+
+graph-cl-unsafe≡cograph-pruned-Ø = refl

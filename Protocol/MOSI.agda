@@ -13,6 +13,8 @@ open import Data.Vec
 open import Data.Product
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃)
 
+open import Function
+
 open import Relation.Nullary
 open import Relation.Binary.PropositionalEquality
 
@@ -52,16 +54,21 @@ MOSI = ⟨⟨ start , rules , unsafe ⟩⟩
     ¶? m ≥ 2 □ ∨
     ¶? s ≥ 1 ∧ m ≥ 1 □
 
+open CntWorld MOSI
+
 scwMOSI : ScWorld
 scwMOSI = mkScWorld 3 10 MOSI
 
+open ScWorld scwMOSI
+  using (Conf)
+
 open BigStepMRSC scwMOSI
 
-graph : LazyGraph (ωConf 4)
-graph = lazy-mrsc (CntWorld.start MOSI)
+graph : LazyGraph Conf
+graph = lazy-mrsc start
 
-graph-cl-unsafe : LazyGraph (ωConf 4)
-graph-cl-unsafe = CntWorld.cl-unsafe MOSI graph
+graph-cl-unsafe : LazyGraph Conf
+graph-cl-unsafe = cl-empty $ cl-unsafe graph
 
 #graph-cl-unsafe : length⟪⟫ graph-cl-unsafe ≡ 459
 #graph-cl-unsafe = refl
@@ -74,28 +81,28 @@ graph-min-size = ⟪ proj₂ graph-cl-min-size ⟫
 open import Cographs
 open BigStepMRSC∞ scwMOSI
 
-graph∞ : LazyCograph (ωConf 4)
-graph∞ = build-cograph (CntWorld.start MOSI)
+cograph : LazyCograph Conf
+cograph = build-cograph start
 
-graph∞-safe : LazyCograph (ωConf 4)
-graph∞-safe = cl∞-bad-conf (CntWorld.unsafe MOSI) graph∞
+cograph-safe : LazyCograph Conf
+cograph-safe = cl∞-Ø $ cl∞-unsafe cograph
 
-graph∞-pruned : LazyGraph (ωConf 4)
-graph∞-pruned = cl-empty (prune-cograph graph∞-safe)
+cograph-pruned : LazyGraph Conf
+cograph-pruned = cl-empty $ prune-cograph cograph-safe
 
-graph-cl-unsafe≡graph∞-pruned :
-  graph-cl-unsafe ≡ graph∞-pruned
+graph-cl-unsafe≡cograph-pruned :
+  graph-cl-unsafe ≡ cograph-pruned
 
-graph-cl-unsafe≡graph∞-pruned = refl
+graph-cl-unsafe≡cograph-pruned = refl
 
 -- Removing empty subtrees while pruning.
 
 open BigStepMRSC∞-Ø scwMOSI
 
-graph∞-pruned-Ø : LazyGraph (ωConf 4)
-graph∞-pruned-Ø = prune-cograph-Ø (cl∞-Ø graph∞-safe)
+cograph-pruned-Ø : LazyGraph Conf
+cograph-pruned-Ø = pruneØ-cograph cograph-safe
 
-graph-cl-unsafe≡graph∞-pruned-Ø :
-  graph-cl-unsafe ≡ graph∞-pruned-Ø
+graph-cl-unsafe≡cograph-pruned-Ø :
+  graph-cl-unsafe ≡ cograph-pruned-Ø
 
-graph-cl-unsafe≡graph∞-pruned-Ø = refl
+graph-cl-unsafe≡cograph-pruned-Ø = refl
