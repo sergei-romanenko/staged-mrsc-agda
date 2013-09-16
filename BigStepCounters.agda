@@ -156,116 +156,139 @@ _≟ω_ : Decidable₂ {A = ℕω} _≡_
 ... | no  i≢j = no (i≢j ∘ #i≡#j→i≡j)
 
 --
--- Configurations
+-- "Worlds of counters"
+-- (To be converted to worlds of supercompilation.)
 --
 
-ωConf : (k : ℕ) → Set
-ωConf = Vec ℕω
-
-_≟ωConf_ : ∀ {k} → Decidable₂ (_≡_ {A = ωConf k})
-c ≟ωConf c′ with  Pointwise.decidable _≟ω_ c c′
-... | yes PW-c≡c′ = yes (Equivalence.to Pointwise-≡ ⟨$⟩ PW-c≡c′)
-... | no ¬PW-c≡c′ = no (¬PW-c≡c′ ∘ _⟨$⟩_ (Equivalence.from Pointwise-≡))
-
--- _⊑_
-
-_⊑_ : ∀ {k} (c c′ : ωConf k) → Set
-
-_⊑_ {k} c c′ = Pointwise _⊑₁_ c c′
-
--- _⊑?_
-
-_⊑?_ : ∀ {k} → Decidable₂ (_⊑_ {k})
-_⊑?_ = Pointwise.decidable _⊑₁?_
-
--- Rebuildings
-
--- _↷₁
-
-_↷₁ : ∀ (n : ℕω) → List ℕω
-ω ↷₁ = ω ∷ []
-(# i) ↷₁ = ω ∷ # i ∷ []
-
--- _↷ 
-
-_↷ : ∀ {k} (c : ωConf k) → List (ωConf k)
-_↷ {k} c = remove-c (vec-cartesian (Vec.map _↷₁ c))
-  where remove-c = List.filter (λ c′ → ⌊ ¬? (c ≟ωConf c′) ⌋)
-
-record CntWorld (k : ℕ) : Set₁ where
+record CntWorld {k : ℕ} : Set₁ where
   constructor
     ⟨⟨_,_,_⟩⟩
+
+  Conf : Set
+  Conf = Vec ℕω k
+
   field
 
-    start : ωConf k
+    -- Initial configuration
+    start : Conf
 
     -- Driving (deterministic)
-    _⇊ : (c : ωConf k) → List (ωConf k)
+    _⇊ : (c : Conf) → List Conf
 
-    unsafe : (c : ωConf k) → Bool
+    -- Which configurations are (semantically) unsafe?
+    unsafe : (c : Conf) → Bool
 
-  cl-unsafe : ∀ (l : LazyGraph (ωConf k)) → LazyGraph (ωConf k)
+--
+-- Converting a world of counters to a world of supercompilation.
+--
+
+module CntSc {k : ℕ} (cntWorld : CntWorld {k})
+  (maxℕ : ℕ) (maxDepth : ℕ) where
+
+  open CntWorld cntWorld public
+
+  _≟Conf_ : Decidable₂ (_≡_ {A = Conf})
+
+  c ≟Conf c′ with  Pointwise.decidable _≟ω_ c c′
+  ... | yes PW-c≡c′ = yes (Equivalence.to Pointwise-≡ ⟨$⟩ PW-c≡c′)
+  ... | no ¬PW-c≡c′ = no (¬PW-c≡c′ ∘ _⟨$⟩_ (Equivalence.from Pointwise-≡))
+
+  -- _⊑_
+
+  _⊑_ : (c c′ : Conf) → Set
+
+  _⊑_ c c′ = Pointwise _⊑₁_ c c′
+
+  -- _⊑?_
+
+  _⊑?_ : Decidable₂ _⊑_
+  _⊑?_ = Pointwise.decidable _⊑₁?_
+
+  -- Rebuildings
+
+  -- _↷₁
+
+  _↷₁ : ∀ (n : ℕω) → List ℕω
+  ω ↷₁ = ω ∷ []
+  (# i) ↷₁ = ω ∷ # i ∷ []
+
+  -- _↷ 
+
+  _↷ : (c : Conf) → List Conf
+  _↷ c = remove-c (vec-cartesian (Vec.map _↷₁ c))
+    where remove-c = List.filter (λ c′ → ⌊ ¬? (c ≟Conf c′) ⌋)
+
+  -- TooBig₁
+
+  TooBig₁ : (n : ℕω) → Set
+  TooBig₁ ω = ⊥
+  TooBig₁ (# i) = maxℕ N.≤ i
+
+  -- tooBig₁?
+
+  tooBig₁? : Decidable₁ TooBig₁
+  tooBig₁? ω = no id
+  tooBig₁? (# i) = maxℕ N.≤? i
+
+  -- TooBig
+
+  TooBig : (c : Conf) → Set
+  TooBig c = Any TooBig₁ (Vec.toList c)
+
+  tooBig? : Decidable₁ TooBig
+  tooBig? c = Any.any tooBig₁? (Vec.toList c)
+
+
+  mkScWorld : (cntWorld : CntWorld {k}) → ScWorld
+  mkScWorld ⟨⟨ start , _⇊ , unsafe ⟩⟩ = record
+    { Conf = Conf
+    ; _⊑_ = _⊑_
+    ; _⊑?_ = _⊑?_
+    ; _⇉ = λ c → c ⇊ ∷ List.map [_] (c ↷) -- driving + rebuilding
+    ; whistle = ⟨ (λ h → (maxDepth N.≤ List.length h) ⊎ (↯ h))
+                , (λ c h → [ inj₁ ∘ ≤-step , inj₂ ∘ inj₂ ]′)
+                , (λ h → (maxDepth N.≤? List.length h) ⊎-dec (↯? h))
+                , bar[]
+                ⟩
+    }
+    where
+
+    ↯ : ∀ (h : List Conf) → Set
+
+    ↯ [] = ⊥
+    ↯ (c ∷ h) = TooBig c ⊎ ↯ h
+
+    ↯? : Decidable₁ ↯
+    ↯? [] = no id
+    ↯? (c ∷ h) with ↯? h
+    ... | yes dh = yes (inj₂ dh)
+    ... | no ¬dh with tooBig? c
+    ... | yes tb = yes (inj₁ tb)
+    ... | no ¬tb = no [ ¬tb , ¬dh ]′
+
+    -- The whistle is based on the combination of `pathLengthWhistle` and
+    -- and `↯`.
+
+    -- TODO: It is possible to construct a whistle based on the fact that
+    -- the set of configurations such that `¬ TooBig l c` is finite.
+
+    bar[] : Bar (λ h → maxDepth N.≤ List.length h ⊎ ↯ h) []
+    bar[] = bar-⊎ [] (BarWhistle.bar[] (pathLengthWhistle Conf maxDepth))
+
+
+  scWorld : ScWorld
+  scWorld = mkScWorld cntWorld
+
+  open BigStepMRSC scWorld public
+  open BigStepMRSC∞ scWorld public
+  open BigStepMRSC∞-Ø scWorld public
+
+  cl-unsafe : ∀ (l : LazyGraph Conf) → LazyGraph Conf
   cl-unsafe = cl-bad-conf unsafe
 
-  cl∞-unsafe : ∀ (l : LazyCograph (ωConf k)) → LazyCograph (ωConf k)
+  cl∞-unsafe : ∀ (l : LazyCograph Conf) → LazyCograph Conf
   cl∞-unsafe = cl∞-bad-conf unsafe
 
--- TooBig₁
-
-TooBig₁ : ∀ (l : ℕ) (n : ℕω) → Set
-TooBig₁ l ω = ⊥
-TooBig₁ l (# i) = l N.≤ i
-
--- tooBig₁?
-
-tooBig₁? : ∀ (l : ℕ) → Decidable₁ (TooBig₁ l)
-tooBig₁? l ω = no id
-tooBig₁? l (# i) = l N.≤? i
-
--- TooBig
-
-TooBig : ∀ (l : ℕ) {k} (c : ωConf k) → Set
-TooBig l {k} c = Any (TooBig₁ l) (Vec.toList c)
-
-tooBig? : ∀ (l : ℕ) {k} → Decidable₁ (TooBig l {k})
-tooBig? l {k} c = Any.any (tooBig₁? l) (Vec.toList c)
-
-
-mkScWorld : ∀ (l : ℕ) (maxDepth : ℕ) {k} (cntWorld : CntWorld k) → ScWorld
-mkScWorld l maxDepth {k} ⟨⟨ start , _⇊ , unsafe ⟩⟩ = record
-  { Conf = ωConf k
-  ; _⊑_ = _⊑_
-  ; _⊑?_ = _⊑?_
-  ; _⇉ = λ c → c ⇊ ∷ List.map [_] (c ↷) -- driving + rebuilding
-  ; whistle = ⟨ (λ h → (maxDepth N.≤ List.length h) ⊎ (↯ h))
-              , (λ c h → [ inj₁ ∘ ≤-step , inj₂ ∘ inj₂ ]′)
-              , (λ h → (maxDepth N.≤? List.length h) ⊎-dec (↯? h))
-              , bar[]
-              ⟩
-  }
-  where
-
-  ↯ : ∀ (h : List (ωConf k)) → Set
-
-  ↯ [] = ⊥
-  ↯ (c ∷ h) = TooBig l c ⊎ ↯ h
-
-  ↯? : Decidable₁ ↯
-  ↯? [] = no id
-  ↯? (c ∷ h) with ↯? h
-  ... | yes dh = yes (inj₂ dh)
-  ... | no ¬dh with tooBig? l c
-  ... | yes tb = yes (inj₁ tb)
-  ... | no ¬tb = no [ ¬tb , ¬dh ]′
-
-  -- The whistle is based on the combination of `pathLengthWhistle` and
-  -- and `↯`.
-
-  -- TODO: It is possible to construct a whistle based on the fact that
-  -- the set of configurations such that `¬ TooBig l c` is finite.
-
-  bar[] : Bar (λ h → maxDepth N.≤ List.length h ⊎ ↯ h) []
-  bar[] = bar-⊎ [] (BarWhistle.bar[] (pathLengthWhistle (ωConf k) maxDepth))
 
 --
 -- A "DSL" for encoding counter systems in a user-friendly form.
@@ -273,7 +296,7 @@ mkScWorld l maxDepth {k} ⟨⟨ start , _⇊ , unsafe ⟩⟩ = record
 
 -- ¶_≥_⇒_□
 
-¶_≥_⇒_□ : ∀ {k} (m : ℕω) (j : ℕ) (result : ωConf k) → List (ωConf k)
+¶_≥_⇒_□ : ∀ {k} (m : ℕω) (j : ℕ) (result : Vec ℕω k) → List (Vec ℕω k)
 
 ¶ m ≥ j ⇒ r □ =
   if ⌊ m ≥? j ⌋ then r ∷ [] else []

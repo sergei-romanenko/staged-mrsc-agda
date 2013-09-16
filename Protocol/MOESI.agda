@@ -21,16 +21,18 @@ open import Relation.Binary.PropositionalEquality
 open import Graphs
 open import BigStepSc
 open import BigStepCounters
+open import Cographs
 open import Statistics
   using (length⟪⟫)
 
-MOESI : CntWorld 5
+MOESI : CntWorld
 MOESI = ⟨⟨ start , rules , unsafe ⟩⟩
   where
+  Conf = Vec ℕω 5
 
   start = ω ∷ # 0 ∷ # 0 ∷ # 0 ∷ # 0 ∷ []
 
-  rules : Vec ℕω 5 → List (Vec ℕω 5)
+  rules : Conf → List Conf
   rules (i ∷ m ∷ s ∷ e ∷ o ∷ []) =
     ¶ i ≥ 1     ⇒
       (i ∸ # 1) ∷ # 0 ∷ (s + e + # 1) ∷ # 0 ∷ (o + m) ∷ [] □ ++
@@ -42,21 +44,13 @@ MOESI = ⟨⟨ start , rules , unsafe ⟩⟩
       (i + m + s + e + o ∸ # 1) ∷ # 0 ∷ # 0 ∷ # 1 ∷ # 0 ∷ [] □ ++
     []
 
-  unsafe : Vec ℕω 5 → Bool
+  unsafe : Conf → Bool
   unsafe (i ∷ m ∷ s ∷ e ∷ o ∷ []) =
     ¶? m ≥ 1 ∧ e + s + o ≥ 1 □ ∨
     ¶? m ≥ 2 □ ∨
     ¶? e ≥ 2 □
 
-open CntWorld MOESI
-
-scwMOESI : ScWorld
-scwMOESI = mkScWorld 2 10 MOESI
-
-open ScWorld scwMOESI
-  using (Conf)
-
-open BigStepMRSC scwMOESI
+open CntSc MOESI 3 10
 
 graph : LazyGraph Conf
 graph = lazy-mrsc start
@@ -67,16 +61,13 @@ graph = lazy-mrsc start
 graph-cl-unsafe : LazyGraph Conf
 graph-cl-unsafe = cl-empty $ cl-unsafe graph
 
-#graph-cl-unsafe : length⟪⟫ graph-cl-unsafe ≡ 19
+#graph-cl-unsafe : length⟪⟫ graph-cl-unsafe ≡ 3944820
 #graph-cl-unsafe = refl
 
 graph-cl-min-size = cl-min-size graph-cl-unsafe
 graph-min-size = ⟪ proj₂ graph-cl-min-size ⟫
 
 -- Cographs
-
-open import Cographs
-open BigStepMRSC∞ scwMOESI
 
 cograph : LazyCograph Conf
 cograph = build-cograph start
@@ -93,8 +84,6 @@ graph-cl-unsafe≡cograph-pruned :
 graph-cl-unsafe≡cograph-pruned = refl
 
 -- Removing empty subtrees while pruning.
-
-open BigStepMRSC∞-Ø scwMOESI
 
 cograph-pruned-Ø : LazyGraph Conf
 cograph-pruned-Ø = pruneØ-cograph cograph-safe

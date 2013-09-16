@@ -21,16 +21,18 @@ open import Relation.Binary.PropositionalEquality
 open import Graphs
 open import BigStepSc
 open import BigStepCounters
+open import Cographs
 open import Statistics
   using (length⟪⟫)
 
-Synapse : CntWorld 3
+Synapse : CntWorld
 Synapse = ⟨⟨ start , rules , unsafe ⟩⟩
   where
+  Conf = Vec ℕω 3
 
   start = ω ∷ # 0 ∷ # 0 ∷ []
 
-  rules : Vec ℕω 3 → List (Vec ℕω 3)
+  rules : Conf → List Conf
   rules (i ∷ d ∷ v ∷ []) =
     ¶ i ≥ 1     ⇒
         (i + d ∸ # 1) ∷ # 0 ∷ (v + # 1) ∷ [] □ ++
@@ -40,20 +42,12 @@ Synapse = ⟨⟨ start , rules , unsafe ⟩⟩
         (i + d + v ∸ # 1) ∷ # 1 ∷ # 0 ∷ [] □ ++
     []
 
-  unsafe : Vec ℕω 3 → Bool
+  unsafe : Conf → Bool
   unsafe (i ∷ d ∷ v ∷ []) =
     ¶? d ≥ 1 ∧ v ≥ 1 □ ∨
     ¶? d ≥ 2 □
 
-open CntWorld Synapse
-
-scwSynapse : ScWorld
-scwSynapse = mkScWorld 3 10 Synapse
-
-open ScWorld scwSynapse
- using (Conf)
-
-open BigStepMRSC scwSynapse
+open CntSc Synapse 3 10
 
 graph : LazyGraph Conf
 graph = lazy-mrsc start
@@ -72,9 +66,6 @@ graph-min-size = ⟪ proj₂ graph-cl-min-size ⟫
 
 -- Cographs
 
-open import Cographs
-open BigStepMRSC∞ scwSynapse
-
 cograph : LazyCograph Conf
 cograph = build-cograph start
 
@@ -90,8 +81,6 @@ graph-cl-unsafe≡cograph-pruned :
 graph-cl-unsafe≡cograph-pruned = refl
 
 -- Removing empty subtrees while pruning.
-
-open BigStepMRSC∞-Ø scwSynapse
 
 cograph-pruned-Ø : LazyGraph Conf
 cograph-pruned-Ø = pruneØ-cograph cograph-safe

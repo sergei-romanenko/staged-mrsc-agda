@@ -21,16 +21,18 @@ open import Relation.Binary.PropositionalEquality
 open import Graphs
 open import BigStepSc
 open import BigStepCounters
+open import Cographs
 open import Statistics
   using (length⟪⟫)
 
-MOSI : CntWorld 4
+MOSI : CntWorld
 MOSI = ⟨⟨ start , rules , unsafe ⟩⟩
   where
+  Conf = Vec ℕω 4
 
   start = ω ∷ # 0 ∷ # 0 ∷ # 0 ∷ []
 
-  rules : Vec ℕω 4 → List (Vec ℕω 4)
+  rules : Conf → List Conf
   rules (i ∷ o ∷ s ∷ m ∷ []) =
     ¶ i ≥ 1     ⇒
         (i ∸ # 1) ∷ (m + o) ∷ (s + # 1) ∷ # 0 ∷ [] □ ++
@@ -48,21 +50,13 @@ MOSI = ⟨⟨ start , rules , unsafe ⟩⟩
         (i + # 1) ∷ (o ∸ # 1) ∷ s ∷ m ∷ [] □ ++
     []
 
-  unsafe : Vec ℕω 4 → Bool
+  unsafe : Conf → Bool
   unsafe (i ∷ o ∷ s ∷ m ∷ []) =
     ¶? o ≥ 2 □ ∨
     ¶? m ≥ 2 □ ∨
     ¶? s ≥ 1 ∧ m ≥ 1 □
 
-open CntWorld MOSI
-
-scwMOSI : ScWorld
-scwMOSI = mkScWorld 3 10 MOSI
-
-open ScWorld scwMOSI
-  using (Conf)
-
-open BigStepMRSC scwMOSI
+open CntSc MOSI 3 10
 
 graph : LazyGraph Conf
 graph = lazy-mrsc start
@@ -77,9 +71,6 @@ graph-cl-min-size = cl-min-size graph-cl-unsafe
 graph-min-size = ⟪ proj₂ graph-cl-min-size ⟫
 
 -- Cographs
-
-open import Cographs
-open BigStepMRSC∞ scwMOSI
 
 cograph : LazyCograph Conf
 cograph = build-cograph start
@@ -96,8 +87,6 @@ graph-cl-unsafe≡cograph-pruned :
 graph-cl-unsafe≡cograph-pruned = refl
 
 -- Removing empty subtrees while pruning.
-
-open BigStepMRSC∞-Ø scwMOSI
 
 cograph-pruned-Ø : LazyGraph Conf
 cograph-pruned-Ø = pruneØ-cograph cograph-safe
