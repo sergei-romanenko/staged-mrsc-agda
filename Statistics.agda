@@ -39,9 +39,9 @@ open import BigStepSc
 -- residual graphs that would be produced without actually generating
 -- the graphs.
 --
--- Technically, we can define a function `length⟪⟫` that analyses
+-- Technically, we can define a function `#⟪⟫` that analyses
 -- lazy graphs such that
---   length⟪⟫ l ≡ length ⟪ l ⟫
+--   #⟪ l ⟫ ≡ length ⟪ l ⟫
 
 --
 -- Counting results of `cartesian2` and `cartesian`.
@@ -86,42 +86,42 @@ length∘cartesian (xs ∷ xss) = begin
 
 mutual
 
-  -- length⟪⟫
+  -- #⟪_⟫
 
-  length⟪⟫ : ∀ {C : Set} (l : LazyGraph C) → ℕ
+  #⟪_⟫ : ∀ {C : Set} (l : LazyGraph C) → ℕ
 
-  length⟪⟫ Ø = 0
-  length⟪⟫ (stop c) = 1
-  length⟪⟫ (build c lss) = length⟪⟫⇉ lss
+  #⟪ Ø ⟫ = 0
+  #⟪ stop c ⟫ = 1
+  #⟪ build c lss ⟫ = #⟪ lss ⟫⇉
 
-  -- length⟪⟫⇉
+  -- #⟪_⟫⇉
 
-  length⟪⟫⇉ : ∀ {C : Set} (lss : List (List (LazyGraph C))) → ℕ
+  #⟪_⟫⇉ : ∀ {C : Set} (lss : List (List (LazyGraph C))) → ℕ
 
-  length⟪⟫⇉ [] = 0
-  length⟪⟫⇉ (ls ∷ lss) = (length⟪⟫* ls) + length⟪⟫⇉ lss
+  #⟪ [] ⟫⇉ = 0
+  #⟪ ls ∷ lss ⟫⇉ = #⟪ ls ⟫* + #⟪ lss ⟫⇉
 
-  -- length⟪⟫*
+  -- #⟪_⟫*
 
-  length⟪⟫* : ∀ {C : Set} (ls : List (LazyGraph C)) → ℕ
+  #⟪_⟫* : ∀ {C : Set} (ls : List (LazyGraph C)) → ℕ
 
-  length⟪⟫* [] = 1
-  length⟪⟫* (l ∷ ls) = length⟪⟫ l * length⟪⟫* ls
+  #⟪ [] ⟫* = 1
+  #⟪ l ∷ ls ⟫* = #⟪ l ⟫ * #⟪ ls ⟫*
 
 mutual
 
-  -- length⟪⟫-correct
+  -- #⟪⟫-correct
 
-  length⟪⟫-correct : ∀ {C : Set} (l : LazyGraph C) →
-   length⟪⟫ l ≡ length ⟪ l ⟫
+  #⟪⟫-correct : ∀ {C : Set} (l : LazyGraph C) →
+   #⟪ l ⟫ ≡ length ⟪ l ⟫
 
-  length⟪⟫-correct Ø = refl
-  length⟪⟫-correct (stop c) = refl
-  length⟪⟫-correct (build c lss) = begin
-    length⟪⟫ (build c lss)
+  #⟪⟫-correct Ø = refl
+  #⟪⟫-correct (stop c) = refl
+  #⟪⟫-correct (build c lss) = begin
+    #⟪ build c lss ⟫
       ≡⟨⟩
-    length⟪⟫⇉ lss
-      ≡⟨ length⟪⟫⇉-correct lss ⟩
+    #⟪ lss ⟫⇉
+      ≡⟨ #⟪⟫⇉-correct lss ⟩
     length ⟪ lss ⟫⇉
       ≡⟨ P.sym $ length-map (forth c) ⟪ lss ⟫⇉ ⟩
     length (map (forth c) ⟪ lss ⟫⇉)
@@ -130,17 +130,17 @@ mutual
     ∎
     where open ≡-Reasoning
 
-  -- length⟪⟫⇉-correct
+  -- #⟪⟫⇉-correct
 
-  length⟪⟫⇉-correct : ∀ {C : Set} (lss : List (List (LazyGraph C))) →
-    length⟪⟫⇉ lss ≡ length ⟪ lss ⟫⇉
+  #⟪⟫⇉-correct : ∀ {C : Set} (lss : List (List (LazyGraph C))) →
+    #⟪ lss ⟫⇉ ≡ length ⟪ lss ⟫⇉
 
-  length⟪⟫⇉-correct [] = refl
-  length⟪⟫⇉-correct (ls ∷ lss) = begin
-    length⟪⟫⇉ (ls ∷ lss)
+  #⟪⟫⇉-correct [] = refl
+  #⟪⟫⇉-correct (ls ∷ lss) = begin
+    #⟪ ls ∷ lss ⟫⇉
       ≡⟨⟩
-    length⟪⟫* ls + length⟪⟫⇉ lss
-      ≡⟨ cong₂ _+_ (length⟪⟫*-correct ls) (length⟪⟫⇉-correct lss) ⟩
+    #⟪ ls ⟫* + #⟪ lss ⟫⇉
+      ≡⟨ cong₂ _+_ (#⟪⟫*-correct ls) (#⟪⟫⇉-correct lss) ⟩
     length (cartesian ⟪ ls ⟫*) + length ⟪ lss ⟫⇉
       ≡⟨ P.sym $ length-++ (cartesian ⟪ ls ⟫*) ⟩
     length (cartesian ⟪ ls ⟫* ++ ⟪ lss ⟫⇉)
@@ -149,17 +149,17 @@ mutual
     ∎
     where open ≡-Reasoning
 
-  -- length⟪⟫*-correct
+  -- #⟪⟫*-correct
 
-  length⟪⟫*-correct :  ∀ {C : Set} (ls : List (LazyGraph C)) →
-    length⟪⟫* ls ≡ length (cartesian ⟪ ls ⟫*)
+  #⟪⟫*-correct :  ∀ {C : Set} (ls : List (LazyGraph C)) →
+    #⟪ ls ⟫* ≡ length (cartesian ⟪ ls ⟫*)
 
-  length⟪⟫*-correct [] = refl
-  length⟪⟫*-correct (l ∷ ls) = begin
-    length⟪⟫* (l ∷ ls)
+  #⟪⟫*-correct [] = refl
+  #⟪⟫*-correct (l ∷ ls) = begin
+    #⟪ l ∷ ls ⟫*
       ≡⟨⟩
-    length⟪⟫ l * length⟪⟫* ls
-      ≡⟨ cong₂ _*_ (length⟪⟫-correct l) (length⟪⟫*-correct ls) ⟩
+    #⟪ l ⟫ * #⟪ ls ⟫*
+      ≡⟨ cong₂ _*_ (#⟪⟫-correct l) (#⟪⟫*-correct ls) ⟩
     length ⟪ l ⟫ * length (cartesian ⟪ ls ⟫*)
       ≡⟨ P.sym $ length∘cartesian2 ⟪ l ⟫ (cartesian ⟪ ls ⟫*) ⟩
     length (cartesian2 ⟪ l ⟫ (cartesian ⟪ ls ⟫*))

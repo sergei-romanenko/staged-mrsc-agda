@@ -16,6 +16,7 @@ import BigStepScTheorems
 import BigStepScTests
 import Cographs
 import CographsTheorems
+import Statistics
 
 -- An instantiation of the model for counter systems
 

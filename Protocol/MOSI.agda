@@ -23,7 +23,7 @@ open import BigStepSc
 open import BigStepCounters
 open import Cographs
 open import Statistics
-  using (length⟪⟫)
+  using (#⟪_⟫)
 
 MOSI : CntWorld
 MOSI = ⟨⟨ start , rules , unsafe ⟩⟩
@@ -58,18 +58,6 @@ MOSI = ⟨⟨ start , rules , unsafe ⟩⟩
 
 open CntSc MOSI 3 10
 
-graph : LazyGraph Conf
-graph = lazy-mrsc start
-
-graph-cl-unsafe : LazyGraph Conf
-graph-cl-unsafe = cl-empty $ cl-unsafe graph
-
-#graph-cl-unsafe : length⟪⟫ graph-cl-unsafe ≡ 459
-#graph-cl-unsafe = refl
-
-graph-cl-min-size = cl-min-size graph-cl-unsafe
-graph-min-size = ⟪ proj₂ graph-cl-min-size ⟫
-
 -- Cographs
 
 cograph : LazyCograph Conf
@@ -78,20 +66,13 @@ cograph = build-cograph start
 cograph-safe : LazyCograph Conf
 cograph-safe = cl∞-Ø $ cl∞-unsafe cograph
 
-cograph-pruned : LazyGraph Conf
-cograph-pruned = cl-empty $ prune-cograph cograph-safe
-
-graph-cl-unsafe≡cograph-pruned :
-  graph-cl-unsafe ≡ cograph-pruned
-
-graph-cl-unsafe≡cograph-pruned = refl
-
 -- Removing empty subtrees while pruning.
 
-cograph-pruned-Ø : LazyGraph Conf
-cograph-pruned-Ø = pruneØ-cograph cograph-safe
+lgraph : LazyGraph Conf
+lgraph = pruneØ-cograph cograph-safe
 
-graph-cl-unsafe≡cograph-pruned-Ø :
-  graph-cl-unsafe ≡ cograph-pruned-Ø
+#lgraph : #⟪ lgraph ⟫ ≡ 459
+#lgraph = refl
 
-graph-cl-unsafe≡cograph-pruned-Ø = refl
+lgraph-min-size = cl-min-size lgraph
+graph-min-size = ⟪ proj₂ lgraph-min-size ⟫

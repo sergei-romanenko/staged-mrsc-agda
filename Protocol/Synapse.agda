@@ -23,7 +23,7 @@ open import BigStepSc
 open import BigStepCounters
 open import Cographs
 open import Statistics
-  using (length⟪⟫)
+  using (#⟪_⟫)
 
 Synapse : CntWorld
 Synapse = ⟨⟨ start , rules , unsafe ⟩⟩
@@ -52,17 +52,11 @@ open CntSc Synapse 3 10
 graph : LazyGraph Conf
 graph = lazy-mrsc start
 
-#graph : length⟪⟫ graph ≡ 112020
+#graph : #⟪ graph ⟫ ≡ 112020
 #graph = refl
 
 graph-cl-unsafe : LazyGraph Conf
 graph-cl-unsafe = cl-empty $ cl-unsafe graph
-
-#graph-cl-unsafe : length⟪⟫ graph-cl-unsafe ≡ 5
-#graph-cl-unsafe = refl
-
-graph-cl-min-size = cl-min-size graph-cl-unsafe
-graph-min-size = ⟪ proj₂ graph-cl-min-size ⟫
 
 -- Cographs
 
@@ -82,10 +76,16 @@ graph-cl-unsafe≡cograph-pruned = refl
 
 -- Removing empty subtrees while pruning.
 
-cograph-pruned-Ø : LazyGraph Conf
-cograph-pruned-Ø = pruneØ-cograph cograph-safe
+lgraph : LazyGraph Conf
+lgraph = pruneØ-cograph cograph-safe
 
-graph-cl-unsafe≡cograph-pruned-Ø :
-  graph-cl-unsafe ≡ cograph-pruned-Ø
+graph-cl-unsafe≡lgraph :
+  graph-cl-unsafe ≡ lgraph
 
-graph-cl-unsafe≡cograph-pruned-Ø = refl
+graph-cl-unsafe≡lgraph = refl
+
+#lgraph : #⟪ lgraph ⟫ ≡ 5
+#lgraph = refl
+
+lgraph-min-size = cl-min-size lgraph
+graph-min-size = ⟪ proj₂ lgraph-min-size ⟫
