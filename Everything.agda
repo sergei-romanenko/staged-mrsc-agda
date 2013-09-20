@@ -22,5 +22,7 @@ import Statistics
 
 import BigStepCounters
 import Protocol.Synapse
+--import Protocol.MSI
 --import Protocol.MOSI
+--import Protocol.MESI
 --import Protocol.MOESI
