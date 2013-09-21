@@ -27,3 +27,4 @@ import Protocol.Synapse
 --import Protocol.MESI
 --import Protocol.MOESI
 --import Protocol.Illinois
+--import Protocol.Berkley
