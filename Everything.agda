@@ -26,3 +26,4 @@ import Protocol.Synapse
 --import Protocol.MOSI
 --import Protocol.MESI
 --import Protocol.MOESI
+--import Protocol.Illinois

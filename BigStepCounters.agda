@@ -52,7 +52,7 @@ data ℕω : Set where
   ω  : ℕω
   #_ : (i : ℕ) → ℕω
 
-infixl 6 _+_ _∸_
+infixl 8 _+_ _∸_
 
 -- _+_
 
@@ -70,47 +70,47 @@ _∸_ : (m n : ℕω) → ℕω
 m ∸ ω = ω
 # i ∸ # j = # (i N.∸ j)
 
-infix 4 _≥_ _≥?_ _▹ω_ _▹ω?_
+infix 4 _≥#_ _≥#?_ _=#_ _=#?_
 
 -- _≥_
 
-data _≥_ : (m : ℕω) (j : ℕ) → Set where
-  ω≥j   : ∀ {j : ℕ} → ω ≥ j
-  #i≥j : ∀ {i j : ℕ} → (i≥j : i N.≥ j) → # i ≥ j
+data _≥#_ : (m : ℕω) (j : ℕ) → Set where
+  ω≥j   : ∀ {j : ℕ} → ω ≥# j
+  #i≥j : ∀ {i j : ℕ} → (i≥j : i N.≥ j) → # i ≥# j
 
 -- _≥?_
 
-_≥?_ : Decidable₂ _≥_
+_≥#?_ : Decidable₂ _≥#_
 
-ω ≥? j = yes ω≥j
+ω ≥#? j = yes ω≥j
 
-# i ≥? j with j N.≤? i
+# i ≥#? j with j N.≤? i
 ... | yes j≤i = yes (#i≥j j≤i)
 ... | no ¬j≤i = no helper
-  where helper : # i ≥ j → ⊥
+  where helper : # i ≥# j → ⊥
         helper (#i≥j i≥j) = ¬j≤i i≥j
 
--- _▹ω_
+-- _=#_
 
-data _▹ω_ : (m : ℕω) (j : ℕ) → Set where
-  ω=j   : ∀ {j} → ω ▹ω j
-  #i=i : ∀ {i} → # i ▹ω i
+data _=#_ : (m : ℕω) (j : ℕ) → Set where
+  ω=j   : ∀ {j} → ω =# j
+  #i=i : ∀ {i} → # i =# i
 
 -- #i=j→i≡j
 
-#i▹ωj→i≡j : ∀ {i j} → # i ▹ω j → i ≡ j
-#i▹ωj→i≡j #i=i = refl
+#i=#j→i≡j : ∀ {i j} → # i =# j → i ≡ j
+#i=#j→i≡j #i=i = refl
 
--- _▹ω?_
+-- _=#?_
 
-_▹ω?_ : Decidable₂ _▹ω_
+_=#?_ : Decidable₂ _=#_
 
-ω ▹ω? n = yes ω=j
-# i ▹ω? j with i N.≟ j
+ω =#? n = yes ω=j
+# i =#? j with i N.≟ j
 ... | yes i≡j rewrite i≡j = yes #i=i
 ... | no  i≢j = no helper
-  where helper : # i ▹ω j → ⊥
-        helper #i=j = i≢j (#i▹ωj→i≡j #i=j)
+  where helper : # i =# j → ⊥
+        helper #i=j = i≢j (#i=#j→i≡j #i=j)
 
 -- m ⊑₁ n means that n is more general than m.
 
@@ -294,21 +294,25 @@ module CntSc {k : ℕ} (cntWorld : CntWorld {k})
 -- A "DSL" for encoding counter systems in a user-friendly form.
 --
 
--- ¶_≥_⇒_□
+infix 7 _≥_ _==_
+infix 5 ¶_⇒_□
 
-¶_≥_⇒_□ : ∀ {k} (m : ℕω) (j : ℕ) (result : Vec ℕω k) → List (Vec ℕω k)
+-- _≥_
 
-¶ m ≥ j ⇒ r □ =
-  if ⌊ m ≥? j ⌋ then r ∷ [] else []
+_≥_ : ∀ (m : ℕω) (j : ℕ) → Bool
+m ≥ n =
+  ⌊ m ≥#? n ⌋
 
--- ¶_≥_□
+-- _==_
 
-¶?_≥_□ : ∀ (m : ℕω) (j : ℕ) → Bool
-¶? m ≥ n □ =
-  ⌊ m ≥? n ⌋
+_==_ : ∀ (m : ℕω) (j : ℕ) → Bool
 
--- ¶_≥_∧_≥_□
+m == j =
+  ⌊ m =#? j ⌋
 
-¶?_≥_∧_≥_□ : ∀ (m : ℕω) (j : ℕ)(m′ : ℕω) (j′ : ℕ) → Bool
-¶? m ≥ j ∧ m′ ≥ j′ □ =
-  ⌊ m ≥? j ⌋ ∧ ⌊ m′ ≥? j′ ⌋
+-- _⇒_□
+
+¶_⇒_□ : ∀ {k} (p : Bool) (result : Vec ℕω k) → List (Vec ℕω k)
+
+¶ p ⇒ r □ =
+  if p then r ∷ [] else []

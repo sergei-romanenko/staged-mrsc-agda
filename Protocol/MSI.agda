@@ -5,7 +5,7 @@ open import Data.Nat as N
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.Bool
-  using (Bool; true; false; _∨_)
+  using (Bool; true; false; _∧_; _∨_)
 open import Data.List
   using (List; []; _∷_; _++_)
 open import Data.Vec
@@ -44,8 +44,8 @@ MSI = ⟨⟨ start , rules , unsafe ⟩⟩
 
   unsafe : Conf → Bool
   unsafe (i ∷ m ∷ s ∷ []) =
-    ¶? m ≥ 1 ∧ s ≥ 1 □ ∨
-    ¶? m ≥ 2 □
+    m ≥ 1 ∧ s ≥ 1 ∨
+    m ≥ 2
 
 open CntSc MSI 3 10
 

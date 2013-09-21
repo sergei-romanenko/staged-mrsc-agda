@@ -5,7 +5,7 @@ open import Data.Nat as N
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.Bool
-  using (Bool; true; false; _∨_)
+  using (Bool; true; false; _∧_; _∨_)
 open import Data.List
   using (List; []; _∷_; _++_)
 open import Data.Vec
@@ -44,8 +44,8 @@ Synapse = ⟨⟨ start , rules , unsafe ⟩⟩
 
   unsafe : Conf → Bool
   unsafe (i ∷ d ∷ v ∷ []) =
-    ¶? d ≥ 1 ∧ v ≥ 1 □ ∨
-    ¶? d ≥ 2 □
+    d ≥ 1 ∧ v ≥ 1 ∨
+    d ≥ 2
 
 open CntSc Synapse 3 10
 

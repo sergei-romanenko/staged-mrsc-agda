@@ -5,7 +5,7 @@ open import Data.Nat as N
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.Bool
-  using (Bool; true; false; _∨_)
+  using (Bool; true; false; _∧_; _∨_)
 open import Data.List
   using (List; []; _∷_; _++_)
 open import Data.Vec
@@ -47,8 +47,8 @@ MESI = ⟨⟨ start , rules , unsafe ⟩⟩
 
   unsafe : Conf → Bool
   unsafe (i ∷ e ∷ s ∷ m ∷ []) =
-    ¶? m ≥ 2 □ ∨
-    ¶? s ≥ 1 ∧ m ≥ 1 □
+    m ≥ 2 ∨
+    s ≥ 1 ∧ m ≥ 1
 
 open CntSc MESI 3 10
 

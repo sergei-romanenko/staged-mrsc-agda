@@ -5,7 +5,7 @@ open import Data.Nat as N
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.Bool
-  using (Bool; true; false; _∨_)
+  using (Bool; true; false; _∧_; _∨_)
 open import Data.List
   using (List; []; _∷_; _++_)
 open import Data.Vec
@@ -46,9 +46,9 @@ MOESI = ⟨⟨ start , rules , unsafe ⟩⟩
 
   unsafe : Conf → Bool
   unsafe (i ∷ m ∷ s ∷ e ∷ o ∷ []) =
-    ¶? m ≥ 1 ∧ e + s + o ≥ 1 □ ∨
-    ¶? m ≥ 2 □ ∨
-    ¶? e ≥ 2 □
+    m ≥ 1 ∧ e + s + o ≥ 1 ∨
+    m ≥ 2 ∨
+    e ≥ 2
 
 open CntSc MOESI 3 10
 
