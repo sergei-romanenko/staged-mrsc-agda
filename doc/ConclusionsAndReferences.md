@@ -136,6 +136,7 @@ ISBN 978-5-901795-28-6, pages 112-141.
 * [Klyu2010] Ilya Klyuchnikov.
 __Supercompiler HOSC: proof of correctness.__ Preprint 31.
 Keldysh Institute of Applied Mathematics, Moscow. 2010.
+URL: <http://library.keldysh.ru/preprint.asp?lg=e&id=2010-31>
 
 * [Klyu2011mrsc] Ilya G. Klyuchnikov and Sergei A. Romanenko.
 __MRSC: a toolkit for building multi-result supercompilers.__
