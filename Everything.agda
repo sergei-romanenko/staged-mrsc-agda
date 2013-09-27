@@ -29,3 +29,6 @@ import Protocol.Synapse
 --import Protocol.Illinois
 --import Protocol.Berkley
 --import Protocol.Firefly
+--import Protocol.Futurebus
+--import Protocol.Xerox
+--import Protocol.DataRace
