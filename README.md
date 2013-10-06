@@ -11,4 +11,4 @@ produce millions of residual graphs!
 Luckily, filtering can be performed before producing final results
 of supercompilation...
 
-See more details [here](https://bitbucket.org/sergei.romanenko/staged-mrsc-agda/src/master/doc/Home.md).
+See more details [here](doc/Home.md).
