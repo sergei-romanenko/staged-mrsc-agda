@@ -14,13 +14,11 @@ the graphs.
 Technically, we can define a function `#⟪_⟫` that analyses
 lazy graphs such that
 ```
-#!agda
 #⟪⟫-correct : ∀ {C : Set} (l : LazyGraph C) →
     #⟪ l ⟫ ≡ length ⟪ l ⟫
 ```
 Here is the definition of `#⟪_⟫` (see `Statistics.agda`).
 ```
-#!agda
 mutual
 
   -- #⟪_⟫
@@ -47,7 +45,6 @@ mutual
 ```
 The proof of `#⟪⟫-correct` is based on the following lemma:
 ```
-#!agda
 length∘cartesian2 : ∀ {A : Set} →
   (xs : List A) → (yss : List (List A)) →
   length (cartesian2 xs yss) ≡ length xs * length yss
@@ -57,7 +54,6 @@ length∘cartesian2 : ∀ {A : Set} →
 
 We can define a function `%⟪_⟫`, such that
 ```
-#!agda
 %⟪⟫-correct : {C : Set} (l : LazyGraph C) →
     %⟪ l ⟫ ≡ #⟪ l ⟫ , sum (map graph-size ⟪ l ⟫)
 
@@ -69,7 +65,6 @@ the same values being calculated several times).
 
 Here is the definition of `%⟪_⟫` (see `Statistics.agda`).
 ```
-#!agda
 mutual
 
   -- %⟪_⟫

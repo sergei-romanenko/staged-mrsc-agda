@@ -2,7 +2,6 @@
 
 We can decompose the process of supercompilation into two stages
 ```
-#!agda
     naive-mrsc ≗ ⟪_⟫ ∘ lazy-mrsc
 ```
 where `⟪_⟫` is a unary function, and `f ≗ g` means that `f x = g y` for all `x`.
@@ -16,7 +15,6 @@ A `LazyGraph C` represents a finite set of graphs
 of configurations (whose type is `Graph C`).
   
 ```
-#!agda
 data LazyGraph (C : Set) : Set where
   Ø     : LazyGraph C
   stop  : (c : C) → LazyGraph C
@@ -30,14 +28,12 @@ calls auxiliary functions `⟪_⟫*` and `⟪_⟫`
 (see `Graphs.agda`).
 
 ```
-#!agda
 ⟪_⟫ : {C : Set} (l : LazyGraph C) → List (Graph C)
 ⟪_⟫* : {C : Set} (ls : List (LazyGraph C)) → List (List (Graph C))
 ⟪_⟫⇉ : {C : Set} (lss : List (List (LazyGraph C))) → List (List (Graph C))
 ```
 Here is the definition of the main function `⟪_⟫`:
 ```
-#!agda
 ⟪ Ø ⟫ = []
 ⟪ stop c ⟫ = [ back c ]
 ⟪ build c lss ⟫ = map (forth c) ⟪ lss ⟫⇉
@@ -57,7 +53,6 @@ by a lazy graph `ls[i].
 The function `⟪_⟫*` considers each lazy graph in a list of lazy graphs `ls`,
 and turns it into a list of graphs:
 ```
-#!agda
 ⟪ [] ⟫* = []
 ⟪ l ∷ ls ⟫* = ⟪ l ⟫ ∷ ⟪ ls ⟫*
 ```
@@ -66,7 +61,6 @@ a configuration, and for each decomposition computes all possible
 combinations of subgraphs:
 
 ```
-#!agda
 ⟪ [] ⟫⇉ = []
 ⟪ ls ∷ lss ⟫⇉ = cartesian ⟪ ls ⟫* ++ ⟪ lss ⟫⇉
 
@@ -81,12 +75,10 @@ defined by explicit recursion.
 ## A functional specification of lazy multi-result supercompilation
 Given a configuration `c`, the function `lazy-mrsc` produces a lazy graph.
 ```
-#!agda
 lazy-mrsc : (c : Conf) → LazyGraph Conf
 ```
 `lazy-mrsc` is defined in terms of a more general function `lazy-mrsc′`
 ```
-#!agda
 lazy-mrsc′ : ∀ (h : History) (b : Bar ↯ h) (c : Conf) → LazyGraph Conf
 lazy-mrsc c = lazy-mrsc′ [] bar[] c
 ```
@@ -94,7 +86,6 @@ The general structure of `lazy-mrsc′` is [very similar](BigStepSc)
 to that of `naive-mrsc′`, but, unlike `naive-mrsc`, it does not build Cartesian products immediately.
 
 ```
-#!agda
 lazy-mrsc′ h b c with foldable? h c
 ... | yes f = stop c
 ... | no ¬f with ↯? h
@@ -107,7 +98,6 @@ lazy-mrsc′ h b c | no ¬f | no ¬w | later bs =
 ```
 Let us compare the most interesting parts of `naive-mrsc` and `lazy-mrsc`:
 ```
-#!agda
 map (forth c)
     (concat (map (cartesian ∘ map (naive-mrsc′ (c ∷ h) (bs c))) (c ⇉)))
 ...
@@ -120,7 +110,6 @@ Note that `cartesian` disappears from `lazy-mrsc`.
 `lazy-mrsc` and `⟪_⟫` are correct with respect to `naive-mrsc`.
 In Agda this is formulated as follows:
 ```
-#!agda
 naive≡lazy : (c : Conf) → naive-mrsc c ≡ ⟪ lazy-mrsc c ⟫
 ```
 In other words, for any initial configuraion `c`,

@@ -3,24 +3,20 @@
 A function `clean` is said to be a "cleaner" if for any lazy
 graphs `l`
 ```
-#!agda
     ⟪ clean l ⟫ ⊆ ⟪ l ⟫
 ```
 Suppose that a function `filter` filters bags of graphs,
 removing "bad" graphs, so that
 ```
-#!agda
     filter ⟪ l ⟫
 ```
 generates the bag of "good" graphs. Let `clean` be a cleaner such that
 ```
-#!agda
     filter ∘ ⟪_⟫ ≗ ⟪_⟫ ∘ clean
 ```
 Then we can replace filtering of graphs with cleaning of
 lazy graphs
 ```
-#!agda
     filter ∘ naive-mrsc ≗ ⟪_⟫ ∘ clean ∘ lazy-mrsc
 ```
 In `Graphs.agda` there are defined a number of filters and
@@ -29,7 +25,6 @@ corresponding cleaniers.
 ## Filter `fl-bad-conf` and cleaner `cl-bad-conf`
 
 ```
-#!agda
 fl-bad-conf : {C : Set} (bad : C → Bool) (gs : List (Graph C)) →
   List (Graph C)
 
@@ -51,7 +46,6 @@ graph.
 
 `cl-bad-conf` is correct with respect to `fl-bad-conf`:
 ```
-#!agda
 cl-bad-conf-correct : {C : Set} (bad : C → Bool) →
   ⟪_⟫ ∘ cl-bad-conf bad ≗ fl-bad-conf bad ∘ ⟪_⟫
 ```
@@ -61,7 +55,6 @@ It is instructive to take a look at the implementation of
 `cl-bad-conf` in `Graphs.agda`, to get the general idea of
 how cleaners are really implemented:
 ```
-#!agda
 cl-bad-conf : {C : Set} (bad : C → Bool) (l : LazyGraph C) →
   LazyGraph C
 
@@ -98,13 +91,11 @@ cl-bad-conf* bad (l ∷ ls) =
 `cl-empty` is a cleaner that removes subtrees of a lazy graph that
 represent empty sets of graphs.
 ```
-#!agda
 cl-empty : {C : Set} (l : LazyGraph C) → LazyGraph C
 ```
 
 `cl-bad-conf` is correct with respect to `⟪_⟫`:
 ```
-#!agda
 cl-empty-correct : ∀ {C : Set} (l : LazyGraph C) →
   ⟪ cl-empty l ⟫ ≡ ⟪ l ⟫
 ```
@@ -113,7 +104,6 @@ A formal proof of this theorem is given in `GraphsTheorems.agda`.
 ## Cleaner `cl-min-size`
 The function `cl-min-size`
 ```
-#!agda
   cl-min-size : ∀ {C : Set} (l : LazyGraph C) → ℕ × LazyGraph C
 ```
 takes as input a lazy graph`l` and returns either `0 , Ø`,
