@@ -11,6 +11,17 @@ produce millions of residual graphs!
 Luckily, filtering can be performed before producing final results
 of supercompilation...
 
+How? This is explained in the preprint
+
+* Sergei A. Grechanik, Ilya G. Klyuchnikov, Sergei A. Romanenko.
+__Staged multi-result supercompilation: filtering before producing.__
+Keldysh Institute Preprints, (70), 2013.    
+<http://library.keldysh.ru//preprint.asp?lg=e&id=2013-70>
+
+The wiki pages are, on the one hand, a draft of the preprint,
+but, on the other hand, they contain some additional stuff,
+omitted in the preprint for the lack of space.
+
 ## TOC
 
 * [Is it possible to filter results that have not yet been produced?](FilteringBeforeProducing.md)
