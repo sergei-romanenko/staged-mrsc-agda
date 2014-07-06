@@ -506,14 +506,20 @@ module BigStepMRSC-cartesianMap (scWorld : ScWorld) where
 
   naive-mrsc-cm′ : ∀ (h : History) (b : Bar ↯ h) (c : Conf) →
                   List (Graph Conf)
+
+  naive-mrsc-cm′′ : ∀ (h : History) (b : Bar ↯ h) (c : Conf) (¬w : ¬ ↯ h) →
+                  List (Graph Conf)
+
   naive-mrsc-cm′ h b c with foldable? h c
   ... | yes f = [ back c ]
   ... | no ¬f with ↯? h
   ... | yes w = []
-  ... | no ¬w with b
-  ... | now bz with ¬w bz
-  ... | ()
-  naive-mrsc-cm′ h b c | no ¬f | no ¬w | later bs =
+  ... | no ¬w =
+    naive-mrsc-cm′′ h b c ¬w
+
+  naive-mrsc-cm′′ h (now w) c ¬w =
+    ⊥-elim (¬w w)
+  naive-mrsc-cm′′ h (later bs) c ¬w =
     map (forth c)
         (concat (map (cartesianMap (naive-mrsc-cm′ (c ∷ h) (bs c))) (c ⇉)))
 
@@ -523,17 +529,25 @@ module BigStepMRSC-cartesianMap (scWorld : ScWorld) where
   naive-mrsc-cm c = naive-mrsc-cm′ [] bar[] c
 
 
+  -- naive-mrsc-cm′-correct
+
   naive-mrsc-cm′-correct : ∀ (h : History) (b : Bar ↯ h) (c : Conf) →
     naive-mrsc-cm′ h b c ≡ naive-mrsc′ h b c
+
+  naive-mrsc-cm′-correct′ :
+    ∀ (h : History) (b : Bar ↯ h) (c : Conf) (¬w : ¬ ↯ h) →
+      naive-mrsc-cm′′ h b c ¬w ≡ naive-mrsc′′ h b c ¬w
 
   naive-mrsc-cm′-correct h b c with foldable? h c
   ... | yes f = refl
   ... | no ¬f with ↯? h
   ... | yes w = refl
-  ... | no ¬w with b
-  ... | now bz with ¬w bz
-  ... | ()
-  naive-mrsc-cm′-correct h b c | no ¬f | no ¬w | later bs =
+  ... | no ¬w =
+    naive-mrsc-cm′-correct′ h b c ¬w
+
+  naive-mrsc-cm′-correct′ h (now w) c ¬w =
+    ⊥-elim (¬w w)
+  naive-mrsc-cm′-correct′ h (later bs) c ¬w =
     cong (map (forth c) ∘ concat) (helper (c ⇉))
     where
     open EqR (P._→-setoid_ _ _)

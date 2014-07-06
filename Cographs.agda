@@ -113,11 +113,18 @@ module BigStepMRSC∞ (scWorld : ScWorld) where
     prune-cograph′ h b (stop c) = stop c
     prune-cograph′ h b (build c lss) with  ↯? h
     ... | yes w = Ø
-    ... | no ¬w with b
-    ... | now bz with ¬w bz
-    ... | ()
-    prune-cograph′ h b (build c lss) | no ¬w | later bs =
-      build c (map (prune-cograph* (c ∷ h) (bs c)) (♭ lss))
+    ... | no ¬w =
+      prune-cograph′′ h b c (♭ lss) ¬w
+
+    --prune-cograph′′
+
+    prune-cograph′′ : (h : History) (b : Bar ↯ h) (c : Conf)
+                      (lss : List (List (LazyCograph Conf)))
+                      (¬w : ¬ ↯ h) → LazyGraph Conf
+
+    prune-cograph′′ h (now w) c lss ¬w = ⊥-elim (¬w w)
+    prune-cograph′′ h (later bs) c lss ¬w =
+      build c (map (prune-cograph* (c ∷ h) (bs c)) lss)
 
     -- prune-cograph*
 
@@ -243,13 +250,20 @@ module BigStepMRSC∞-Ø (scWorld : ScWorld) where
 
     pruneØ-cograph′ h b Ø = Ø
     pruneØ-cograph′ h b (stop c) = stop c
-    pruneØ-cograph′ h b (build c ♯lss) with  ↯? h
+    pruneØ-cograph′ h b (build c lss) with  ↯? h
     ... | yes w = Ø
-    ... | no ¬w with b
-    ... | now bz with ¬w bz
-    ... | ()
-    pruneØ-cograph′ h b (build c ♯lss) | no ¬w | later bs with ♭ ♯lss
-    ... | lss =
+    ... | no ¬w =
+      pruneØ-cograph′′ h b c (♭ lss) ¬w
+
+    -- pruneØ-cograph′′
+
+    pruneØ-cograph′′ : (h : History) (b : Bar ↯ h)
+                      (c : Conf) (lss : List (List (LazyCograph Conf)))
+                      (¬w : ¬ ↯ h) → LazyGraph Conf
+
+    pruneØ-cograph′′ h (now w) c lss ¬w =
+      ⊥-elim (¬w w)
+    pruneØ-cograph′′ h (later bs) c lss ¬w =
       cl-empty-build c (pruneØ-cograph⇉ (c ∷ h) (bs c) lss)
 
     -- pruneØ-cograph⇉

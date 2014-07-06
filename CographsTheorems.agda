@@ -22,6 +22,7 @@ open import Data.Sum
 open import Data.Empty
 open import Data.Maybe
   using (Maybe; nothing; just)
+open import Data.Unit
 
 open import Function
 
@@ -39,7 +40,7 @@ module BigStepMRSC∞-Correctness (scWorld : ScWorld) where
 
   open ScWorld scWorld
   open BigStepMRSC scWorld
-    using (lazy-mrsc; lazy-mrsc′)
+    using (lazy-mrsc; lazy-mrsc′; lazy-mrsc′′)
 
   open BigStepMRSC∞ scWorld
 
@@ -56,9 +57,17 @@ module BigStepMRSC∞-Correctness (scWorld : ScWorld) where
       refl
     ... | no ¬f with ↯? h
     ... | yes w = refl
-    ... | no ¬w with b
-    ... | now bz = ⊥-elim (¬w bz)
-    ... | later bs =
+    ... | no ¬w =
+      prune′∘build′-correct′ h b c ¬w
+
+    -- prune′∘build′-correct′
+
+    prune′∘build′-correct′ :
+      (h : History) (b : Bar ↯ h) (c : Conf) (¬w : ¬ ↯ h) →
+      prune-cograph′′ h b c (build-cograph⇉ h c (c ⇉)) ¬w ≡ lazy-mrsc′′ h b c ¬w
+
+    prune′∘build′-correct′ h (now w) c ¬w = ⊥-elim (¬w w)
+    prune′∘build′-correct′ h (later bs) c ¬w =
       cong (build c) (prune′∘build⇉-correct h bs c (c ⇉))
 
     -- prune′∘build⇉-correct
@@ -116,13 +125,25 @@ module ClBadConf∞-Correctness (scWorld : ScWorld) where
     ... | yes w | P[ w≡ ] | true | P[ ≡true ] = refl
     ... | yes w | P[ w≡ ] | false | P[ ≡false ] rewrite w≡ = refl
     ... | no ¬w | P[ w≡ ] | true | P[ ≡true ] with b
-    ... | now bz = ⊥-elim (¬w bz)
+    ... | now w = ⊥-elim (¬w w)
     ... | later bs rewrite ≡true = refl
     cl∞-bad-conf′-correct h b bad (build c lss)
-      | no ¬w | P[ w≡ ] | false | P[ ≡false ] rewrite w≡ with b
-    ... | now bz = ⊥-elim (¬w bz)
-    ... | later bs rewrite ≡false =
-      cong (build c) (cl∞-bad-conf⇉-correct (c ∷ h) (bs c) bad (♭ lss))
+      | no ¬w | P[ w≡ ] | false | P[ ≡false ] rewrite w≡ =
+        cl∞-bad-conf′-correct′ h b bad c (♭ lss) ≡false ¬w
+
+    -- cl∞-bad-conf′-correct′
+
+    cl∞-bad-conf′-correct′ :
+      (h : History) (b : Bar ↯ h) (bad : Conf → Bool)
+      (c : Conf) (lss : List (List (LazyCograph Conf)))
+      (≡false : bad c ≡ false) (¬w : ¬ ↯ h) →
+      cl-bad-conf bad (prune-cograph′′ h b c lss ¬w) ≡
+        prune-cograph′′ h b c (cl∞-bad-conf⇉ bad lss) ¬w
+
+    cl∞-bad-conf′-correct′ h (now w) bad c lss ≡false ¬w =
+      ⊥-elim (¬w w)
+    cl∞-bad-conf′-correct′ h (later bs) bad c lss ≡false ¬w rewrite ≡false =
+      cong (build c) (cl∞-bad-conf⇉-correct (c ∷ h) (bs c) bad lss)
 
     -- cl∞-bad-conf⇉-correct
 
@@ -186,12 +207,21 @@ module BigStepMRSC∞-Ø-Correctness (scWorld : ScWorld) where
     pruneØ-cograph′-correct h b (stop c) = refl
     pruneØ-cograph′-correct h b (build c ♯lss) with ↯? h
     ... | yes w = refl
-    ... | no ¬w with b
-    ... | now bz with ¬w bz
-    ... | ()
-    pruneØ-cograph′-correct h b (build c ♯lss) | no ¬w | later bs =
-      cong (cl-empty-build c)
-           (pruneØ-cograph⇉-correct c (c ∷ h) (bs c) (♭ ♯lss))
+    ... | no ¬w =
+      pruneØ-cograph′-correct′ h b c (♭ ♯lss) ¬w
+
+    -- pruneØ-cograph′-correct′
+
+    pruneØ-cograph′-correct′ :
+      (h : History) (b : Bar ↯ h)
+      (c : Conf) (lss : List (List (LazyCograph Conf))) (¬w : ¬ ↯ h) →
+        pruneØ-cograph′′ h b c lss ¬w ≡
+          cl-empty (prune-cograph′′ h b c lss ¬w)
+
+    pruneØ-cograph′-correct′ h (now w) c lss ¬w =
+      ⊥-elim (¬w w)
+    pruneØ-cograph′-correct′ h (later bs) c lss ¬w =
+      cong (cl-empty-build c) (pruneØ-cograph⇉-correct c (c ∷ h) (bs c) lss)
 
     -- pruneØ-cograph⇉-correct
 
@@ -257,11 +287,22 @@ module BigStepMRSC∞-Ø-Correctness (scWorld : ScWorld) where
     cl∞-Ø′-correct h b (stop c) = refl
     cl∞-Ø′-correct h b (build c ♯lss) with ↯? h
     ... | yes w = refl
-    ... | no ¬w with b
-    ... | now w with ¬w w
-    ... | ()
-    cl∞-Ø′-correct h b (build c ♯lss) | no ¬w | later bs =
-      cong (cl-empty-build c) (cl∞-Ø⇉-correct (c ∷ h) (bs c) (♭ ♯lss))
+    ... | no ¬w =
+      cl∞-Ø′-correct′ h b c (♭ ♯lss) ¬w
+
+    -- cl∞-Ø′-correct′
+
+    cl∞-Ø′-correct′ :
+      (h : History) (b : Bar ↯ h)
+      (c : Conf) (lss : List (List (LazyCograph Conf))) (¬w : ¬ ↯ h) →
+        pruneØ-cograph′′ h b c (cl∞-Ø⇉ lss) ¬w ≡ pruneØ-cograph′′ h b c lss ¬w
+
+    cl∞-Ø′-correct′ h (now w) c lss ¬w =
+      ⊥-elim (¬w w)
+    cl∞-Ø′-correct′ h (later bs) c lss ¬w =
+      cong (cl-empty-build c) (cl∞-Ø⇉-correct (c ∷ h) (bs c) lss)
+
+    -- cl∞-Ø⇉-correct
 
     cl∞-Ø⇉-correct :
       (h : History) (b : Bar ↯ h) (lss : List (List (LazyCograph Conf))) →
@@ -282,6 +323,8 @@ module BigStepMRSC∞-Ø-Correctness (scWorld : ScWorld) where
       (h : History) (b : Bar ↯ h) (ls : List (LazyCograph Conf)) →
         pruneØ-cograph* h b (cl∞-Ø* ls) ≡ pruneØ-cograph* h b ls
 
+    -- cl∞-Ø*-correct
+
     cl∞-Ø*-correct h b [] = refl
     cl∞-Ø*-correct h b (l ∷ ls) rewrite cl∞-Ø′-correct h b l
       with (pruneØ-cograph′ h b l) 
@@ -298,3 +341,6 @@ module BigStepMRSC∞-Ø-Correctness (scWorld : ScWorld) where
     pruneØ-cograph ∘ cl∞-Ø ≗ pruneØ-cograph
 
   cl∞-Ø-correct l = cl∞-Ø′-correct [] bar[] l
+
+--
+

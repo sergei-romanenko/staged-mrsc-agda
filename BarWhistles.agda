@@ -72,7 +72,7 @@ open import AlmostFullRel
 
 data Bar {A : Set} (D : List A → Set) :
          (h : List A) → Set where
-  now   : {h : List A} (bz : D h) → Bar D h
+  now   : {h : List A} (w : D h) → Bar D h
   later : {h : List A} (bs : ∀ c → Bar D (c ∷ h)) → Bar D h
 
 
@@ -106,7 +106,7 @@ module BarGen {A : Set} (g : List A → A) (w : BarWhistle A) where
 
   barGen′ : ∀ (h : List A) (b : Bar ↯ h) →
               ∃ λ (h′ : List A) → ↯ h′
-  barGen′ h (now bz) = h , bz
+  barGen′ h (now w) = h , w
   barGen′ h (later bs) with g h
   ... | c = barGen′ (c ∷ h) (bs c)
 
@@ -131,7 +131,7 @@ module BarFanGen
   open BarWhistle w
 
   fanGen′ : (h : List A) (b : Bar ↯ h) → Fan A
-  fanGen′ h (now bz) =
+  fanGen′ h (now w) =
     fan []
   fanGen′ h (later bs) =
     fan (map (λ c → c , fanGen′ (c ∷ h) (bs c)) (h ⇉))
@@ -149,8 +149,8 @@ bar-mono : ∀ {A : Set}
   {D D′ : ∀ (h : List A) → Set} →
   D  ⊆ D′ →
   (h : List A) (b : Bar D h) → Bar D′ h
-bar-mono D→D′ h (now bz) =
-  now (D→D′ bz)
+bar-mono D→D′ h (now w) =
+  now (D→D′ w)
 bar-mono D→D′ h (later bs) =
   later (λ c → bar-mono D→D′ (c ∷ h) (bs c))
 
@@ -216,7 +216,7 @@ inverseImageWhistle {A} {B} f ⟨ d , d∷ , d? , bd[] ⟩ =
   ↯∷ c h dh = d∷ (f c) (map f h) dh
 
   bar : (h : List A) (b : Bar d (map f h)) → Bar (d ∘ map f) h
-  bar h (now bz) = now bz
+  bar h (now w) = now w
   bar h (later bs) = later (λ c → bar (c ∷ h) (bs (f c)))
 
 --
@@ -326,8 +326,8 @@ module bar⋑↯⇔af⋑≫ {A : Set} (⋑-world : ⋑-World A) where
 
   bar⋑↯→af⋑≫ : (h : List A) →
                   Bar ⋑↯ h → Almost-full (⋑≫ h)
-  bar⋑↯→af⋑≫ h (now bz) =
-    now (λ x y → inj₁ (inj₂ bz))
+  bar⋑↯→af⋑≫ h (now w) =
+    now (λ x y → inj₁ (inj₂ w))
   bar⋑↯→af⋑≫ h (later bs) =
     later {_≫_ = ⋑≫ h} (λ c → af-⇒ (step c) (afch c))
     where
