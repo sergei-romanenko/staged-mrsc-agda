@@ -114,16 +114,11 @@ module MRSC-correctness where
   open Membership-≡
   open BigStepMRSC scWorld
 
-  -- naive-mrsc-sound′ & naive-mrsc-sound′′
+  -- naive-mrsc-sound′
 
   naive-mrsc-sound′ :
     (h : History) (b : Bar ↯ h) {c : Conf} {g : Graph Conf} →
     g ∈ naive-mrsc′ h b c → h ⊢MRSC c ↪ g
-
-  naive-mrsc-sound′′ :
-    (h : History) (b : Bar ↯ h) {c : Conf} {g : Graph Conf}
-    (¬f : ¬ Foldable h c) (¬w : ¬ ↯ h) →
-    g ∈ naive-mrsc′′ h b c ¬w →  h ⊢MRSC c ↪ g
 
   naive-mrsc-sound′ h b {c} q with foldable? h c
   naive-mrsc-sound′ h b (here g≡) | yes f rewrite g≡ =
@@ -131,12 +126,9 @@ module MRSC-correctness where
   naive-mrsc-sound′ h b (there ()) | yes f
   ... | no ¬f with ↯? h
   naive-mrsc-sound′ h b () | no ¬f | yes w
-  naive-mrsc-sound′ h b {c} {g} q | no ¬f | no ¬w =
-    naive-mrsc-sound′′ h b ¬f ¬w q
-
-  naive-mrsc-sound′′ h (now w) ¬f ¬w q  with ¬w w
-  ... | ()
-  naive-mrsc-sound′′ h (later bs) {c} {g} ¬f ¬w q =
+  naive-mrsc-sound′ h (now w) q | no ¬f | no ¬w =
+    ⊥-elim (¬w w)
+  naive-mrsc-sound′ h (later bs) {c} {g} q | no ¬f | no ¬w =
     helper q
     where
     open ∼-Reasoning
@@ -200,18 +192,11 @@ module MRSC-correctness where
   naive-mrsc-sound =
     naive-mrsc-sound′ [] bar[]
 
-  -- naive-mrsc-complete′  & naive-mrsc-complete′′
+  -- naive-mrsc-complete′
 
   naive-mrsc-complete′ :
     (h : History) (b : Bar ↯ h) {c : Conf} {g : Graph Conf} →
       h ⊢MRSC c ↪ g → g ∈ naive-mrsc′ h b c
-
-  naive-mrsc-complete′′ :
-    (h : History) (b : Bar ↯ h) {c : Conf}
-    {cs : List Conf} {gs : List (Graph Conf)}
-    (cs∈c⇉ : cs ∈ c ⇉) (s  : (c ∷ h) ⊢MRSC* cs ↪ gs)
-    (¬f : ¬ Foldable h c) (¬w : ¬ ↯ h) →
-    forth c gs ∈ naive-mrsc′′ h b c ¬w
 
   naive-mrsc-complete′ h b {c} q with foldable? h c
   naive-mrsc-complete′ h b (mrsc-fold f) | yes f′ =
@@ -225,11 +210,11 @@ module MRSC-correctness where
     ⊥-elim (¬w w)
   naive-mrsc-complete′ h b (mrsc-fold f) | no ¬f | no ¬w =
     ⊥-elim (¬f f)
-  naive-mrsc-complete′ h b (mrsc-build _ _ i s) | no ¬f | no ¬w =
-    naive-mrsc-complete′′ h b i s ¬f ¬w
 
-  naive-mrsc-complete′′ h (now w) cs∈c⇉ s ¬f ¬w = ⊥-elim (¬w w)
-  naive-mrsc-complete′′ h (later bs) {c} {cs} {gs} cs∈c⇉ s ¬f ¬w =
+  naive-mrsc-complete′ h (now w) (mrsc-build _ _ i s) | no ¬f | no ¬w =
+    ⊥-elim (¬w w)
+  naive-mrsc-complete′ h (later bs) {c} (mrsc-build {cs = cs} {gs = gs} _ _ cs∈c⇉ s)
+    | no ¬f | no ¬w =
     helper (gs , gs∈gss , refl)
     where
     open ∼-Reasoning
@@ -325,18 +310,9 @@ module MRSC-naive≡lazy where
     ... | yes f = refl
     ... | no ¬f with ↯? h
     ... | yes w = refl
-    ... | no ¬w =
-      naive≡lazy′′ h b c ¬f ¬w
-
-    -- naive≡lazy′′
-
-    naive≡lazy′′ : (h : History) (b : Bar ↯ h) (c : Conf)
-                   (¬f : ¬ Foldable h c) (¬w : ¬ ↯ h) →
-      naive-mrsc′′ h b c ¬w ≡ ⟪ lazy-mrsc′′ h b c ¬w ⟫
-
-    naive≡lazy′′ h (now w) c ¬f ¬w =
+    naive≡lazy′ h (now w) c | no ¬f | no ¬w =
       ⊥-elim (¬w w)
-    naive≡lazy′′ h (later bs) c ¬f ¬w =
+    naive≡lazy′ h (later bs) c | no ¬f | no ¬w =
       cong (map (forth c)) (helper (c ⇉))
       where
       open ≡-Reasoning

@@ -233,23 +233,18 @@ module BigStepMRSC (scWorld : ScWorld) where
   -- (The naive version builds Cartesian products immediately.)
   --
 
-  -- naive-mrsc′ & naive-mrsc′′
+  -- naive-mrsc′
 
   naive-mrsc′ : ∀ (h : History) (b : Bar ↯ h) (c : Conf)  →
                   List (Graph Conf)
-
-  naive-mrsc′′ : ∀ (h : History) (b : Bar ↯ h) (c : Conf) (¬w : ¬ ↯ h) →
-                 List (Graph Conf)
 
   naive-mrsc′ h b c with foldable? h c
   ... | yes f = [ back c ]
   ... | no ¬f with ↯? h
   ... | yes w = []
-  ... | no ¬w = naive-mrsc′′ h b c ¬w
-
-  naive-mrsc′′ h (now w) c ¬w =
+  naive-mrsc′ h (now w) c | no ¬f | no ¬w =
     ⊥-elim (¬w w)
-  naive-mrsc′′ h (later bs) c ¬w =
+  naive-mrsc′ h (later bs) c | no ¬f | no ¬w =
     map (forth c)
         (concat (map (cartesian ∘ map (naive-mrsc′ (c ∷ h) (bs c))) (c ⇉)))
 
@@ -270,18 +265,13 @@ module BigStepMRSC (scWorld : ScWorld) where
   lazy-mrsc′ : ∀ (h : History) (b : Bar ↯ h) (c : Conf) →
                   LazyGraph Conf
 
-  lazy-mrsc′′ : ∀ (h : History) (b : Bar ↯ h) (c : Conf) (¬w : ¬ ↯ h) →
-                  LazyGraph Conf
- 
   lazy-mrsc′ h b c with foldable? h c
   ... | yes f = stop c
   ... | no ¬f with ↯? h
   ... | yes w = Ø
-  ... | no ¬w =  lazy-mrsc′′ h b c ¬w
-
-  lazy-mrsc′′ h (now w) c ¬w =
+  lazy-mrsc′ h (now w) c | no ¬f | no ¬w =
     ⊥-elim (¬w w)
-  lazy-mrsc′′ h (later bs) c ¬w =
+  lazy-mrsc′ h (later bs) c | no ¬f | no ¬w =
     build c (map (map (lazy-mrsc′ (c ∷ h) (bs c))) (c ⇉))
 
   -- lazy-mrsc
