@@ -128,56 +128,56 @@ mutual
 -- `cl-bad-conf` is sound
 --
 
-module ClBadConf-Sound where
+module ClBadConf-Sound (C : Set) (bad : C → Bool) where
 
   open Membership-≡
 
   -- cl-bad-conf*-is-map
 
   cl-bad-conf*-is-map :
-    {C : Set} (bad : C → Bool) (ls : List (LazyGraph C)) →
-    cl-bad-conf* bad ls ≡ map (cl-bad-conf bad) ls
+    (ls : List (LazyGraph C)) →
+      cl-bad-conf* bad ls ≡ map (cl-bad-conf bad) ls
 
-  cl-bad-conf*-is-map bad [] =
+  cl-bad-conf*-is-map [] =
     refl
-  cl-bad-conf*-is-map bad (l ∷ ls) =
-    cong (_∷_ (cl-bad-conf bad l)) (cl-bad-conf*-is-map bad ls)
+  cl-bad-conf*-is-map (l ∷ ls) =
+    cong (_∷_ (cl-bad-conf bad l)) (cl-bad-conf*-is-map ls)
 
   mutual
 
     cl-bad-conf-sound :
-      {C : Set} (bad : C → Bool) (l : LazyGraph C) →
-      ⟪ cl-bad-conf bad l ⟫ ⊆ ⟪ l ⟫
+      (l : LazyGraph C) →
+        ⟪ cl-bad-conf bad l ⟫ ⊆ ⟪ l ⟫
 
-    cl-bad-conf-sound bad Ø =
+    cl-bad-conf-sound Ø =
       id
-    cl-bad-conf-sound bad (stop c) with bad c
+    cl-bad-conf-sound (stop c) with bad c
     ... | true = λ ()
     ... | false = id
-    cl-bad-conf-sound bad (build c lss) {g} with bad c
+    cl-bad-conf-sound (build c lss) {g} with bad c
     ... | true = λ ()
     ... | false =
       g ∈ map (forth c) ⟪ cl-bad-conf⇉ bad lss ⟫⇉
         ↔⟨ sym $ map-∈↔ ⟩
       ∃ (λ g′ → g′ ∈ ⟪ cl-bad-conf⇉ bad lss ⟫⇉ × g ≡ forth c g′)
-        ∼⟨ Σ.cong Inv.id (cl-bad-conf⇉-sound bad lss ×-cong id) ⟩
+        ∼⟨ Σ.cong Inv.id (cl-bad-conf⇉-sound lss ×-cong id) ⟩
       ∃ (λ g′ → g′ ∈ ⟪ lss ⟫⇉ × g ≡ forth c g′)
         ↔⟨ map-∈↔ ⟩
       g ∈ map (forth c) ⟪ lss ⟫⇉
       ∎ where open ∼-Reasoning
 
     cl-bad-conf⇉-sound :
-      {C : Set} (bad : C → Bool) (lss : List (List (LazyGraph C))) →
-      ⟪ cl-bad-conf⇉ bad lss ⟫⇉ ⊆ ⟪ lss ⟫⇉
+      (lss : List (List (LazyGraph C))) →
+        ⟪ cl-bad-conf⇉ bad lss ⟫⇉ ⊆ ⟪ lss ⟫⇉
 
-    cl-bad-conf⇉-sound bad [] =
+    cl-bad-conf⇉-sound [] =
       id
-    cl-bad-conf⇉-sound bad (ls ∷ lss) {g} =
+    cl-bad-conf⇉-sound (ls ∷ lss) {g} =
       g ∈ cartesian ⟪ cl-bad-conf* bad ls ⟫* ++ ⟪ cl-bad-conf⇉ bad lss ⟫⇉
        ↔⟨ sym $ ++↔ ⟩
       (g ∈ cartesian ⟪ cl-bad-conf* bad ls ⟫* ⊎
         g ∈ ⟪ cl-bad-conf⇉ bad lss ⟫⇉)
-       ∼⟨ cl-bad-conf-cartesian bad ls ⊎-cong cl-bad-conf⇉-sound bad lss ⟩
+       ∼⟨ cl-bad-conf-cartesian ls ⊎-cong cl-bad-conf⇉-sound lss ⟩
       (g ∈ cartesian ⟪ ls ⟫* ⊎ g ∈ ⟪ lss ⟫⇉)
         ↔⟨ ++↔ ⟩
       g ∈ cartesian ⟪ ls ⟫* ++ ⟪ lss ⟫⇉
@@ -186,10 +186,10 @@ module ClBadConf-Sound where
     -- cl-bad-conf-cartesian
 
     cl-bad-conf-cartesian :
-      {C : Set} (bad : C → Bool) (ls : List (LazyGraph C)) →
-      cartesian ⟪ cl-bad-conf* bad ls ⟫* ⊆ cartesian ⟪ ls ⟫*
+      (ls : List (LazyGraph C)) →
+        cartesian ⟪ cl-bad-conf* bad ls ⟫* ⊆ cartesian ⟪ ls ⟫*
 
-    cl-bad-conf-cartesian {C} bad ls {gs} =
+    cl-bad-conf-cartesian ls {gs} =
       cartesian-mono ⟪ cl-bad-conf* bad ls ⟫* ⟪ ls ⟫* (helper tt)
       where
       open ∼-Reasoning
@@ -197,7 +197,7 @@ module ClBadConf-Sound where
       ∈*∘map : ∀ ls →
         Pointwise.Rel _⊆_ (map (⟪_⟫ ∘ cl-bad-conf bad) ls) (map ⟪_⟫ ls)
       ∈*∘map [] = []
-      ∈*∘map (l ∷ ls) = cl-bad-conf-sound bad l ∷ ∈*∘map ls
+      ∈*∘map (l ∷ ls) = cl-bad-conf-sound l ∷ ∈*∘map ls
 
       helper : ⊤ → Pointwise.Rel _⊆_ ⟪ cl-bad-conf* bad ls ⟫* ⟪ ls ⟫*
       helper =
@@ -212,7 +212,7 @@ module ClBadConf-Sound where
                     (P.sym $ ⟪⟫*-is-map ls) ⟩
         Pointwise.Rel _⊆_ ⟪ map (cl-bad-conf bad) ls ⟫* ⟪ ls ⟫*
           ∼⟨ subst (λ u → Pointwise.Rel _⊆_ ⟪ u ⟫* ⟪ ls ⟫*)
-                   (P.sym $ cl-bad-conf*-is-map bad ls) ⟩
+                   (P.sym $ cl-bad-conf*-is-map ls) ⟩
         Pointwise.Rel _⊆_ ⟪ cl-bad-conf* bad ls ⟫* ⟪ ls ⟫*
         ∎
 
@@ -221,27 +221,27 @@ module ClBadConf-Sound where
 -- `cl-bad-conf` is correct with respect to `fl-bad-conf`.
 --
 
-module ClBadConf~FlBadConf where
+module ClBadConf~FlBadConf (C : Set) (bad : C → Bool) where
 
-  not∘bad-graph* : {C : Set} (bad : C → Bool) →
+  not∘bad-graph* :
     not ∘ bad-graph* bad ≗ all (not ∘ bad-graph bad)
 
-  not∘bad-graph* bad [] = refl
-  not∘bad-graph* bad (g ∷ gs) with bad-graph bad g
+  not∘bad-graph* [] = refl
+  not∘bad-graph* (g ∷ gs) with bad-graph bad g
   ... | true = refl
-  ... | false = not∘bad-graph* bad gs
+  ... | false = not∘bad-graph* gs
 
   mutual
 
-    cl-bad-conf-correct : {C : Set} (bad : C → Bool) →
+    cl-bad-conf-correct :
       ⟪_⟫ ∘ cl-bad-conf bad ≗ fl-bad-conf bad ∘ ⟪_⟫
 
-    cl-bad-conf-correct bad Ø =
+    cl-bad-conf-correct Ø =
       refl
-    cl-bad-conf-correct bad (stop c) with bad c
+    cl-bad-conf-correct (stop c) with bad c
     ... | true = refl
     ... | false = refl
-    cl-bad-conf-correct bad (build c lss) with bad c | inspect bad c
+    cl-bad-conf-correct (build c lss) with bad c | inspect bad c
 
     ... | true | P[ ≡true ] = begin
       []
@@ -265,7 +265,7 @@ module ClBadConf~FlBadConf where
 
     ... | false | P[ ≡false ] = begin
       map (forth c) ⟪ cl-bad-conf⇉ bad lss ⟫⇉
-        ≡⟨ cong (map (forth c)) (cl-bad-conf⇉-correct bad lss) ⟩
+        ≡⟨ cong (map (forth c)) (cl-bad-conf⇉-correct lss) ⟩
       map (forth c) (filter (not ∘ bad-graph* bad) ⟪ lss ⟫⇉)
         ≡⟨ cong (map (forth c))
                 (cong (flip filter ⟪ lss ⟫⇉) (P.sym $ helper₁)) ⟩
@@ -283,18 +283,17 @@ module ClBadConf~FlBadConf where
 
     -- cl-bad-conf⇉-correct
 
-    cl-bad-conf⇉-correct : {C : Set} (bad : C → Bool) →
+    cl-bad-conf⇉-correct :
       ∀ lss → ⟪ cl-bad-conf⇉ bad lss ⟫⇉ ≡
                  filter (not ∘ bad-graph* bad) ⟪ lss ⟫⇉
 
-
-    cl-bad-conf⇉-correct bad [] = refl
-    cl-bad-conf⇉-correct bad (ls ∷ lss) = begin
+    cl-bad-conf⇉-correct [] = refl
+    cl-bad-conf⇉-correct (ls ∷ lss) = begin
       ⟪ cl-bad-conf⇉ bad (ls ∷ lss) ⟫⇉
         ≡⟨ refl ⟩
       cartesian ⟪ cl-bad-conf* bad ls ⟫* ++ ⟪ cl-bad-conf⇉ bad lss ⟫⇉
-        ≡⟨ cong₂ _++_ (cartesian∘cl-bad* bad ls)
-                      (cl-bad-conf⇉-correct bad lss) ⟩
+        ≡⟨ cong₂ _++_ (cartesian∘cl-bad* ls)
+                      (cl-bad-conf⇉-correct lss) ⟩
       filter (not ∘ bad-graph* bad) (cartesian ⟪ ls ⟫*) ++
       filter (not ∘ bad-graph* bad) ⟪ lss ⟫⇉
         ≡⟨ P.sym $ filter-++-commute (not ∘ bad-graph* bad)
@@ -307,34 +306,34 @@ module ClBadConf~FlBadConf where
 
     -- cartesian∘cl-bad*
 
-    cartesian∘cl-bad* : {C : Set} (bad : C → Bool) →
+    cartesian∘cl-bad* :
       ∀ (ls : List (LazyGraph C)) →
       cartesian ⟪ cl-bad-conf* bad ls ⟫* ≡
       filter (not ∘ bad-graph* bad) (cartesian ⟪ ls ⟫*)
 
-    cartesian∘cl-bad* bad ls = begin
+    cartesian∘cl-bad* ls = begin
       cartesian ⟪ cl-bad-conf* bad ls ⟫*
-        ≡⟨ cong cartesian (cl-bad-conf*-correct bad ls) ⟩
+        ≡⟨ cong cartesian (cl-bad-conf*-correct ls) ⟩
       cartesian (map (fl-bad-conf bad) ⟪ ls ⟫*)
         ≡⟨⟩
       cartesian (map (filter (not ∘ bad-graph bad)) ⟪ ls ⟫*)
         ≡⟨ P.sym $ filter∘cartesian (not ∘ bad-graph bad) ⟪ ls ⟫* ⟩
       filter (all (not ∘ bad-graph bad)) (cartesian ⟪ ls ⟫*)
-        ≡⟨ P.sym $ filter-cong (not∘bad-graph* bad) (cartesian ⟪ ls ⟫*) ⟩
+        ≡⟨ P.sym $ filter-cong not∘bad-graph* (cartesian ⟪ ls ⟫*) ⟩
       filter (not ∘ bad-graph* bad) (cartesian ⟪ ls ⟫*)
       ∎ where open ≡-Reasoning
 
 
-    cl-bad-conf*-correct : {C : Set} (bad : C → Bool) →
+    cl-bad-conf*-correct :
       ∀ ls → ⟪ cl-bad-conf* bad ls ⟫* ≡ map (fl-bad-conf bad) ⟪ ls ⟫*
 
-    cl-bad-conf*-correct bad [] = refl
-    cl-bad-conf*-correct bad (l ∷ ls) = begin
+    cl-bad-conf*-correct [] = refl
+    cl-bad-conf*-correct (l ∷ ls) = begin
       ⟪ cl-bad-conf* bad (l ∷ ls) ⟫*
         ≡⟨⟩
       ⟪ cl-bad-conf bad l ⟫ ∷ ⟪ cl-bad-conf* bad ls ⟫*
-        ≡⟨ cong₂ _∷_ (cl-bad-conf-correct bad l)
-                     (cl-bad-conf*-correct bad ls) ⟩
+        ≡⟨ cong₂ _∷_ (cl-bad-conf-correct l)
+                     (cl-bad-conf*-correct ls) ⟩
       fl-bad-conf bad ⟪ l ⟫ ∷ map (fl-bad-conf bad) ⟪ ls ⟫*
         ≡⟨⟩
       map (fl-bad-conf bad) (⟪ l ⟫ ∷ ⟪ ls ⟫*)
