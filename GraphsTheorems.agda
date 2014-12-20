@@ -7,7 +7,7 @@ module GraphsTheorems where
 open import Algebra
   using (module Monoid)
 open import Data.Bool
-  using (Bool; true; false; if_then_else_; not)
+  using (Bool; true; false; if_then_else_; not; _∨_)
 open import Data.Nat
 open import Data.Fin as F
   using (Fin; zero; suc)
@@ -231,6 +231,16 @@ module ClBadConf~FlBadConf (C : Set) (bad : C → Bool) where
   ... | true = refl
   ... | false = not∘bad-graph* gs
 
+  not∘bad-graph : {c : C} {b : Bool} → bad c ≡ b →
+    not ∘ _∨_ b ∘ bad-graph* bad ≡ not ∘ bad-graph bad ∘ forth c
+  not∘bad-graph {c} {b} bad-c≡b = begin
+    not ∘ _∨_ b ∘ bad-graph* bad
+      ≡⟨ cong (λ bad-c → not ∘ _∨_ bad-c ∘ bad-graph* bad) (P.sym $ bad-c≡b) ⟩
+    not ∘ _∨_ (bad c) ∘ bad-graph* bad
+      ≡⟨⟩
+    not ∘ bad-graph bad ∘ forth c
+    ∎ where open ≡-Reasoning
+
   mutual
 
     cl-bad-conf-correct :
@@ -250,36 +260,28 @@ module ClBadConf~FlBadConf (C : Set) (bad : C → Bool) where
         ≡⟨ cong (map (forth c)) (P.sym $ filter-false ⟪ lss ⟫⇉) ⟩
       map (forth c) (filter (const false) ⟪ lss ⟫⇉)
         ≡⟨ cong (map (forth c))
-                (cong (flip filter ⟪ lss ⟫⇉) helper₁) ⟩
+                (cong (flip filter ⟪ lss ⟫⇉) (not∘bad-graph ≡true)) ⟩
       map (forth c) (filter ((not ∘ bad-graph bad) ∘ forth c) ⟪ lss ⟫⇉)
         ≡⟨ P.sym $ filter∘map (not ∘ bad-graph bad)
                               (forth c) ⟪ lss ⟫⇉ ⟩
       filter (not ∘ bad-graph bad) (map (forth c) ⟪ lss ⟫⇉)
         ≡⟨⟩
       fl-bad-conf bad (map (forth c) ⟪ lss ⟫⇉)
-      ∎
-      where
-      open ≡-Reasoning
-      helper₁ : const false ≡ not ∘ bad-graph bad ∘ forth c
-      helper₁ rewrite ≡true = refl
+      ∎ where open ≡-Reasoning
 
     ... | false | P[ ≡false ] = begin
       map (forth c) ⟪ cl-bad-conf⇉ bad lss ⟫⇉
         ≡⟨ cong (map (forth c)) (cl-bad-conf⇉-correct lss) ⟩
       map (forth c) (filter (not ∘ bad-graph* bad) ⟪ lss ⟫⇉)
         ≡⟨ cong (map (forth c))
-                (cong (flip filter ⟪ lss ⟫⇉) (P.sym $ helper₁)) ⟩
+                (cong (flip filter ⟪ lss ⟫⇉) (not∘bad-graph ≡false)) ⟩
       map (forth c) (filter ((not ∘ bad-graph bad) ∘ forth c) ⟪ lss ⟫⇉)
         ≡⟨ P.sym $ filter∘map (not ∘ bad-graph bad)
                               (forth c) ⟪ lss ⟫⇉ ⟩
       filter (not ∘ bad-graph bad) (map (forth c) ⟪ lss ⟫⇉)
         ≡⟨⟩
       fl-bad-conf bad (map (forth c) ⟪ lss ⟫⇉)
-      ∎
-      where
-      open ≡-Reasoning
-      helper₁ : not ∘ bad-graph bad ∘ forth c ≡ not ∘ bad-graph* bad
-      helper₁ rewrite ≡false = refl
+      ∎ where open ≡-Reasoning
 
     -- cl-bad-conf⇉-correct
 
@@ -301,8 +303,7 @@ module ClBadConf~FlBadConf (C : Set) (bad : C → Bool) where
       filter (not ∘ bad-graph* bad) (cartesian ⟪ ls ⟫* ++ ⟪ lss ⟫⇉)
         ≡⟨⟩
       filter (not ∘ bad-graph* bad) ⟪ ls ∷ lss ⟫⇉
-      ∎
-      where open ≡-Reasoning
+      ∎ where open ≡-Reasoning
 
     -- cartesian∘cl-bad*
 

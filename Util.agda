@@ -4,7 +4,7 @@ open import Level
   using (Lift; lift; lower)
 
 open import Data.Bool
-  using (Bool; true; false)
+  using (Bool; true; false; _∧_)
 open import Data.Nat
   hiding(_⊔_)
 open import Data.Nat.Properties
@@ -28,6 +28,8 @@ open import Data.Sum as Sum
   using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Maybe
   using (Maybe; just; nothing)
+open import Data.Unit
+  using (hide; reveal)
 open import Data.Empty
 
 open import Function
@@ -592,9 +594,23 @@ cartesian-mono xss₁ xss₂ xss₁⊆xss₂ {zs} =
 -- filter∘cartesian
 --
 
+-- all∘∷
+
+all∘∷ : {A : Set} (p : A → Bool) {x : A} {b : Bool} → p x ≡ b →
+  all p ∘ (_∷_ x) ≡ _∧_ b ∘ all p
+
+all∘∷ p {x} {b} px≡b = begin
+  all p ∘ (_∷_ x)
+    ≡⟨⟩
+  _∧_ (p x) ∘ all p
+    ≡⟨ cong (λ px → _∧_ px ∘ all p) px≡b ⟩
+  _∧_ b ∘ all p
+  ∎
+  where open ≡-Reasoning
+
 -- filter∘cartesian2
 
-filter∘cartesian2 :
+filter∘cartesian2 : 
   ∀ {A : Set} (p : A → Bool) (xs : List A) (xss : List (List A)) →
     filter (all p) (cartesian2 xs xss) ≡
       cartesian2 (filter p xs) (filter (all p) xss)
@@ -609,21 +625,19 @@ filter∘cartesian2 p (x ∷ xs) xss with p x | inspect p x
   filter (all p) (map (_∷_ x) xss ++ cartesian2 xs xss)
     ≡⟨ filter-++-commute (all p) (map (_∷_ x) xss) (cartesian2 xs xss) ⟩
   filter (all p) (map (_∷_ x) xss) ++ filter (all p) (cartesian2 xs xss)
-    ≡⟨ cong₂ _++_ helper₂ (filter∘cartesian2 p xs xss) ⟩
+    ≡⟨ cong₂ _++_ helper (filter∘cartesian2 p xs xss) ⟩
   map (_∷_ x) (filter (all p) xss) ++
   cartesian2 (filter p xs) (filter (all p) xss)
   ∎
   where
   open ≡-Reasoning
-  helper₁ : all p ∘ _∷_ x ≡ all p
-  helper₁ rewrite ≡true = refl
 
-  helper₂ : filter (all p) (map (_∷_ x) xss) ≡ map (_∷_ x) (filter (all p) xss)
-  helper₂ = begin
+  helper : filter (all p) (map (_∷_ x) xss) ≡ map (_∷_ x) (filter (all p) xss)
+  helper = begin
     filter (all p) (map (_∷_ x) xss)
       ≡⟨ filter∘map (all p) (_∷_ x) xss ⟩
     map (_∷_ x) (filter (all p ∘ _∷_ x) xss)
-      ≡⟨ cong (map (_∷_ x)) (cong (flip filter xss) helper₁) ⟩
+      ≡⟨ cong (map (_∷_ x)) (cong (flip filter xss) (all∘∷ p ≡true)) ⟩
     map (_∷_ x) (filter (all p) xss)
     ∎
 
@@ -633,7 +647,7 @@ filter∘cartesian2 p (x ∷ xs) xss with p x | inspect p x
   filter (all p) (map (_∷_ x) xss ++ cartesian2 xs xss)
     ≡⟨ filter-++-commute (all p) (map (_∷_ x) xss) (cartesian2 xs xss) ⟩
   filter (all p) (map (_∷_ x) xss) ++ filter (all p) (cartesian2 xs xss)
-    ≡⟨ cong₂ _++_ helper₂ (filter∘cartesian2 p xs xss) ⟩
+    ≡⟨ cong₂ _++_ helper (filter∘cartesian2 p xs xss) ⟩
   [] ++ cartesian2 (filter p xs) (filter (all p) xss)
     ≡⟨⟩
   cartesian2 (filter p xs) (filter (all p) xss)
@@ -641,15 +655,12 @@ filter∘cartesian2 p (x ∷ xs) xss with p x | inspect p x
   where
   open ≡-Reasoning
 
-  helper₁ : all p ∘ _∷_ x ≡ const false
-  helper₁ rewrite ≡false = refl
-
-  helper₂ : filter (all p) (map (_∷_ x) xss) ≡ []
-  helper₂ = begin
+  helper : filter (all p) (map (_∷_ x) xss) ≡ []
+  helper = begin
     filter (all p) (map (_∷_ x) xss)
       ≡⟨ filter∘map (all p) (_∷_ x) xss ⟩
     map (_∷_ x) (filter (all p ∘ _∷_ x) xss)
-      ≡⟨ cong (map (_∷_ x)) (cong (flip filter xss) helper₁) ⟩
+      ≡⟨ cong (map (_∷_ x)) (cong (flip filter xss) (all∘∷ p ≡false)) ⟩
     map (_∷_ x) (filter (const false) xss)
       ≡⟨ cong (map (_∷_ x)) (filter-false xss) ⟩
     map (_∷_ x) []

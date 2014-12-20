@@ -133,7 +133,7 @@ module MRSC-correctness where
     where
     open ∼-Reasoning
 
-    step : ∀ c → List (Graph Conf)
+    step : ∀ c′ → List (Graph Conf)
     step = naive-mrsc′ (c ∷ h) (bs c)
 
     gss : List (List (Graph Conf))
@@ -158,7 +158,7 @@ module MRSC-correctness where
         ↔⟨ sym $ map-∈↔ ⟩
       ∃ (λ cs → (cs ∈ css) × gss′ ≡ (cartesian ∘ map step) cs)
       ∎
-  
+
     helper₂ : ∀ gs′ → gs′ ∈ gss → _
     helper₂ gs′ =
       gs′ ∈ gss
@@ -167,10 +167,21 @@ module MRSC-correctness where
       ∎
 
     helper₁ : ∃ (λ gs′ → gs′ ∈ gss × g ≡ forth c gs′) → h ⊢MRSC c ↪ g
-    helper₁ (gs′ , gs′∈gss , g≡) rewrite g≡ with helper₂ gs′ gs′∈gss
-    ... | gss′ , gs′∈gss′ , gss′∈ with helper₃ gss′ (c ⇉) gss′∈
-    ... | cs , cs∈css , gss′≡ rewrite gss′≡ =
-      mrsc-build ¬f ¬w cs∈css (helper₄ cs gs′ gs′∈gss′)
+    helper₁ (gs′ , gs′∈gss , g≡) =
+      let
+        gss′ , gs′∈gss′ , gss′∈ = helper₂ gs′ gs′∈gss
+        cs , cs∈css , gss′≡   = helper₃ gss′ (c ⇉) gss′∈
+      in
+        gs′ ∈ gss′
+          ∼⟨ subst (_∈_ gs′) gss′≡ ⟩
+        gs′ ∈ cartesian (map step cs)
+          ∼⟨ helper₄ cs gs′ ⟩
+        c ∷ h ⊢MRSC* cs ↪ gs′
+          ∼⟨ mrsc-build ¬f ¬w cs∈css ⟩
+        h ⊢MRSC c ↪ forth c gs′
+          ∼⟨ subst (_⊢MRSC_↪_ h c) (P.sym g≡) ⟩
+        h ⊢MRSC c ↪ g
+        ∎ $ gs′∈gss′
 
     helper : g ∈ map (forth c) gss  → h ⊢MRSC c ↪ g
     helper =
