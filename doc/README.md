@@ -37,6 +37,8 @@ Pereslavl-Zalessky: Publishing House "University of Pereslavl", 2014,
 [PDF](http://meta2014.pereslavl.ru/papers/2014_Grechanik_Klyuchnikov_Romanenko__Staged_Multi-Result_Supercompilation__Filtering_by_Transformation.pdf)
 [slides](http://pat.keldysh.ru/~roman/doc/2014_Grechanik_Klyuchnikov_Romanenko__Staged_Multi-Result_Supercompilation__Filtering_by_Transformation__slides.pdf)
 
+is an extended version of the preprint.
+
 ## TOC
 
 * [Is it possible to filter results that have not yet been produced?](FilteringBeforeProducing.md)
