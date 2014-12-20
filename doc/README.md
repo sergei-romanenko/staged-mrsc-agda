@@ -1,4 +1,4 @@
-# Staged Multi-result Supercompilation: Filtering before Producing
+# Staged Multi-result Supercompilation: Filtering by Transformation
 
 When trying to apply supercompilation to problem solving we naturally come to 
 the idea of _multi-result_ supercompilation: instead of trying to guess, which 
@@ -21,6 +21,21 @@ Keldysh Institute Preprints, (70), 2013.
 The wiki pages are, on the one hand, a draft of the preprint,
 but, on the other hand, they contain some additional stuff,
 omitted in the preprint for the lack of space.
+
+The paper
+
+* Sergei Grechanik, Ilya Klyuchnikov, and Sergei Romanenko.
+__Staged Multi-Result Supercompilation: Filtering by Transformation.__
+In *Fourth International Valentin Turchin Workshop on Metacomputation
+(Proceedings of the Fourth International Valentin Turchin Workshop
+on Metacomputation. Pereslavl-Zalessky, Russia, June 29 -
+July 3, 2014)*.    
+A.V. Klimov and S.A. Romanenko, Ed. -
+Pereslavl-Zalessky: Publishing House "University of Pereslavl", 2014,
+256 p. ISBN 978-5-901795-31-6, pages 54-78.    
+[link](http://meta2014.pereslavl.ru/papers/papers.html)
+[PDF](http://meta2014.pereslavl.ru/papers/2014_Grechanik_Klyuchnikov_Romanenko__Staged_Multi-Result_Supercompilation__Filtering_by_Transformation.pdf)
+[slides](http://pat.keldysh.ru/~roman/doc/2014_Grechanik_Klyuchnikov_Romanenko__Staged_Multi-Result_Supercompilation__Filtering_by_Transformation__slides.pdf)
 
 ## TOC
 

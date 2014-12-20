@@ -260,7 +260,7 @@ module BigStepMRSC (scWorld : ScWorld) where
   -- with get-graphs being an "interpreter" that evaluates the "program"
   -- returned by lazy-mrsc.
 
-  -- lazy-mrsc′ & lazy-mrsc′′
+  -- lazy-mrsc′
 
   lazy-mrsc′ : ∀ (h : History) (b : Bar ↯ h) (c : Conf) →
                   LazyGraph Conf
