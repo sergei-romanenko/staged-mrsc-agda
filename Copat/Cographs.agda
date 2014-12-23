@@ -23,7 +23,7 @@ open import Data.Sum
   using (_⊎_; inj₁; inj₂)
 open import Data.Empty
 open import Data.Maybe
-  using (Maybe; nothing; just)
+  using (Maybe; nothing; just; decToMaybe)
 
 open import Function
 
@@ -194,18 +194,16 @@ module _ {C : Set} where
     cl∞-Ø-children : ∀ {i} (lss : ∞Children {i} C) → ∞Children {i} C
 
     force (cl∞-Ø-children lss) {j} =
-      gfilter cl∞-Ø-child (force lss)
+      map (map cl∞-Ø) (gfilter cl∞-Ø-child (force lss))
 
     -- cl∞-Ø-child
 
     cl∞-Ø-child : ∀ {i} (ls : List (LazyCograph {i} C)) →
       Maybe (List (LazyCograph {i} C))
 
-    cl∞-Ø-child ls with map cl∞-Ø ls
-    ... | ls′ with any Ø∞≡? ls′
+    cl∞-Ø-child ls with any Ø∞≡? ls
     ... | yes Ø∈ls = nothing
-    ... | no  Ø∉ls = just ls′
-
+    ... | no  Ø∉ls = just ls
 
 -- An optimized version of `prune-cograph`.
 -- The difference is that empty subtrees are removed
