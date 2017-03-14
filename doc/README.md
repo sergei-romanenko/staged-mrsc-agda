@@ -49,5 +49,5 @@ is an extended version of the preprint.
 * [Counting without generation](CountingWithoutGeneration.md).
 * [An example: big-step supercompilation for counter systems](BigStepCounters.md).
 * [Conclusions and references](ConclusionsAndReferences.md).
-* Source code [in Agda](https://github.com/sergei-romanenko/staged-mrsc-agda). (Usable with Agda 2.4.2.2 and stdlib 0.9.)
-* [Presentation](https://bitbucket.org/sergei.romanenko/staged-mrsc-agda/downloads).
+* Source code [in Agda](https://github.com/sergei-romanenko/staged-mrsc-agda).
+  (Usable with Agda 2.5.2 and stdlib 0.13.)

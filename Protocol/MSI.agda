@@ -65,7 +65,7 @@ lgraph-unsafe = pruneØ-cograph cograph
 --#lgraph-unsafe : #⟪ lgraph-unsafe ⟫ ≡ 5370016
 --#lgraph-unsafe = refl
 
---%lgraph-unsafe : %⟪ lgraph-unsafe ⟫ ≡ 5370016 , 274510815
+--%lgraph-unsafe : %⟪ lgraph-unsafe ⟫ ≡ (5370016 , 274510815)
 --%lgraph-unsafe = refl
 
 
@@ -75,12 +75,12 @@ lgraph = pruneØ-cograph cograph-safe
 #lgraph : #⟪ lgraph ⟫ ≡ 3
 #lgraph = refl
 
-%lgraph : %⟪ lgraph ⟫ ≡ 3 , 58
+%lgraph : %⟪ lgraph ⟫ ≡ (3 , 58)
 %lgraph = refl
 
 lgraph-min-size = cl-min-size lgraph
 
-%lgraph-min-size : %⟪ proj₂ lgraph-min-size ⟫ ≡ 1 , 9
+%lgraph-min-size : %⟪ proj₂ lgraph-min-size ⟫ ≡ (1 , 9)
 %lgraph-min-size = refl
 
 graph-min-size = ⟪ proj₂ lgraph-min-size ⟫

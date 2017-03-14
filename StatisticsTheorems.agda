@@ -472,7 +472,7 @@ mutual
   -- %⟪⟫-correct
 
   %⟪⟫-correct : {C : Set} (l : LazyGraph C) →
-    %⟪ l ⟫ ≡ #⟪ l ⟫ , sum (map graph-size ⟪ l ⟫)
+    %⟪ l ⟫ ≡ (#⟪ l ⟫ , sum (map graph-size ⟪ l ⟫))
 
   %⟪⟫-correct l = begin
     %⟪ l ⟫

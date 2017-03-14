@@ -55,7 +55,7 @@ graph = lazy-mrsc start
 #graph : #⟪ graph ⟫ ≡ 112020
 #graph = refl
 
---%graph : %⟪ graph ⟫ ≡ 112020 , 4024002
+--%graph : %⟪ graph ⟫ ≡ (112020 , 4024002)
 --%graph = refl
 
 graph-cl-unsafe : LazyGraph Conf
@@ -90,12 +90,12 @@ graph-cl-unsafe≡lgraph = refl
 #lgraph : #⟪ lgraph ⟫ ≡ 5
 #lgraph = refl
 
-%lgraph : %⟪ lgraph ⟫ ≡ 5 , 97
+%lgraph : %⟪ lgraph ⟫ ≡ (5 , 97)
 %lgraph = refl
 
 lgraph-min-size = cl-min-size lgraph
 
-%lgraph-min-size : %⟪ proj₂ lgraph-min-size ⟫ ≡ 1 , 9
+%lgraph-min-size : %⟪ proj₂ lgraph-min-size ⟫ ≡ (1 , 9)
 %lgraph-min-size = refl
 
 graph-min-size = ⟪ proj₂ lgraph-min-size ⟫

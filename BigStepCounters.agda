@@ -114,6 +114,8 @@ _=#?_ : Decidable₂ _=#_
 
 -- m ⊑₁ n means that n is more general than m.
 
+infix 4 _⊑₁_ _⊑₁?_
+
 -- _⊑₁_
 
 data _⊑₁_ : (m n : ℕω) → Set where

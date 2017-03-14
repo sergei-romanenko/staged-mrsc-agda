@@ -29,7 +29,7 @@ open import Data.Sum as Sum
 open import Data.Maybe
   using (Maybe; just; nothing)
 open import Data.Unit
-  using (hide; reveal)
+  using(⊤; tt)
 open import Data.Empty
 
 open import Function

@@ -65,9 +65,8 @@ lgraph-unsafe = pruneØ-cograph cograph
 --#lgraph-unsafe : #⟪ lgraph-unsafe ⟫ ≡ 5038823438947735862
 --#lgraph-unsafe = refl
 
---%lgraph-unsafe : %⟪ lgraph-unsafe ⟫ ≡ 5038823438947735862 , ?
+--%lgraph-unsafe : %⟪ lgraph-unsafe ⟫ ≡ (5038823438947735862 , ?)
 --%lgraph-unsafe = refl
-
 
 lgraph : LazyGraph Conf
 lgraph = pruneØ-cograph cograph-safe
@@ -75,12 +74,12 @@ lgraph = pruneØ-cograph cograph-safe
 --#lgraph : #⟪ lgraph ⟫ ≡ 62247
 --#lgraph = refl
 
---%lgraph : %⟪ lgraph ⟫ ≡ 62247 , 3135052
+--%lgraph : %⟪ lgraph ⟫ ≡ (62247 , 3135052)
 --%lgraph = refl
 
 lgraph-min-size = cl-min-size lgraph
 
-%lgraph-min-size : %⟪ proj₂ lgraph-min-size ⟫ ≡ 1 , 9
+%lgraph-min-size : %⟪ proj₂ lgraph-min-size ⟫ ≡ (1 , 9)
 %lgraph-min-size = refl
 
 graph-min-size = ⟪ proj₂ lgraph-min-size ⟫

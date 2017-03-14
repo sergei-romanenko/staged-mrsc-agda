@@ -68,12 +68,12 @@ lgraph = pruneØ-cograph cograph-safe
 --#lgraph : #⟪ lgraph ⟫ ≡ 3944820
 --#lgraph = refl
 
---%lgraph : %⟪ lgraph ⟫ ≡ 3944820 , 312092974
+--%lgraph : %⟪ lgraph ⟫ ≡ (3944820 , 312092974)
 --%lgraph = refl
 
 lgraph-min-size = cl-min-size lgraph
 
-%lgraph-min-size : %⟪ proj₂ lgraph-min-size ⟫ ≡ 1 , 15
+%lgraph-min-size : %⟪ proj₂ lgraph-min-size ⟫ ≡ (1 , 15)
 %lgraph-min-size = refl
 
 graph-min-size = ⟪ proj₂ lgraph-min-size ⟫
