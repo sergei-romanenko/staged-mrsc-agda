@@ -1,4 +1,4 @@
 # Staged Multi-result Supercompilation:
-##Filtering by Transformation
+## Filtering by Transformation
 
 See [doc/README.md](doc/README.md).
