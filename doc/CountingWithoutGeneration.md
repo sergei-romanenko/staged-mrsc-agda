@@ -13,12 +13,16 @@ the graphs.
 
 Technically, we can define a function `#⟪_⟫` that analyses
 lazy graphs such that
-```
+
+```agda
 #⟪⟫-correct : ∀ {C : Set} (l : LazyGraph C) →
     #⟪ l ⟫ ≡ length ⟪ l ⟫
+
 ```
+
 Here is the definition of `#⟪_⟫` (see `Statistics.agda`).
-```
+
+```agda
 mutual
 
   -- #⟪_⟫
@@ -43,8 +47,10 @@ mutual
   #⟪ [] ⟫* = 1
   #⟪ l ∷ ls ⟫* = #⟪ l ⟫ * #⟪ ls ⟫*
 ```
+
 The proof of `#⟪⟫-correct` is based on the following lemma:
-```
+
+```agda
 length∘cartesian2 : ∀ {A : Set} →
   (xs : List A) → (yss : List (List A)) →
   length (cartesian2 xs yss) ≡ length xs * length yss
@@ -53,18 +59,21 @@ length∘cartesian2 : ∀ {A : Set} →
 # Counting nodes in collections of residual graphs
 
 We can define a function `%⟪_⟫`, such that
-```
+
+```agda
 %⟪⟫-correct : {C : Set} (l : LazyGraph C) →
     %⟪ l ⟫ ≡ #⟪ l ⟫ , sum (map graph-size ⟪ l ⟫)
 
 ```
+
 `%⟪⟫` computes the number of graphs represented by `l` and
 the total number of nodes in the graphs represented by `l`.
 It does so to avoid calling `#⟪_⟫` (which would lead to
 the same values being calculated several times).
 
 Here is the definition of `%⟪_⟫` (see `Statistics.agda`).
-```
+
+```agda
 mutual
 
   -- %⟪_⟫
@@ -91,4 +100,5 @@ mutual
   %⟪ l ∷ ls ⟫* with %⟪ l ⟫ | %⟪ ls ⟫*
   ... | k′ , n′ | k , n = k′ * k , k′ * n + k * n′
 ```
+
 The proof of `%⟪⟫-correct` is rather tedious...

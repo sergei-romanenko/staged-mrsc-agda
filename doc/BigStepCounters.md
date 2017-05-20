@@ -17,7 +17,8 @@ either the symbol `ω` or a natural number `n`, such that `n < maxℕ`.
 
 A specification of a counter system is a "world of counters",
 which is a record of the type `CntWorld`:
-```
+
+```agda
 record CntWorld {k : ℕ} : Set₁ where
   Conf : Set
   Conf = Vec ℕω k
@@ -27,6 +28,7 @@ record CntWorld {k : ℕ} : Set₁ where
     _⇊ : (c : Conf) → List Conf
     unsafe : (c : Conf) → Bool
 ```
+
 where
 
 * `k` is the number of components in a configuration.
@@ -39,11 +41,13 @@ where
   (semantically) "unsafe".
 
 Then there is defined the module `CntSc`
-```
+
+```agda
 module CntSc {k : ℕ} (cntWorld : CntWorld {k})
   (maxℕ : ℕ) (maxDepth : ℕ) where
 ...
 ```
+
 which has a number of parameters.
 
 * `k` is the number of components in a configuration,
@@ -70,17 +74,22 @@ protocols.
 In order to be specific, let us consider the protocol `Synapse`.
 
 The world of counters in the case of `Synapse` is declared as
-```
+
+```agda
 Synapse : CntWorld
 Synapse = ...
 ```
+
 We can convert `Synapse` into a world of supercompilation:
-```
+
+```agda
 open CntSc Synapse 3 10
 ```
+
 Now we can generate a lazy graph, clean it and extract a graph
 of minimal size:
-```
+
+```agda
 graph : LazyGraph Conf
 graph = lazy-mrsc start
 
@@ -90,9 +99,11 @@ graph-cl-unsafe = cl-empty $ cl-unsafe graph
 graph-cl-min-size = cl-min-size graph-cl-unsafe
 graph-min-size = ⟪ proj₂ graph-cl-min-size ⟫
 ```
+
 If we want to deal with cographs, this can be done
 as follows:
-```
+
+```agda
 cograph : LazyCograph Conf
 cograph = build-cograph start
 
@@ -103,7 +114,8 @@ cograph-pruned : LazyGraph Conf
 cograph-pruned = cl-empty $ prune-cograph cograph-safe
 ```
 We can test that in both cases we get the same result:
-```
+
+```agda
 graph-cl-unsafe≡cograph-pruned :
   graph-cl-unsafe ≡ cograph-pruned
 
@@ -114,7 +126,8 @@ theorem proving: so, we prove the theorem that `graph-cl-unsafe`
 and `cograph-pruned` are the same thing.
 
 Empty subtrees can be removed in the process of pruning.
-```
+
+```agda
 cograph-pruned-Ø : LazyGraph Conf
 cograph-pruned-Ø = pruneØ-cograph cograph-safe
 

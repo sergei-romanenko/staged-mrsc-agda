@@ -11,30 +11,30 @@ Unfortunately, this may lead to combinatorial explosion.
 We have suggested the following solution.
 
 * Instead of generating and filtering a collection of residual
-graphs of configurations, we can produce a compact representation
-for the collection of graphs (a "lazy graph"), and then analyze
-this representation.
+  graphs of configurations, we can produce a compact representation
+  for the collection of graphs (a "lazy graph"), and then analyze
+  this representation.
 
 * This compact representation can be derived from
-a (big-step) multi-result supercompiler in a systematic way by
-(manually) staging this supercompiler to represent it
-as a composition of two stages. At the first stage, some
-graph-building operations are delayed to be later performed
-at the second stage.
+  a (big-step) multi-result supercompiler in a systematic way by
+  (manually) staging this supercompiler to represent it
+  as a composition of two stages. At the first stage, some
+  graph-building operations are delayed to be later performed
+  at the second stage.
 
 * The result produced by the first stage is a "lazy graph",
-which is, essentially, a program to be interpreted at the
-second stage, to actually generate a collection of residual
-graphs.
+  which is, essentially, a program to be interpreted at the
+  second stage, to actually generate a collection of residual
+  graphs.
 
 * The key point of our approach is that a number of problems
-can be solved by directly analyzing the lazy graphs, rather
-than by actually generating and analyzing the collections
-of graphs they represent.
+  can be solved by directly analyzing the lazy graphs, rather
+  than by actually generating and analyzing the collections
+  of graphs they represent.
 
 * In some cases of practical importance, the analysis of
-a lazy graph can be performed in linear time.
- 
+  a lazy graph can be performed in linear time.
+
 ## Related work
 
 The idea that supercompilation can produce a compact representation
@@ -51,17 +51,17 @@ differs in that we are interested in applying supercompilation to
 problem solving. Thus
 
 * We consider multi-result supercompilation, rather than
-single-result supercompilation.
+  single-result supercompilation.
 
 * Our big-step supercompilation constructs graphs of configurations
-in an explicit way, because the graphs are going to be filtered
-and/or analyzed at a later stage.
+  in an explicit way, because the graphs are going to be filtered
+  and/or analyzed at a later stage.
 
 * Bolingbroke and Peyton Jones considered big-step supercompilation
-in functional form, while we have studied both a relational
-specification of big-step supercompilation and the functional
-one and have proved the correctness of the functional
-specification with respect to the relational one.
+  in functional form, while we have studied both a relational
+  specification of big-step supercompilation and the functional
+  one and have proved the correctness of the functional
+  specification with respect to the relational one.
 
 A relational specification of single-result supercompilation
 was suggested by Klimov [Kli2008rel], who argued that

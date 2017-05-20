@@ -18,7 +18,7 @@ residual graph of configurations is "the best" one, a multi-result supercompiler
 Suppose we have a multi-result supercompiler `mrsc` and a filter `filter`. 
 Combining them, we get a problem-solver
 
-```
+```agda
     solver = filter ∘ mrsc
 ```
 
@@ -40,9 +40,11 @@ one.
 
 We can exploit monotonicity by fusing `filter` and `mrsc` into a monolithic 
 program
-```
+
+```agda
     solver′ = fuse filter mrsc
 ```
+
 where `fuse` is an automatic tool (based, for example, on supercompilation), or 
 just a postgraduate who has been taught (by his scientific adviser) to perform 
 fusion by hand. :-)
@@ -84,9 +86,11 @@ for `i = 1,..., k` and constructs corresponding versions of the graph `g`.
 ### Staging: delaying Cartesian products
 
 At this point we can decompose the process of supercompilation into two stages
-```
+
+```agda
     naive-mrsc ≗ ⟪_⟫ ∘ lazy-mrsc
 ```
+
 where `⟪_⟫` is a unary function, and `f ≗ g` means that `f x = f y` for all `x`.
 
 At the first stage, `lazy-mrsc` generates a "lazy graph", which, essentially, is 
@@ -109,32 +113,42 @@ useful information from a lazy graph `l` without evaluating
 This can be formulated in the following form.
 Suppose that a function `filter` filters bags of graphs,
 removing "bad" graphs, so that
-```
+
+```agda
     filter ⟪ l ⟫
 ```
+
 generates the bag of "good" graphs.
 
 Let us find a function `extract` such that
-```
+
+```agda
     extract l = filter ⟪ l ⟫
 ```
+
 In many cases, `extract` may be more efficient (by several orders
 of magnitude) than the composition `filter ∘ ⟪_⟫`.
 
 Sometimes, `extract` can be formulated in terms of "cleaners" of
 lazy graphs. Let `clean` be a function that transforms lazy graphs,
 such that
-```
+
+```agda
     ⟪ clean l ⟫ ⊆ ⟪ l ⟫
 ```
+
 Then `extract` can be constructed in the following way:
-```
+
+```agda
     extract l = ⟪ clean l ⟫
 ```
+
 Theoretically speaking, `clean` is the result of "promoting" `filter`:
-```
+
+```agda
     filter ∘ ⟪_⟫ ≗ ⟪_⟫ ∘ clean
 ```
+
 The nice property of cleaners is that they are composable:
 given `clean₁` and `clean₂`, `clean₂ ∘ clean₁` is also a cleaner.
 
@@ -147,30 +161,34 @@ a such a way that the lazy graph is traversed only once, in a linear time.
 ### What are the advantages?
 
 To sum up, we get the following scheme:
-```
+
+```agda
     filter ∘ naive-mrsc ≗
-      filter  ∘ (⟪_⟫ ∘ lazy-mrsc) =
-      (filter  ∘ ⟪_⟫) ∘ lazy-mrsc) ≗
-      (⟪_⟫ ∘ clean) ∘ lazy-mrsc)
+        filter  ∘ (⟪_⟫ ∘ lazy-mrsc) =
+        (filter  ∘ ⟪_⟫) ∘ lazy-mrsc) ≗
+        (⟪_⟫ ∘ clean) ∘ lazy-mrsc)
 ```
+
 We can see that:
 
 * The construction is modular: `lazy-mrsc` and `⟪_⟫` do not have to know 
-anything about filtering, while `clean` does not have to know anything about 
-`lazy-mrsc` and `⟪_⟫`.
+  anything about filtering, while `clean` does not have to know anything about 
+  `lazy-mrsc` and `⟪_⟫`.
 
 * Cleaners are composable: we can decompose a sophisticated cleaner into a 
-composition of simpler cleaners.
+  composition of simpler cleaners.
 
 * In many cases (of practical importance) cleaners can be implemented in such a 
-way that the best graphs can be extracted from a lazy graph in linear time.
+  way that the best graphs can be extracted from a lazy graph in linear time.
 
 ## Codata and corecursion: decomposing `lazy-mrsc`
 
 By using codata and corecursion, we can decompose `lazy-mrsc` into two stages
-```
+
+```agda
     lazy-mrsc ≗ prune-cograph ∘ build-cograph
 ```
+
 where `build-cograph` constructs a (potentially) infinite tree, while `prune-cograph` traverses this tree and turns it into a lazy graph (which is finite).
 
 The point is that `build-cograph` performs driving and rebuilding configurations, while `prune-cograph` uses whistle to turn an infinite tree to a finite graph. Thus `build-cograph` knows nothing about the whistle, while `prune-cograph` knows nothing about driving and rebuilding. This further improves the modularity of multi-result supercompilation.
@@ -180,23 +198,30 @@ The point is that `build-cograph` performs driving and rebuilding configurations
 Now it turnes out that some cleaners can be pushed over `prune-cograph`!
 
 Suppose `clean` is a lazy graph cleaner and `clean∞` a cograph cleaner, such that
-```
+
+```agda
     clean ∘ prune-cograph ≗ prune-cograph ∘ clean∞
 ```
+
 then 
-```
+
+```agda
     clean ∘ lazy-mrsc ≗
         clean ∘ (prune-cograph ∘ build-cograph) ≗
         (prune-cograph ∘ clean∞) ∘ build-cograph =
         prune-cograph ∘ (clean∞ ∘ build-cograph)
 ```
+
 The good thing is that `build-cograph` and `clean∞` work in a lazy way,
 generating subtrees by demand. Hence, evaluating
-```
+
+```agda
     ⟪ prune-cograph ∘ (clean∞ (build-cograph c))  ⟫
 ```
--- is likely to be less time and space consuming than directly evaluating
-```
+
+is likely to be less time and space consuming than directly evaluating
+
+```agda
     ⟪ clean (lazy-mrsc c) ⟫
 ```
 
@@ -204,9 +229,11 @@ generating subtrees by demand. Hence, evaluating
 
 At the moment, there has been developed an abstract model in Agda of big-step 
 multi-result supercompilation. A formal proof is given of the fact that
-```
+
+```agda
     ∀ (c : Conf) → naive-mrsc c ≡ ⟪ lazy-mrsc c ⟫
 ```
+
 By the way of testing, the abstract model is instantiated to produce a 
 multi-result supercompiler for counter systems.
 
