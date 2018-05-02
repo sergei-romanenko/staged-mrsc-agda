@@ -16,10 +16,12 @@ open import Data.List as List
 open import Data.List.Properties
   using (∷-injective; map-compose; map-++-commute)
 open import Data.List.Any as Any
-  using (Any; here; there; any; module Membership-≡)
+  using (Any; here; there; any)
+open import Data.List.Any.Membership.Propositional
+  using (_∈_; _⊆_)
 open import Data.List.Any.Properties
   using (Any-cong; Any↔; ++↔; return↔; map↔; concat↔; ⊎↔)
-open import Data.List.Any.Membership as MB
+open import Data.List.Any.Membership.Propositional.Properties
   using (map-∈↔)
 open import Data.Product
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃; ∃₂)
@@ -129,8 +131,6 @@ mutual
 --
 
 module ClBadConf-Sound (C : Set) (bad : C → Bool) where
-
-  open Membership-≡
 
   -- cl-bad-conf*-is-map
 

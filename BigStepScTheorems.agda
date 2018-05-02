@@ -9,10 +9,12 @@ open import Data.List as List
 open import Data.List.Properties
   using (map-compose; map-cong; foldr-fusion; map-++-commute)
 open import Data.List.Any
-  using (Any; here; there; module Membership-≡)
+  using (Any; here; there)
+open import Data.List.Any.Membership.Propositional
+  using (_∈_; _⊆_)
 open import Data.List.Any.Properties
   using (Any↔; Any-cong; ++↔; return↔; map↔; concat↔; ⊎↔)
-open import Data.List.Any.Membership as MB
+open import Data.List.Any.Membership.Propositional.Properties
   using (map-∈↔; concat-∈↔)
 open import Data.Fin as F
   using (Fin; zero; suc)
@@ -111,7 +113,6 @@ module MRSC→NDSC′ where
 
 module MRSC-correctness where
 
-  open Membership-≡
   open BigStepMRSC scWorld
 
   -- naive-mrsc-sound′
@@ -280,7 +281,7 @@ module MRSC-correctness where
         ↔⟨ map-∈↔ ⟩
       (forth c gs) ∈ map (forth c) gss
       ∎
- 
+
   -- naive-mrsc-complete
 
   naive-mrsc-complete :
@@ -374,4 +375,3 @@ module MRSC-naive≡lazy where
   naive≡lazy c = naive≡lazy′ [] bar[] c
 
 --
-

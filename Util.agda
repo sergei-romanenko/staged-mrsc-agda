@@ -13,11 +13,11 @@ open import Data.List
 open import Data.List.Properties
   using (∷-injective; foldr-universal; foldr-fusion)
 open import Data.List.Any
-  using (Any; here; there; module Membership-≡)
+  using (Any; here; there)
+open import Data.List.Any.Membership.Propositional
+  using (_∈_; _⊆_)
 open import Data.List.Any.Properties
   using (Any-cong; ⊥↔Any[]; Any↔; ++↔; ∷↔; return↔; map↔; concat↔; ⊎↔)
-open import Data.List.Any.Membership as MB
-  using (map-∈↔)
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.Vec as Vec
@@ -70,8 +70,6 @@ open import Function.Related.TypeIsomorphisms
 
 module ×⊎ {k ℓ} = CommutativeSemiring (×⊎-CommutativeSemiring k ℓ)
 
-open Membership-≡
-
 -- m+1+n≡1+m+n
 
 m+1+n≡1+m+n : ∀ m n → m + suc n ≡ suc (m + n)
@@ -114,7 +112,7 @@ foldr∘map f g n =
 gfilter-++-commute :
   ∀ {a b} {A : Set a} {B : Set b} (f : A → Maybe B) xs ys →
     gfilter f (xs ++ ys) ≡ gfilter f xs ++ gfilter f ys
- 
+
 gfilter-++-commute f [] ys = refl
 gfilter-++-commute f (x ∷ xs) ys with f x
 ... | just y = cong (_∷_ y) (gfilter-++-commute f xs ys)
@@ -476,7 +474,7 @@ map∷→≡×∈ {yss = ys ∷ yss} (there x∷xs∈) =
   from∘to : (p : Pointwise.Rel _∈_ (x ∷ xs) (ys ∷ yss)) → to (from p) ≡ p
   from∘to (x∈ys ∷ xs∈*yss) = refl
 
--- 
+--
 -- A proof of correctness of `cartesian`
 -- with respect to `Pointwise.Rel _∈_`
 
@@ -610,7 +608,7 @@ all∘∷ p {x} {b} px≡b = begin
 
 -- filter∘cartesian2
 
-filter∘cartesian2 : 
+filter∘cartesian2 :
   ∀ {A : Set} (p : A → Bool) (xs : List A) (xss : List (List A)) →
     filter (all p) (cartesian2 xs xss) ≡
       cartesian2 (filter p xs) (filter (all p) xss)

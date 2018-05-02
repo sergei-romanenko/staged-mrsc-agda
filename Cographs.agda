@@ -12,7 +12,7 @@ open import Data.Bool
 open import Data.List as List
   using (List; []; _∷_; map; _++_; filter; all)
 open import Data.List.Any as Any
-  using (Any; here; there; any; module Membership-≡)
+  using (Any; here; there; any)
 open import Data.Vec as Vec
   using (Vec; []; _∷_; lookup)
 open import Data.Product
@@ -100,7 +100,7 @@ module BigStepMRSC∞ (scWorld : ScWorld) where
 
   build-cograph : (c : Conf) → LazyCograph Conf
   build-cograph c = build-cograph′ [] c
-  
+
 
   mutual
 
@@ -139,7 +139,7 @@ module BigStepMRSC∞ (scWorld : ScWorld) where
 --
 -- Suppose `clean∞` is a cograph cleaner such that
 --     clean ∘ prune-cograph ≗ prune-cograph ∘ clean∞
--- then 
+-- then
 --     clean ∘ lazy-mrsc ≗
 --       clean ∘ (prune-cograph ∘ build-cograph) ≗
 --       (prune-cograph ∘ clean∞) ∘ build-cograph

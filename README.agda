@@ -1,4 +1,4 @@
-module Everything where
+module README where
 
 -- A (very abstract) model of small-step supercompilation
 

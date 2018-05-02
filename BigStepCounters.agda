@@ -7,7 +7,7 @@ open import Data.Nat.Properties as NP
 open import Data.List as List
   using (List; []; _∷_; [_])
 open import Data.List.Any as Any
-  using (Any; here; there; module Membership-≡)
+  using (Any; here; there)
 open import Data.Vec as Vec
   using (Vec; []; _∷_)
 open import Relation.Binary.Vec.Pointwise as Pointwise
@@ -214,7 +214,7 @@ module CntSc {k : ℕ} (cntWorld : CntWorld {k})
   ω ↷₁ = ω ∷ []
   (# i) ↷₁ = ω ∷ # i ∷ []
 
-  -- _↷ 
+  -- _↷
 
   _↷ : (c : Conf) → List Conf
   _↷ c = remove-c (vec-cartesian (Vec.map _↷₁ c))

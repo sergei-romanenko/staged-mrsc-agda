@@ -16,11 +16,9 @@ open import Data.List as List
 open import Data.List.Properties
   using (∷-injective; map-compose)
 open import Data.List.Any as Any
-  using (Any; here; there; any; module Membership-≡)
+  using (Any; here; there; any)
 open import Data.List.Any.Properties
   using (Any-cong; Any↔; ++↔; return↔; map↔; concat↔; ⊎↔)
-open import Data.List.Any.Membership as MB
-  using (map-∈↔)
 open import Data.Product
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃; ∃₂)
 open import Data.Sum
@@ -65,7 +63,7 @@ open import Util
 -- A `Graph C` is supposed to represent a residual program.
 -- Technically, a `Graph C` is a tree, with `back` nodes being
 -- references to parent nodes.
--- 
+--
 -- A graph's nodes contain configurations. Here we abstract away
 -- from the concrete structure of configurations.
 -- In this model the arrows in the graph carry no information,
@@ -77,7 +75,7 @@ open import Util
 -- supercompilation do not contain explicit references
 -- to parent nodes. Hence, `back c` means that `c` is foldable
 -- to a parent configuration (perhaps, to several ones).
--- 
+--
 -- * Back-nodes are produced by folding a configuration to another
 --   configuration in the history.
 -- * Forth-nodes are produced by

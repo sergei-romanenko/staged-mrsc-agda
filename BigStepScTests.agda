@@ -3,7 +3,9 @@ module BigStepScTests where
 open import Data.Nat
 open import Data.List as List
 open import Data.List.Any
-  using (Any; here; there; module Membership-≡)
+  using (Any; here; there)
+open import Data.List.Any.Membership.Propositional
+  using (_∈_; _⊆_)
 open import Data.Product
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃)
 open import Relation.Binary.List.Pointwise
@@ -14,8 +16,6 @@ open import Data.Empty
 open import Relation.Nullary
 open import Relation.Binary.PropositionalEquality as P
   renaming ([_] to P[_])
-
-open Membership-≡
 
 open import Graphs
 open import BarWhistles
@@ -82,7 +82,7 @@ module NDSC-test3 where
         (ndsc-fold (there (here refl)) ∷ []) ∷
       (ndsc-build ¬f3 (here refl)
         (ndsc-build ¬f4 (here refl)
-          (ndsc-fold (there (there (here refl))) ∷ []) ∷ [])) ∷ [])      
+          (ndsc-fold (there (there (here refl))) ∷ []) ∷ [])) ∷ [])
     where
     ¬f1 : c0 ∈ [] → ⊥
     ¬f1 ()
@@ -109,4 +109,3 @@ module NDSC-test3 where
     ¬f2 : c1 ∈ c0 ∷ [] → ⊥
     ¬f2 (here ())
     ¬f2 (there ())
-

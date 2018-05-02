@@ -12,7 +12,7 @@ open import Data.Bool
 open import Data.List as List
   using (List; []; _∷_; map; _++_; filter; all)
 open import Data.List.Any as Any
-  using (Any; here; there; any; module Membership-≡)
+  using (Any; here; there; any)
 open import Data.Vec as Vec
   using (Vec; []; _∷_; lookup)
 open import Data.Product
@@ -50,7 +50,7 @@ module BigStepMRSC∞-Correctness (scWorld : ScWorld) where
 
     prune′∘build′-correct :
       (h : History) (b : Bar ↯ h) (c : Conf) →
-      prune-cograph′ h b (build-cograph′ h c) ≡ lazy-mrsc′ h b c 
+      prune-cograph′ h b (build-cograph′ h c) ≡ lazy-mrsc′ h b c
 
     prune′∘build′-correct h b c with foldable? h c
     ... | yes f =
@@ -206,7 +206,7 @@ module BigStepMRSC∞-Ø-Correctness (scWorld : ScWorld) where
       with cl-empty* (prune-cograph* h b ls)
     ... | nothing = pruneØ-cograph⇉-correct c h b lss
     ... | just ls′ = cong (_∷_ ls′) (pruneØ-cograph⇉-correct c h b lss)
-    
+
     -- pruneØ-cograph*-correct
 
     pruneØ-cograph*-correct :
@@ -222,7 +222,7 @@ module BigStepMRSC∞-Ø-Correctness (scWorld : ScWorld) where
     ... | no _ rewrite pruneØ-cograph*-correct h b ls
       with cl-empty* (prune-cograph* h b ls)
     ... | nothing = refl
-    ... | just ls′ = refl 
+    ... | just ls′ = refl
 
   -- pruneØ-cograph-correct
 
@@ -288,7 +288,7 @@ module BigStepMRSC∞-Ø-Correctness (scWorld : ScWorld) where
 
     cl∞-Ø*-correct h b [] = refl
     cl∞-Ø*-correct h b (l ∷ ls) rewrite cl∞-Ø′-correct h b l
-      with (pruneØ-cograph′ h b l) 
+      with (pruneØ-cograph′ h b l)
     ... | l′ with Ø≡? l′
     ... | yes Ø≡l′ = refl
     ... | no  Ø≢l′ rewrite cl∞-Ø*-correct h b ls

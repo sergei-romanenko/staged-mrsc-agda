@@ -12,7 +12,7 @@ In Third International Valentin Turchin Workshop on Metacomputation
 Metacomputation. Pereslavl-Zalessky, Russia, July 5-9, 2012).
 A.V. Klimov and S.A. Romanenko, Ed. - Pereslavl-Zalessky: Ailamazyan
 University of Pereslavl, 2012, 260 p. ISBN 978-5-901795-28-6, pages
-142-164. 
+142-164.
 -}
 
 open import Level
@@ -24,7 +24,9 @@ open import Data.List as List
 open import Data.List.Properties
   using (map-compose; map-cong; foldr-fusion)
 open import Data.List.Any as Any
-  using (Any; here; there; module Membership-≡)
+  using (Any; here; there)
+open import Data.List.Any.Membership.Propositional
+  using (_∈_; _⊆_)
 open import Data.Fin as F
   using (Fin; zero; suc)
 open import Data.Vec as Vec
@@ -47,8 +49,6 @@ open import Relation.Binary
 open import Relation.Binary.PropositionalEquality as P
   renaming ([_] to P[_])
 
-open Membership-≡
-
 open import Util
 open import BarWhistles
 open import Graphs
@@ -64,7 +64,7 @@ open import Graphs
 --   not required to be just expressions with free variables! In general,
 --   they may represent sets of states in any form/language and as well may
 --   contain any _additional_ information.
--- 
+--
 -- * `_⊑_` is a "foldability relation". c ⊑ c′ means that c is foldable to c′.
 --   (In such cases c′ is usually said to be " more general than c".)
 --

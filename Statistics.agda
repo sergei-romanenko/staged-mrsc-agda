@@ -8,7 +8,7 @@ open import Data.List.Properties
   using (length-map; length-++
         ; map-compose; map-cong; map-++-commute; sum-++-commute)
 open import Data.List.Any as Any
-  using (Any; here; there; module Membership-≡)
+  using (Any; here; there)
 open import Data.Product as Prod
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃; ∃₂)
 open import Data.Empty

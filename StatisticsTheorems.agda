@@ -8,7 +8,7 @@ open import Data.List.Properties
   using (length-map; length-++
         ; map-compose; map-cong; map-++-commute; sum-++-commute)
 open import Data.List.Any as Any
-  using (Any; here; there; module Membership-≡)
+  using (Any; here; there)
 open import Data.Product as Prod
   using (_×_; _,_; ,_; proj₁; proj₂; Σ; ∃; ∃₂)
 open import Data.Empty
@@ -186,7 +186,7 @@ lemma₂ f x (ys ∷ yss) = begin
 
 lemma : {A : Set} (f : A → ℕ) (xs : List A) (yss : List (List A)) →
   sum (map (sum ∘ map f) (cartesian2 xs yss)) ≡
-    length xs * sum (map (sum ∘ map f) yss) + sum (map f xs) * length yss 
+    length xs * sum (map (sum ∘ map f) yss) + sum (map f xs) * length yss
 
 lemma f [] yss = refl
 lemma f (x ∷ xs) yss = begin
@@ -451,7 +451,7 @@ mutual
     #⟪ l ⟫ * %′⟪ ls ⟫* + #⟪ ls ⟫* * %′⟪ l ⟫
       ≡⟨ solve 3 (λ a b c → a :+ b :* c := a :+ c :* b)
                refl (#⟪ l ⟫ * %′⟪ ls ⟫*) #⟪ ls ⟫* %′⟪ l ⟫ ⟩
-     #⟪ l ⟫ * %′⟪ ls ⟫* + %′⟪ l ⟫ * #⟪ ls ⟫*    
+     #⟪ l ⟫ * %′⟪ ls ⟫* + %′⟪ l ⟫ * #⟪ ls ⟫*
       ≡⟨ cong₂ _+_
                (cong₂ _*_ (#⟪⟫-correct l) (%′⟪⟫*-correct ls))
                (cong₂ _*_ (%′⟪⟫-correct l) (#⟪⟫*-correct ls)) ⟩
@@ -553,7 +553,7 @@ module BigStepMRSC-cartesianMap (scWorld : ScWorld) where
       ∎
 
   -- naive-mrsc-cm-correct
-  
+
   naive-mrsc-cm-correct : (c : Conf) →
     naive-mrsc-cm c ≡ naive-mrsc c
 
